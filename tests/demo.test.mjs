@@ -260,14 +260,31 @@ test('Groepsgoedkeuring controleert diensttijden en versie bij opslaan',async()=
 
 test('Vrij aanvragen vanaf 21 dagen en bewust bestaande dienst afhandelen',async()=>{
  const day=new Date();day.setUTCDate(day.getUTCDate()+24);const date=day.toISOString().slice(0,10);
- await assert.rejects(act('leaveRequest',{date:'2020-01-01'}),/21 dagen/);
+ await assert.rejects(act('leaveRequest',{date:'2020-01-01'}),/toekomstige datum/);
  await act('leaveRequest',{date});const id=me().leave[0].id;
  selectDemo('noor');
  await act('plan',{shifts:[{id:'future',date,user:'mila',start:'09:00',end:'12:00'}]});
- await assert.rejects(act('leaveApprove',{id}),/dienst/);
+ await assert.rejects(act('leaveApprove',{id}),/rooster is gewijzigd/);
  await act('cancel',{id:'future',reason:'Vrijaanvraag besproken'});
  await act('leaveApprove',{id});
  selectDemo('mila');
  assert.equal(me().leave[0].status,'approved');
  assert.equal(row(id).kind,'off');
+});
+
+test('Beschikbaarheid: 20 dagen is een verzoek, 21 dagen direct, uitzondering pas na toestemming',async()=>{
+ const day=offset=>{const d=new Date(new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date())+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+offset);return d.toISOString().slice(0,10)};
+ const date=day(21);
+ await act('leaveRequest',{date,mode:'from',start:'16:00'});
+ await act('leaveRequest',{date:day(20),mode:'until',end:'13:00'});
+ assert.deepEqual(me().leave.map(l=>[l.days,l.status]),[[21,'approved'],[20,'pending']]);
+ selectDemo('noor');
+ const late=me().leave.find(l=>l.days===20);
+ await act('leaveApprove',{id:late.id,alternative:true,mode:'range',start:'10:00',end:'12:00',revision:1});
+ await assert.rejects(act('plan',{shifts:[{id:'outside',user:'mila',date,start:'09:00',end:'12:00'}]}),/beschikbaarheid/);
+ await act('leaveRequest',{date,user:'mila',mode:'range',start:'14:00',end:'18:00',proposeShift:true});
+ selectDemo('mila');
+ const offer=me().leave.find(l=>l.slot);
+ assert.ok(!row(offer.id));await act('leaveApprove',{id:offer.id,revision:1});assert.equal(row(offer.id).start,'14:00');
+ await act('leaveApprove',{id:late.id,revision:2});assert.equal(me().leave.find(l=>l.id===late.id).status,'approved');
 });

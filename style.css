@@ -6,3 +6,4 @@ button.stat { text-align: left; color: inherit; font: inherit; width: 100%; }
 .bell.active-bell svg { fill: #277842; stroke: #277842; }
 
 .days .dot.leave {background:#9858a4} .days .dot.proposal {background:#db8316}
+dialog .field[hidden]{display:none}

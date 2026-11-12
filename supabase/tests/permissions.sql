@@ -48,11 +48,15 @@ do $$
 declare d date:=(now() at time zone 'Europe/Amsterdam')::date+23; r jsonb; id text;
 begin
  perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
- begin perform public.mt_act('leaveRequest',jsonb_build_object('date',d-3));raise exception 'Termijn niet gecontroleerd';
- exception when raise_exception then if sqlerrm not like '%21 dagen%' then raise; end if;end;
- r:=public.mt_act('leaveRequest',jsonb_build_object('date',d));id:=r#>>'{leave,0,id}';
+ r:=public.mt_act('leaveRequest',jsonb_build_object('date',d-3,'mode','from','start','16:00'));
+ select value->>'id' into id from jsonb_array_elements(r->'leave') where value->>'status'='pending' and value->>'days'='20';
+ if id is null then raise exception 'Late aanvraag ontbreekt';end if;
+ r:=public.mt_act('leaveRequest',jsonb_build_object('date',d-2,'mode','until','end','13:00'));
+ if not exists(select from jsonb_array_elements(r->'leave') x where x->>'days'='21' and x->>'status'='approved') then raise exception 'Grens 21 dagen';end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
- r:=public.mt_act('leaveApprove',jsonb_build_object('id',id));
- if r#>>'{leave,0,status}'<>'approved' then raise exception 'Vrijaanvraag niet goedgekeurd';end if;
+ r:=public.mt_act('leaveApprove',jsonb_build_object('id',id,'alternative',true,'mode','range','start','12:00','end','16:00'));
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+ r:=public.mt_act('leaveApprove',jsonb_build_object('id',id,'revision',2));
+ if not exists(select from jsonb_array_elements(r->'leave') x where x->>'id'=id and x->>'status'='approved' and x->>'days'='20') then raise exception 'Tegenvoorstel mislukt';end if;
 end $$;
 rollback;
