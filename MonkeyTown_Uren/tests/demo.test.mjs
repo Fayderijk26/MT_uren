@@ -1,0 +1,154 @@
+import test, {beforeEach} from 'node:test';
+import assert from 'node:assert/strict';
+import {demoAct,demoState,selectDemo,resetDemo,demoAccounts} from '../demo.js';
+
+function memory() {
+  const store=new Map();
+  return {setItem:(k,v)=>store.set(k,String(v)),getItem:k=>store.get(k)??null,removeItem:k=>store.delete(k)};
+}
+globalThis.localStorage=memory();
+globalThis.sessionStorage=memory();
+beforeEach(()=>{resetDemo();});
+const act=demoAct;
+const me=()=>demoState();
+const row=id=>me().shifts.find(s=>s.id===id);
+const ownOpen=()=>me().shifts.filter(s=>!s.entry && s.kind==='shift').sort((a,b)=>a.date.localeCompare(b.date))[0];
+const attempt=(id,start,end,pause,version=0)=>({id,start,end,pause,version});
+async function newRow(id,date,start,end,user='mila') {
+  await act('extra',{id,date,start,end,user});
+}
+test('seed, actor views, role selection and storage isolation',()=>{
+  assert.equal(me().me,'mila');
+  assert.ok(me().shifts.every(s=>s.user==='mila'));
+  assert.equal(demoAccounts().length,5);
+  const old=structuredClone(me());
+  const boss=selectDemo('noor');
+  assert.ok(boss.shifts.length>old.shifts.length);
+  assert.ok(boss.people.length===5);
+  assert.throws(()=>selectDemo('missing'));
+  sessionStorage.setItem('other','untouched');
+  localStorage.setItem('live-session','untouched');
+  resetDemo();
+  assert.equal(localStorage.getItem('live-session'),'untouched');
+  assert.equal(sessionStorage.getItem('other'),'untouched');
+});
+test('T03/04 and T14: submission, approval, correction, return, audit and stale version',async()=>{
+  const s=ownOpen(),p=attempt(s.id,'09:00','18:00',30);
+  await act('submit',p);
+  assert.equal(row(s.id).entry.net,510);
+  selectDemo('bram');
+  await act('approve',{id:s.id,version:1});
+  selectDemo('mila');
+  assert.equal(row(s.id).entry.status,'approved');
+  await act('submit',attempt(s.id,'09:00','17:45',30,2));
+  assert.equal(row(s.id).entry.net,495);
+  assert.equal(row(s.id).entry.status,'pending');
+  selectDemo('bram');
+  await assert.rejects(act('approve',{id:s.id,version:1}));
+  await act('return',{id:s.id,version:3,reason:'Controleer je pauze'});
+  selectDemo('mila');
+  assert.equal(row(s.id).entry.reason,'Controleer je pauze');
+  await act('submit',attempt(s.id,'09:00','17:45',15,4));
+  assert.equal(row(s.id).entry.net,510);
+  const events=await act('history',{id:s.id});
+  assert.deepEqual(events.map(e=>e.action),['submit','approve','submit','return','submit']);
+});
+test('T05/06/18: pause, invalid times, DST and future',async()=>{
+  const {id}=ownOpen();
+  for(const invalid of [30,31,-1,2.5,'',null]) {
+    await assert.rejects(act('submit',attempt(id,'12:00','12:30',invalid)));
+    assert.equal(row(id).entry,null);
+  }
+  await act('submit',attempt(id,'12:00','12:30',0));
+  assert.equal(row(id).entry.net,30);
+  await act('submit',attempt(id,'12:00','12:30',29,1));
+  assert.equal(row(id).entry.net,1);
+  for(const [a,b] of [['12:00','12:00'],['12:00','10:30'],['23:00','00:30']])
+    await assert.rejects(act('submit',attempt(id,a,b,0,2)));
+  await newRow('later','2098-05-18','09:00','12:00');
+  await assert.rejects(act('submit',attempt('later','09:00','12:00',0)),/toekomst/);
+  for(const date of ['2025-03-30','2025-10-26'])
+    await assert.rejects(newRow('dst'+date,date,'02:10','04:00'),/klokverzet/);
+  await newRow('clock','2025-03-30','01:30','03:30');
+  await act('submit',attempt('clock','01:30','03:30',0));
+  assert.equal(row('clock').entry.net,60);
+});
+test('T07/08: two adjacent entries, overlap and replay',async()=>{
+  const date='2024-03-01';
+  for(const [id,start,end] of [['a','08:00','10:00'],['b','10:00','12:00'],['c','09:00','11:00']])
+    await newRow(id,date,start,end);
+  const p={...attempt('a','08:00','10:00',0),requestId:'sample'};
+  await Promise.all([act('submit',p),act('submit',p)]);
+  assert.equal((await act('history',{id:'a'})).filter(e=>e.action==='submit').length,1);
+  await act('submit',attempt('b','10:00','12:00',0));
+  await assert.rejects(act('submit',attempt('c','09:00','11:00',0)),/al uren/);
+  await assert.rejects(act('submit',{...p,pause:4}),/verzoeknummer/);
+});
+test('T02/11/12/13/19: tamper, role assignment and atomic import',async()=>{
+  const s=ownOpen(), original=me();
+  await assert.rejects(act('submit',{...attempt(s.id,'09:00','17:00',0),net:1000}));
+  await assert.rejects(act('approve',{id:s.id,version:0}));
+  await assert.rejects(act('profile',{user:'mila',role:'admin'}));
+  await assert.rejects(act('history',{id:s.id.replace('mila','sam')}));
+  assert.deepEqual(me(),original);
+  selectDemo('noor');
+  const planned={id:'row',date:'2024-01-02',user:'mila',kind:'shift',start:'10:00'};
+  await assert.rejects(act('plan',{shifts:[planned,{...planned,id:'bad',user:'nobody'}]}));
+  assert.equal(row('row'),undefined);
+  await act('plan',{shifts:[planned]});
+  await act('plan',{shifts:[planned]});
+  assert.equal(row('row').end,'18:00');
+  assert.equal((await act('history',{id:'row'})).length,1);
+  await act('lead',{date:s.date,user:'noor'});
+  selectDemo('bram');
+  assert.equal(row(s.id),undefined);
+  await assert.rejects(act('approve',{id:s.id,version:0}));
+  selectDemo('noor');
+  await assert.rejects(act('profile',{user:'noor',role:'employee'}));
+  await act('profile',{user:'mila',active:false});
+  assert.throws(()=>selectDemo('mila'));
+});
+test('T16/17: monthly norm, history and month locking',async()=>{
+  selectDemo('noor');
+  await act('norm',{month:'2024-03',user:'bram',norm:9600,paid:480});
+  assert.deepEqual(me().norms['2024-03:bram'],{norm:9600,paid:480});
+  await newRow('open','2024-03-01','08:00','10:00','bram');
+  await assert.rejects(act('close',{month:'2024-03'}));
+  await act('close',{month:'2024-03',reason:'Geregistreerde uitzondering'});
+  assert.ok(me().closed.includes('2024-03'));
+  await assert.rejects(act('norm',{month:'2024-03',user:'bram',norm:0,paid:0}));
+  await assert.rejects(act('reopen',{month:'2024-03'}));
+  await act('reopen',{month:'2024-03',reason:'Correctie nodig'});
+  await act('cancel',{id:'open'});
+  await act('close',{month:'2024-03'});
+  assert.equal(me().periodVersions['2024-03'],2);
+});
+test('T09/24/25: standby, office, change of worker and protection of submitted hours',async()=>{
+  selectDemo('noor');
+  const s=me().shifts.find(s=>s.user==='inez'&&s.kind==='standby');
+  assert.equal(s.deadline,'11:00');
+  await act('call',{id:s.id,start:'13:00',end:'17:00'});
+  assert.equal(row(s.id).start,'13:00');
+  assert.equal(row(s.id).kind,'shift');
+  await act('swap',{id:s.id,user:'sam'});
+  assert.equal(row(s.id).user,'sam');
+  const office=me().shifts.find(s=>s.kind==='office');
+  assert.equal(office.start,'');
+  const existing=me().shifts.find(s=>s.entry);
+  await act('swap',{id:existing.id,user:'bram'});
+  assert.equal(row(existing.id).user,existing.user);
+  assert.deepEqual(row(existing.id).entry,existing.entry);
+  assert.ok(me().shifts.some(s=>s.user==='bram'&&s.date===existing.date&&!s.entry));
+  await assert.rejects(act('cancel',{id:existing.id}));
+  await act('invite',{name:'Test Persoon',contract:'zero',role:'employee'});
+  assert.ok(demoAccounts().some(p=>p.name==='Test Persoon'));
+});
+test('T15: twee goedgekeurde diensten tellen 14u15, open dienst telt niet mee',async()=>{
+ const times=[['eerste','2025-11-04','18:00',30],['tweede','2025-11-05','15:00',15],['open','2025-11-06','17:00',0]];
+ for(const [id,date,end,pause] of times){await newRow(id,date,'09:00',end);await act('submit',attempt(id,'09:00',end,pause));}
+ selectDemo('noor');
+ for(const id of ['eerste','tweede'])await act('approve',{id,version:1});
+ const entries=me().shifts.filter(s=>times.some(([id])=>id===s.id));
+ assert.equal(entries.filter(s=>s.entry.status==='approved').reduce((n,s)=>n+s.entry.net,0),855);
+ assert.equal(entries.filter(s=>s.entry.status==='pending').length,1);
+});
