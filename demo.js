@@ -98,7 +98,7 @@ function demoSeed() {
 function save(db) { localStorage.setItem(DATA, JSON.stringify(db)); }
 function read() {
   const raw = localStorage.getItem(DATA);
-  if (raw) return JSON.parse(raw);
+  if(raw)return JSON.parse(raw);
   const db = demoSeed();
   save(db);
   return db;
@@ -158,7 +158,12 @@ function stateFor(db,actor) {
   const mayAssign = actor.role === 'admin' || (actor.role === 'lead' &&
     Object.entries(db.leads).some(([date,id])=>id===actor.id && !db.closed.includes(monthOf(date))));
   const rosterPeople = mayAssign ? db.people.filter(p=>p.active).map(({id,name})=>({id,name})) : [];
-  return {notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
+  const offers={};
+  for(const e of db.audit){
+    if((e.new?.offer||e.new?.decision)&&shifts.some(s=>s.id===e.id&&s.kind==='off'))offers[e.id]=e.new;
+  }
+  const acceptedSlots=Object.fromEntries(db.audit.filter(e=>e.action==='acceptedSlot'&&shifts.some(s=>s.id===e.id&&working(s))).map(e=>[e.id,e.new.off]));
+  return {acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
     contracts:(db.contracts||[]).filter(c=>actor.role==='admin'||c.user===actor.id)};
 }
 export function demoState() { const db=read();return stateFor(db,getActor(db)); }
@@ -189,7 +194,7 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
-  if(['offer','acceptOffer','declineOffer'].includes(action)){
+  if(['offer','acceptOffer','declineOffer','counterOffer','approveCounter','rejectCounter'].includes(action)){
     const s=findShift(db,p.id);
     writable(db,s.date);
     assert(s.kind==='off','Deze vrijmelding is gewijzigd.');
@@ -200,15 +205,25 @@ function change(db,actor,action,p) {
       const offer={token:uid(),start:p.start,end:p.end};
       record(db,actor,'message',s.id,s.date,null,{offer,message:'Kun je van '+p.start+' tot '+p.end+' werken? '+String(p.message||'').trim()},s.user);
     }else{
-      assert(actor.id===s.user && latest?.offer && latest.offer.token===p.token,'Dit voorstel is niet meer beschikbaar.');
+      assert(latest?.offer && latest.offer.token===p.token,'Dit voorstel is niet meer beschikbaar.');
+      const counter=latest.offer.counter===true;
+      const manager=action==='approveCounter'||action==='rejectCounter';
+      assert(counter===manager && (manager?canManage(db,actor,s.date)&&actor.id!==s.user:actor.id===s.user),'Geen toegang tot deze beslissing.');
+      if(action==='counterOffer'){
+        validateInterval(s.date,p.start,p.end);
+        const offer={token:uid(),start:p.start,end:p.end,counter:true};
+        record(db,actor,'message',s.id,s.date,null,{offer,message:'Ander voorstel · '+p.start+' – '+p.end},s.user);
+        return stateFor(db,actor);
+      }
+      if(action==='rejectCounter')assert(String(p.reason||'').trim(),'Geef een reden voor afwijzing.');
       const {start,end,token}=latest.offer;
-      const accepted=action==='acceptOffer';
+      const accepted=action==='acceptOffer'||action==='approveCounter';
       if(accepted){
         const next={...s,id:token,kind:'shift',start,end,raw:'',area:'',task:'',deadline:'',entry:null};
         db.shifts.push(next);
         record(db,actor,'acceptedSlot',token,s.date,null,{off:s.id,start,end},s.user);
       }
-      record(db,actor,'message',s.id,s.date,null,{decision:action,message:(accepted?'Ik kan werken':'Ik blijf vrij')+' · '+start+' – '+end},s.user);
+      record(db,actor,'message',s.id,s.date,null,{decision:action,message:(accepted?'Voorstel geaccepteerd':manager?'Ander voorstel afgewezen':'Vrij gehouden')+' · '+start+' – '+end+(p.reason?' · '+p.reason:'')},s.user);
     }
     return stateFor(db,actor);
   }
@@ -224,6 +239,7 @@ function change(db,actor,action,p) {
       assert(canManage(db,actor,s.date)&&s.user!==actor.id,'Geen beoordelingsrechten.');
       assert(String(p.reason||'').trim(),'Vul een reden in.');
       if(action==='reject'){
+        assert(s.kind==='extra','Vraag bij geplande uren een aanpassing.');
         assert(s.entry?.version===p.version,'De registratie is gewijzigd.');
         assert(s.entry?.status==='pending','Deze uren wachten niet op beoordeling.');
         Object.assign(s.entry,{status:'rejected',reason:p.reason,version:s.entry.version+1});
@@ -268,7 +284,7 @@ function change(db,actor,action,p) {
       if(!old) db.shifts.push(next);
       record(db,actor,'plan',row.id,row.date,before,next,row.user);
     }
-    for(const id of p.cancelIds || []) if(findShift(db,id).kind!=='cancelled') change(db,actor,'cancel',{id});
+    for(const id of p.cancelIds || []) if(findShift(db,id).kind!=='cancelled') change(db,actor,'cancel',{id,reason:'Verdwenen uit rooster-import'});
   } else if(action==='extra') {
     const date=p.date, user=p.user || actor.id;
     assert(user===actor.id || canManage(db,actor,date),'Geen toestemming voor deze medewerker.');
@@ -312,6 +328,8 @@ function change(db,actor,action,p) {
     } else {
       if(action==='cancel') {
         assert(!s.entry,'Bij deze dienst horen al ingediende uren. Verwerk die eerst.');
+        assert(String(p.reason||'').trim(),'Vul een reden in.');
+        s.reason=p.reason;
         s.kind='cancelled';
       }
       if(action==='call') {
@@ -425,7 +443,7 @@ export async function demoAct(action,payload={}) {
       if(!s)continue;
       const others=db.shifts.filter(row=>row.id!==s.id&&row.user===s.user&&row.date===s.date);
       const consent=(shift,off)=>db.audit.some(e=>e.action==='acceptedSlot'&&e.id===shift.id&&e.new.off===off.id&&e.new.start===shift.start&&e.new.end===shift.end);
-      if(event.old?.kind==='off'&&!['off','cancelled'].includes(s.kind) || working(s)&&others.some(o=>o.kind==='off'&&!consent(s,o)) || s.kind==='off'&&others.some(o=>working(o)&&!consent(o,s)))
+      if(event.old?.kind==='off'&&!['off','cancelled'].includes(s.kind) || (working(s)||s.kind==='standby')&&others.some(o=>o.kind==='off'&&!consent(s,o)) || s.kind==='off'&&others.some(o=>(working(o)||o.kind==='standby')&&!consent(o,s)))
         throw Error('Deze medewerker heeft vrij gevraagd. Open de vrijmelding en stel werktijden voor.');
       if(working(s)&&others.some(o=>working(o)&&s.start&&o.start&&s.start<o.end&&s.end>o.start))
         throw Error('Deze dienst overlapt een bestaande dienst. Pas de bestaande dienst aan.');

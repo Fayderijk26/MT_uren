@@ -118,7 +118,7 @@ test('T16/17: monthly norm, history and month locking',async()=>{
   await assert.rejects(act('norm',{month:'2024-03',user:'bram',norm:0,paid:0}));
   await assert.rejects(act('reopen',{month:'2024-03'}));
   await act('reopen',{month:'2024-03',reason:'Correctie nodig'});
-  await act('cancel',{id:'open'});
+  await act('cancel',{id:'open',reason:'Vervallen'});
   await act('close',{month:'2024-03'});
   assert.equal(me().periodVersions['2024-03'],2);
 });
@@ -197,4 +197,39 @@ test('Vrijmelding, voorstel en gesplitste diensten',async()=>{
   await plan('middag','11:00','15:00');
   selectDemo('mila');
   assert.ok(me().notifications.some(e=>e.id==='middag'&&e.action==='plan'));
+});
+
+test('Tegenvoorstel plant alleen het toegestane tijdvak na akkoord',async()=>{
+  selectDemo('noor');
+  const off=me().shifts.find(s=>s.kind==='off'&&s.user==='mila');
+  const id=off.id;
+  for(const decision of ['rejectCounter','approveCounter']){
+    await act('offer',{id,start:'09:00',end:'11:00'});
+    selectDemo('mila');
+    const original=me().offers[id].offer.token;
+    await act('counterOffer',{id,token:original,start:'16:00',end:'18:00'});
+    await assert.rejects(act('acceptOffer',{id,token:original}));
+    const token=me().offers[id].offer.token;
+    assert.ok(!row(token));
+    await assert.rejects(act('approveCounter',{id,token}));
+    selectDemo('noor');
+    await act(decision,{id,token,reason:'Alleen in de ochtend hulp nodig'});
+    assert.equal(Boolean(row(token)),decision==='approveCounter');
+    if(row(token))assert.deepEqual([row(token).start,row(token).end],['16:00','18:00']);
+    await assert.rejects(act(decision,{id,token,reason:'Opnieuw'}));
+  }
+});
+
+test('Import vervalt eenmaal met vaste reden',async()=>{
+ selectDemo('noor');
+ await act('plan',{shifts:[{id:'excel:test',user:'mila',date:'2025-03-01',start:'10:00',end:'12:00'}]});
+ await act('plan',{shifts:[],cancelIds:['excel:test']});
+ const events=(await act('history',{id:'excel:test'})).filter(e=>e.action==='cancel');
+ assert.equal(events.length,1);
+ assert.equal(events[0].after.reason,'Verdwenen uit rooster-import');
+});
+test('Stand-by is geblokkeerd op een vrije dag',async()=>{
+ selectDemo('noor');
+ const off=me().shifts.find(s=>s.kind==='off');
+ await assert.rejects(act('plan',{shifts:[{id:'standby-conflict',user:off.user,date:off.date,kind:'standby'}]}),/vrij gevraagd/);
 });
