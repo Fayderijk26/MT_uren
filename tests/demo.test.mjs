@@ -129,8 +129,9 @@ test('T09/24/25: standby, office, change of worker and protection of submitted h
   await act('call',{id:s.id,start:'13:00',end:'17:00'});
   assert.equal(row(s.id).start,'13:00');
   assert.equal(row(s.id).kind,'shift');
-  await act('swap',{id:s.id,user:'sam'});
-  assert.equal(row(s.id).user,'sam');
+  await assert.rejects(act('swap',{id:s.id,user:'sam'}),/overlap/);
+  await act('swap',{id:s.id,user:'noor'});
+  assert.equal(row(s.id).user,'noor');
   const office=me().shifts.find(s=>s.kind==='office');
   assert.equal(office.start,'');
   const existing=me().shifts.find(s=>s.entry);
@@ -173,4 +174,27 @@ test('Extra dienst atomair indienen, terugsturen, berichten en herstel',async()=
  selectDemo('noor');
  await act('restore',{id:'old',reason:'Dienst teruggezet'});
  assert.equal(row('old').kind,'shift');
+});
+
+test('Vrijmelding, voorstel en gesplitste diensten',async()=>{
+  selectDemo('noor');
+  const base={date:'2025-04-08',user:'mila'};
+  const plan=(id,start,end,kind='shift')=>act('plan',{shifts:[{...base,id,start,end,kind}]});
+  await plan('vrij','','','off');
+  await assert.rejects(plan('nieuw','09:00','12:00'),/vrij gevraagd/);
+  await act('offer',{id:'vrij',start:'10:00',end:'12:00',message:'Kun je invallen?'});
+  selectDemo('mila');
+  const proposal=(await act('history',{id:'vrij'})).at(-1).after.offer;
+  await act('acceptOffer',{id:'vrij',token:proposal.token});
+  assert.equal(row(proposal.token).start,'10:00');
+  await assert.rejects(act('acceptOffer',{id:'vrij',token:proposal.token}));
+  selectDemo('noor');
+  await assert.rejects(plan('middag','14:00','18:00'),/vrij gevraagd/);
+  base.date='2025-04-09';
+  await plan('ochtend','09:00','11:00');
+  await assert.rejects(plan('overlap','10:00','14:00'),/overlap/);
+  await plan('middag','13:00','17:00');
+  await plan('middag','11:00','15:00');
+  selectDemo('mila');
+  assert.ok(me().notifications.some(e=>e.id==='middag'&&e.action==='plan'));
 });

@@ -64,4 +64,20 @@ perform public.mt_act('restore','{"id":"qa-extra","reason":"Akkoord, opnieuw beo
 end $$;
 reset role;
 do $$ begin if (select net from mt.entries where shift_id='qa-extra')<>165 then raise exception 'netto fout'; end if; end $$;
+set local role authenticated;
+do $$
+declare proposed jsonb; w text:='00000000-0000-4000-8000-000000000001';
+begin
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+ perform public.mt_act('plan',jsonb_build_object('shifts',jsonb_build_array(jsonb_build_object('id','qa-off','user',w,'date','2026-10-12','kind','off'))));
+ begin
+   perform public.mt_act('plan',jsonb_build_object('shifts',jsonb_build_array(jsonb_build_object('id','qa-forbidden','user',w,'date','2026-10-12','start','09:00','end','11:00'))));
+   raise exception 'Missing leave protection';
+ exception when raise_exception then if sqlerrm not like '%vrij gevraagd%' then raise; end if; end;
+ perform public.mt_act('offer','{"id":"qa-off","start":"14:00","end":"16:00"}');
+ perform set_config('request.jwt.claim.sub',w,true);
+ proposed:=public.mt_act('history','{"id":"qa-off"}')->-1->'after'->'offer';
+ perform public.mt_act('acceptOffer',jsonb_build_object('id','qa-off','token',proposed->>'token'));
+ if not exists(select from jsonb_array_elements(public.mt_state()->'shifts') x where x->>'id'=proposed->>'token' and x->>'start'='14:00') then raise exception 'Missing accepted shift'; end if;
+end $$;
 rollback;

@@ -189,6 +189,29 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(['offer','acceptOffer','declineOffer'].includes(action)){
+    const s=findShift(db,p.id);
+    writable(db,s.date);
+    assert(s.kind==='off','Deze vrijmelding is gewijzigd.');
+    const latest=db.audit.filter(e=>e.id===s.id && (e.new?.offer || e.new?.decision)).at(-1)?.new;
+    if(action==='offer'){
+      assert(canManage(db,actor,s.date)&&s.user!==actor.id,'Geen toegang.');
+      validateInterval(s.date,p.start,p.end);
+      const offer={token:uid(),start:p.start,end:p.end};
+      record(db,actor,'message',s.id,s.date,null,{offer,message:'Kun je van '+p.start+' tot '+p.end+' werken? '+String(p.message||'').trim()},s.user);
+    }else{
+      assert(actor.id===s.user && latest?.offer && latest.offer.token===p.token,'Dit voorstel is niet meer beschikbaar.');
+      const {start,end,token}=latest.offer;
+      const accepted=action==='acceptOffer';
+      if(accepted){
+        const next={...s,id:token,kind:'shift',start,end,raw:'',area:'',task:'',deadline:'',entry:null};
+        db.shifts.push(next);
+        record(db,actor,'acceptedSlot',token,s.date,null,{off:s.id,start,end},s.user);
+      }
+      record(db,actor,'message',s.id,s.date,null,{decision:action,message:(accepted?'Ik kan werken':'Ik blijf vrij')+' · '+start+' – '+end},s.user);
+    }
+    return stateFor(db,actor);
+  }
   if(action==='seen'){db.seen||=[];db.seen.push(actor.id+p.key);return stateFor(db,actor);}
   if(['message','restore','reject'].includes(action)){
     const s=findShift(db,p.id),old=structuredClone(s);
@@ -394,7 +417,19 @@ export async function demoAct(action,payload={}) {
       assert(receipt.action===action && receipt.body===JSON.stringify(payload),'Dit verzoeknummer is al gebruikt.');
       return stateFor(db,actor);
     }
+    const firstEvent=db.audit.length;
     const result=change(db,actor,action,payload);
+    for(const event of db.audit.slice(firstEvent)){
+      if(!['plan','extra','restore','call','swap','replacement','acceptedSlot'].includes(event.action))continue;
+      const s=db.shifts.find(row=>row.id===event.id);
+      if(!s)continue;
+      const others=db.shifts.filter(row=>row.id!==s.id&&row.user===s.user&&row.date===s.date);
+      const consent=(shift,off)=>db.audit.some(e=>e.action==='acceptedSlot'&&e.id===shift.id&&e.new.off===off.id&&e.new.start===shift.start&&e.new.end===shift.end);
+      if(event.old?.kind==='off'&&!['off','cancelled'].includes(s.kind) || working(s)&&others.some(o=>o.kind==='off'&&!consent(s,o)) || s.kind==='off'&&others.some(o=>working(o)&&!consent(o,s)))
+        throw Error('Deze medewerker heeft vrij gevraagd. Open de vrijmelding en stel werktijden voor.');
+      if(working(s)&&others.some(o=>working(o)&&s.start&&o.start&&s.start<o.end&&s.end>o.start))
+        throw Error('Deze dienst overlapt een bestaande dienst. Pas de bestaande dienst aan.');
+    }
     if(action!=='history' && action!=='audit') {
       if(key) db.receipts[key]={action,body:JSON.stringify(payload)};
       save(db);
