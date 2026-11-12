@@ -59,4 +59,17 @@ begin
  r:=public.mt_act('leaveApprove',jsonb_build_object('id',id,'revision',2));
  if not exists(select from jsonb_array_elements(r->'leave') x where x->>'id'=id and x->>'status'='approved' and x->>'days'='20') then raise exception 'Tegenvoorstel mislukt';end if;
 end $$;
+do $$
+declare result jsonb; rev text;
+begin
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+ result:=public.mt_act('draftSave','{"shifts":[{"id":"qa-draft","user":"00000000-0000-4000-8000-000000000001","date":"2032-07-12","kind":"shift","start":"11:00","end":"18:00"}]}');
+ select x->>'revision' into strict rev from jsonb_array_elements(result->'drafts') x where x->>'id'='qa-draft';
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+ result:=public.mt_state();
+ if exists(select from jsonb_array_elements((result->'drafts')||(result->'shifts')) x where x->>'id'='qa-draft') then raise exception 'Concept zichtbaar';end if;
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+ result:=public.mt_act('draftPublish',jsonb_build_object('scope','week','date','2032-07-12','versions',jsonb_build_object('qa-draft',rev)));
+ if not exists(select from jsonb_array_elements(result->'shifts') x where x->>'id'='qa-draft') then raise exception 'Dienst ontbreekt';end if;
+end $$;
 rollback;

@@ -42,7 +42,7 @@ function availabilityCard(l){
   return '<article class="manage-row"><b>'+h(person(l.user))+' · '+h(niceDate(l.date))+'</b><p>'+h(availabilityText(l))+' · '+h(leaveLabels[l.status])+'</p><small>'+h(noticePeriod(l))+'</small>'
     +(l.reason?'<p>'+h(l.reason)+'</p>':'')+(l.response?'<p>'+h(l.response)+'</p>':'')
     +(canAnswer&&existing.length?'<p>Ingepland: '+existing.map(planned).join(', ')+'</p>':'')
-    +(canAnswer?btn('Akkoord','leaveYes','Check','primary',attrs)+btn('Afwijzen','leaveNo','X','secondary',attrs)+(l.status==='pending'?btn('Andere tijden voorstellen','leaveCounter','Clock3','secondary',attrs):''):'')+'</article>';
+    +'<div class="availability-actions">'+(canAnswer?btn('Akkoord','leaveYes','Check','primary',attrs)+btn('Afwijzen','leaveNo','X','secondary',attrs)+(l.status==='pending'?btn('Andere tijden voorstellen','leaveCounter','Clock3','secondary',attrs) :''):'')+(me.role==='admin'&&l.status==='approved'&&l.mode!=='off'&&l.date>=today()?btn('Inplannen','planPerson','Plus','secondary','data-id="'+h(l.user)+'" data-day="'+h(l.date)+'"'):'')+'</div></article>';
 }
 function leavePanel(){
   const rows=(state.leave||[]).filter(l=>l.status!=='replaced'&&(l.user===me.id||me.role==='admin')).sort((a,b)=>a.date.localeCompare(b.date));

@@ -288,3 +288,25 @@ test('Beschikbaarheid: 20 dagen is een verzoek, 21 dagen direct, uitzondering pa
  assert.ok(!row(offer.id));await act('leaveApprove',{id:offer.id,revision:1});assert.equal(row(offer.id).start,'14:00');
  await act('leaveApprove',{id:late.id,revision:2});assert.equal(me().leave.find(l=>l.id===late.id).status,'approved');
 });
+
+test('Concepten zijn privé en worden per dag of week definitief',async()=>{
+  selectDemo('noor');
+  const first='2032-07-12', second='2032-07-13';
+  const shifts=[first,second].map((date,i)=>({id:'concept-'+i,user:'mila',date,kind:'shift',start:'11:00',end:'18:00'}));
+  await act('draftSave',{shifts});
+  const [a,b]=me().drafts;
+  selectDemo('mila');
+  assert.equal(me().drafts.length,0);
+  assert.ok(!row(a.id));
+  selectDemo('noor');
+  await assert.rejects(act('draftPublish',{date:first,scope:'day',versions:{[a.id]:'oud'}}),/gewijzigd/);
+  await act('draftPublish',{date:first,scope:'day',versions:{[a.id]:a.revision}});
+  selectDemo('mila');
+  assert.equal(row(a.id).start,'11:00');
+  assert.ok(!row(b.id));
+  selectDemo('noor');
+  await act('draftPublish',{date:first,scope:'week',versions:{[b.id]:b.revision}});
+  assert.equal(me().drafts.length,0);
+  selectDemo('mila');
+  assert.equal(row(b.id).end,'18:00');
+});

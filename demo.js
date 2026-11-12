@@ -175,7 +175,7 @@ function stateFor(db,actor) {
     if((e.new?.offer||e.new?.decision)&&shifts.some(s=>s.id===e.id&&s.kind==='off'))offers[e.id]=e.new;
   }
   const acceptedSlots=Object.fromEntries(db.audit.filter(e=>e.action==='acceptedSlot'&&shifts.some(s=>s.id===e.id&&working(s))).map(e=>[e.id,e.new.off]));
-  return {leave:(db.leave||[]).filter(l=>l.user===actor.id||actor.role==='admin'||(l.status==='approved'&&canManage(db,actor,l.date))).map(l=>({...l,seen:(db.seen||[]).includes(actor.id+'availability:'+l.id+':'+(l.revision||1))})),acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
+  return {drafts:actor.role==='admin'?(db.drafts||[]):[],leave:(db.leave||[]).filter(l=>l.user===actor.id||actor.role==='admin'||(l.status==='approved'&&canManage(db,actor,l.date))).map(l=>({...l,seen:(db.seen||[]).includes(actor.id+'availability:'+l.id+':'+(l.revision||1))})),acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
     contracts:(db.contracts||[]).filter(c=>actor.role==='admin'||c.user===actor.id)};
 }
 export function demoState() { const db=read();return stateFor(db,getActor(db)); }
@@ -206,6 +206,38 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(['draftSave','draftDrop','draftPublish'].includes(action)){
+    adminOnly(actor);
+    db.drafts??=[];
+    const versions=p.versions||{};
+    const check=id=>assert((db.drafts.find(d=>d.id===id)?.revision||null)===(versions[id]||null),'Het concept is gewijzigd. Open het overzicht opnieuw.');
+    if(action==='draftSave'){
+      const rows=[...(p.shifts||[]),...(p.cancelIds||[]).map(id=>({...findShift(db,id),remove:true}))];
+      for(const input of rows){
+        check(input.id);writable(db,input.date);
+        const old=db.drafts.find(d=>d.id===input.id),current=db.shifts.find(s=>s.id===input.id);
+        const row=planRow(db,input);
+        if(old)assert(row.user===old.user&&row.date===old.date,'De medewerker of datum is gewijzigd.');
+        const draft={...row,remove:!!input.remove,before:old?old.before:current?structuredClone(current):null,revision:uid()};
+        db.drafts=db.drafts.filter(d=>d.id!==row.id);db.drafts.push(draft);
+      }
+    }else if(action==='draftDrop'){
+      check(p.id);db.drafts=db.drafts.filter(d=>d.id!==p.id);
+    }else{
+      assert(validDate(p.date)&&['day','week'].includes(p.scope),'Kies een geldige periode.');
+      const until=relativeDate(p.date,p.scope==='week'?6:0);
+      const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=until);
+      assert(chosen.length&&chosen.length===Object.keys(versions).length,'De conceptlijst is gewijzigd.');
+      for(const d of chosen){
+        check(d.id);
+        const current=db.shifts.find(s=>s.id===d.id)||null;
+        assert(JSON.stringify(current)===JSON.stringify(d.before),'De oorspronkelijke dienst is gewijzigd.');
+      }
+      change(db,actor,'plan',{shifts:chosen.filter(d=>!d.remove),cancelIds:chosen.filter(d=>d.remove).map(d=>d.id)});
+      db.drafts=db.drafts.filter(d=>!chosen.includes(d));
+    }
+    return stateFor(db,actor);
+  }
   if(['leaveRequest','leaveApprove','leaveReject'].includes(action)){
     db.leave??=[];
     if(action==='leaveRequest'){
