@@ -27,9 +27,18 @@ Deno.serve(async (req:Request) => {
     for (let i=0;i<40;i++) {
       const item=await rpc('mt_mail_claim',{after_time:time});
       if (!item) break;
-      const closing=item.kind==='closing';
-      const subject=closing?'Dagcontrole Monkey Town':'Vul je dienst in';
-      const message=closing?'De dagcontrole heeft open punten.':'Je ingeplande dienst is afgelopen. Vul je gewerkte tijden en pauze in.';
+      const closing=item.kind.startsWith('closing');
+      const next=item.kind.endsWith('_next');
+      const subject=(next?'Herinnering · ':'')+(closing?'Dagcontrole':'Uren invullen')+' · '+item.day;
+      const sections:string[]=[];
+      for(const [status,label] of [['missing','Ontbreekt'],['returned','Aanpassen (wacht op medewerker)'],['pending','Ter beoordeling']]){
+        const lines=(item.details||[]).filter((r:{status:string})=>r.status===status).map((r:{name:string,start:string,end:string,actualStart:string,actualEnd:string})=>{
+          const changed=r.actualStart&&(r.start!==r.actualStart||r.end!==r.actualEnd);
+          return r.name+' · '+r.start+'–'+r.end+(changed?' · ingediend '+r.actualStart+'–'+r.actualEnd:'');
+        });
+        if(lines.length)sections.push(label+'\n'+lines.join('\n'));
+      }
+      const message=sections.join('\n\n');
       let providerId=null;
       try {
         const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{

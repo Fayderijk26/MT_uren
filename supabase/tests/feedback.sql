@@ -8,7 +8,7 @@ insert into auth.users(id,email,invited_at) values
 ('00000000-0000-4000-8000-000000000004','dormant@example.invalid',null);
 update mt.people set role='admin' where id='00000000-0000-4000-8000-000000000003';
 update mt.people set role='lead' where id='00000000-0000-4000-8000-000000000002';
-insert into mt.leads values ('2026-10-07','00000000-0000-4000-8000-000000000002');
+insert into mt.shifts(id,staff,day,starts,ends,kind) values ('qa-duty','00000000-0000-4000-8000-000000000002','2026-10-07','15:00','18:00','shift');
 insert into mt.shifts(id,staff,day,starts,ends,kind) values
  ('qa-one','00000000-0000-4000-8000-000000000001','2026-10-07','09:00','18:00','shift'),
  ('qa-two','00000000-0000-4000-8000-000000000002','2026-10-08','10:00','11:00','shift');

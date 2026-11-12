@@ -36,6 +36,7 @@ test('T03/04 and T14: submission, approval, correction, return, audit and stale 
   const s=ownOpen(),p=attempt(s.id,'09:00','18:00',30);
   await act('submit',p);
   assert.equal(row(s.id).entry.net,510);
+  selectDemo('noor');await act('plan',{shifts:[{id:'working-lead',date:s.date,user:'bram',start:'09:00',end:'12:00'}]});
   selectDemo('bram');
   await act('approve',{id:s.id,version:1});
   selectDemo('mila');
@@ -98,7 +99,7 @@ test('T02/11/12/13/19: tamper, role assignment and atomic import',async()=>{
   await act('plan',{shifts:[planned]});
   assert.equal(row('row').end,'18:00');
   assert.equal((await act('history',{id:'row'})).length,1);
-  await act('lead',{date:s.date,user:'noor'});
+  await assert.rejects(act('lead',{date:s.date,user:'noor'}));
   selectDemo('bram');
   assert.equal(row(s.id),undefined);
   await assert.rejects(act('approve',{id:s.id,version:0}));
@@ -109,8 +110,8 @@ test('T02/11/12/13/19: tamper, role assignment and atomic import',async()=>{
 });
 test('T16/17: monthly norm, history and month locking',async()=>{
   selectDemo('noor');
-  await act('norm',{month:'2024-03',user:'bram',norm:9600,paid:480});
-  assert.deepEqual(me().norms['2024-03:bram'],{norm:9600,paid:480});
+  await act('norm',{month:'2024-03',user:'bram',norm:9600,paid:480,reason:'Contract gecontroleerd'});
+  assert.deepEqual(me().norms['2024-03:bram'],{norm:9600,paid:480,reason:'Contract gecontroleerd'});
   await newRow('open','2024-03-01','08:00','10:00','bram');
   await assert.rejects(act('close',{month:'2024-03'}));
   await act('close',{month:'2024-03',reason:'Geregistreerde uitzondering'});
@@ -130,10 +131,12 @@ test('T09/24/25: standby, office, change of worker and protection of submitted h
   assert.equal(row(s.id).start,'13:00');
   assert.equal(row(s.id).kind,'shift');
   await assert.rejects(act('swap',{id:s.id,user:'sam'}),/overlap/);
-  await act('swap',{id:s.id,user:'noor'});
-  assert.equal(row(s.id).user,'noor');
-  const office=me().shifts.find(s=>s.kind==='office');
-  assert.equal(office.start,'');
+  await act('invite',{name:'Invaller',role:'employee',contract:'zero'});
+  const replacement=me().people.find(p=>p.name==='Invaller');
+  await act('swap',{id:s.id,user:replacement.id});
+  assert.equal(row(s.id).user,replacement.id);
+  const office=me().shifts.find(s=>s.area==='Kantoor');
+  assert.equal(office.kind,'shift');
   const existing=me().shifts.find(s=>s.entry);
   await act('swap',{id:existing.id,user:'bram'});
   assert.equal(row(existing.id).user,existing.user);
@@ -253,4 +256,18 @@ test('Groepsgoedkeuring controleert diensttijden en versie bij opslaan',async()=
   await assert.rejects(act('approveExact',{id:'apart',version:2}));
   await act('approveExact',{id:'apart',version:3});
   assert.equal(row('apart').entry.status,'approved');
+});
+
+test('Vrij aanvragen vanaf 21 dagen en bewust bestaande dienst afhandelen',async()=>{
+ const day=new Date();day.setUTCDate(day.getUTCDate()+24);const date=day.toISOString().slice(0,10);
+ await assert.rejects(act('leaveRequest',{date:'2020-01-01'}),/21 dagen/);
+ await act('leaveRequest',{date});const id=me().leave[0].id;
+ selectDemo('noor');
+ await act('plan',{shifts:[{id:'future',date,user:'mila',start:'09:00',end:'12:00'}]});
+ await assert.rejects(act('leaveApprove',{id}),/dienst/);
+ await act('cancel',{id:'future',reason:'Vrijaanvraag besproken'});
+ await act('leaveApprove',{id});
+ selectDemo('mila');
+ assert.equal(me().leave[0].status,'approved');
+ assert.equal(row(id).kind,'off');
 });

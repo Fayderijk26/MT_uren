@@ -8,7 +8,7 @@ insert into auth.users(id,email,invited_at) values
 ('00000000-0000-4000-8000-000000000004','dormant@example.invalid',null);
 update mt.people set role='admin' where id='00000000-0000-4000-8000-000000000003';
 update mt.people set role='lead' where id='00000000-0000-4000-8000-000000000002';
-insert into mt.leads values ('2026-10-07','00000000-0000-4000-8000-000000000002');
+insert into mt.shifts(id,staff,day,starts,ends,kind) values ('qa-duty','00000000-0000-4000-8000-000000000002','2026-10-07','15:00','18:00','shift');
 insert into mt.shifts(id,staff,day,starts,ends,kind) values
  ('qa-one','00000000-0000-4000-8000-000000000001','2026-10-07','09:00','18:00','shift'),
  ('qa-two','00000000-0000-4000-8000-000000000002','2026-10-08','10:00','11:00','shift');
@@ -42,5 +42,17 @@ reset role;
 do $$ begin
  if has_function_privilege('anon','public.mt_state()','execute') or has_function_privilege('anon','public.mt_act(text,jsonb)','execute') then raise exception 'Anonieme toegang'; end if;
  if (select count(*) from mt.entries where shift_id='qa-one')<>1 then raise exception 'Dubbele boeking'; end if;
+end $$;
+set local role authenticated;
+do $$
+declare d date:=(now() at time zone 'Europe/Amsterdam')::date+23; r jsonb; id text;
+begin
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+ begin perform public.mt_act('leaveRequest',jsonb_build_object('date',d-3));raise exception 'Termijn niet gecontroleerd';
+ exception when raise_exception then if sqlerrm not like '%21 dagen%' then raise; end if;end;
+ r:=public.mt_act('leaveRequest',jsonb_build_object('date',d));id:=r#>>'{leave,0,id}';
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+ r:=public.mt_act('leaveApprove',jsonb_build_object('id',id));
+ if r#>>'{leave,0,status}'<>'approved' then raise exception 'Vrijaanvraag niet goedgekeurd';end if;
 end $$;
 rollback;

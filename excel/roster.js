@@ -25,7 +25,7 @@ export function parseSlot(value) {
   } else if (/^kantoor(?:\/vloer)?\b/.test(text)) {
     result.area = text.startsWith('kantoor/vloer') ? 'Kantoor/vloer' : 'Kantoor';
     text = text.replace(/^kantoor(?:\/vloer)?\s*(?:v\.a\.?\s*)?/, '');
-    if (!text) return {...result,kind:'office'};
+    if (!text) return {...result,kind:'unknown'};
   }
   const standby = text.match(standbyPattern);
   if (standby) return {...result,kind:'standby',deadline:standby[1] ? tidyClock(standby[1]) : ''};

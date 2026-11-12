@@ -32,7 +32,7 @@ try {
  assert.equal(match('K SB').kind,'standby');
  assert.equal(match('SB 12:00').deadline,'12:00');
  assert.equal(match('SB 12:00').start,'');
- assert.equal(match('kantoor').kind,'office');
+ assert.equal(match('kantoor').kind,'unknown');
  assert.equal(match('x').kind,'off');
  assert.equal(match('09:30/openen').task,'Openen');
  assert.equal(match('kantoor 15:00-sluit').task,'Sluiten');

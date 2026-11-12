@@ -5,10 +5,10 @@ const ZONE = new Intl.DateTimeFormat('sv-SE', {
   timeZone: 'Europe/Amsterdam', year: 'numeric', month: '2-digit', day: '2-digit',
   hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
 });
-const kinds = ['shift', 'office', 'off', 'standby', 'extra', 'cancelled'];
+const kinds = ['shift', 'off', 'standby', 'extra', 'cancelled'];
 const roles = ['employee', 'lead', 'admin'];
 const contracts = ['zero', 'fixed'];
-const working = s => ['shift', 'office', 'extra'].includes(s.kind);
+const working = s => ['shift', 'extra'].includes(s.kind);
 const monthOf = date => date.slice(0, 7);
 const nowLocal = (time = new Date()) => ZONE.format(time);
 const today = () => nowLocal().slice(0, 10);
@@ -50,7 +50,7 @@ function demoSeed() {
     ['sam','Sam Bakker','employee','zero'],
     ['inez','Inez Smit','employee','zero']
   ].map(([id,name,role,contract]) => ({id,name,role,contract,active:true}));
-  const db = {people, shifts:[], leads:{}, closed:[], norms:{}, audit:[], receipts:{}, closures:[], periodVersions:{},
+  const db = {people, shifts:[], leave:[], closed:[], norms:{}, audit:[], receipts:{}, closures:[], periodVersions:{},
     contracts:people.map(p=>({user:p.id,effective:relativeDate(day,-30),contract:p.contract,weeklyMinutes:p.contract==='fixed'?2160:0}))};
   const shifts = [
     [-10,'mila','09:00','17:00','Speelvloer','', 'approved'],
@@ -64,7 +64,7 @@ function demoSeed() {
     [-1,'inez','11:00','16:00','Keuken','','returned'],
     [0,'mila','09:00','18:00','Speelvloer','Openen',null],
     [0,'bram','09:00','18:00','Speelvloer','Sluiten',null],
-    [0,'noor','','','Kantoor','',null,'office'],
+    [0,'noor','09:00','17:00','Kantoor','',null],
     [0,'sam','10:00','18:00','Keuken','',null],
     [0,'inez','','','Keuken','',null,'standby','11:00'],
     [1,'mila','10:00','18:00','Keuken','',null],
@@ -80,7 +80,7 @@ function demoSeed() {
     const date = relativeDate(day, offset);
     const s = {id:'voorbeeld-' + date + '-' + user,user,date,start,end,area,task,kind,deadline,entry:null};
     db.shifts.push(s);
-    db.leads[date] = 'bram';
+
     if (status) {
       const at = new Date(instant(date, end)).toISOString();
       s.entry = {start,end,pause:30,status:'pending',version:1,reason:'',net:minute(end)-minute(start)-30};
@@ -98,7 +98,14 @@ function demoSeed() {
 function save(db) { localStorage.setItem(DATA, JSON.stringify(db)); }
 function read() {
   const raw = localStorage.getItem(DATA);
-  if(raw)return JSON.parse(raw);
+  if(raw){
+    const db=JSON.parse(raw);
+    for(const s of db.shifts.filter(x=>x.kind==='office')){
+      s.kind='shift';s.area='Kantoor';
+      s.start=s.start||s.entry?.start||'';s.end=s.end||s.entry?.end||'';
+    }
+    return db;
+  }
   const db = demoSeed();
   save(db);
   return db;
@@ -109,7 +116,7 @@ function getActor(db) {
   return person;
 }
 function canManage(db, actor, date) {
-  return actor.role === 'admin' || (actor.role === 'lead' && db.leads[date] === actor.id);
+  return actor.role === 'admin' || (actor.role === 'lead' && db.shifts.some(s=>s.date===date&&s.user===actor.id&&working(s)&&s.start&&s.end));
 }
 function writable(db, date) {
   assert(!db.closed.includes(monthOf(date)), 'Deze maand is afgesloten. De bedrijfsleider kan de maand heropenen.');
@@ -149,21 +156,25 @@ function stateFor(db,actor) {
   const shifts = db.shifts.filter(s=>s.user===actor.id || canManage(db,actor,s.date));
   const ids = new Set(shifts.map(s=>s.user));
   ids.add(actor.id);
-  const leads = Object.fromEntries(Object.entries(db.leads).filter(([date]) => 
-    canManage(db,actor,date) || shifts.some(s => s.date === date)));
-  Object.values(leads).forEach(id=>ids.add(id));
+  const leads={};
+  for(const s of db.shifts){
+    if(!working(s)||!s.start||!s.end||!shifts.some(v=>v.date===s.date))continue;
+    if(!db.people.some(p=>p.id===s.user&&p.active&&p.role==='lead'))continue;
+    (leads[s.date]??=[]);if(!leads[s.date].includes(s.user))leads[s.date].push(s.user);
+    ids.add(s.user);
+  }
   const people = actor.role === 'admin' ? db.people : db.people.filter(p=>ids.has(p.id)).map(p=>
     p.id === actor.id ? p : {id:p.id,name:p.name,role:p.role,active:p.active,contract:null});
   const norms = Object.fromEntries(Object.entries(db.norms).filter(([key])=>actor.role==='admin'||key.endsWith(':'+actor.id)));
   const mayAssign = actor.role === 'admin' || (actor.role === 'lead' &&
-    Object.entries(db.leads).some(([date,id])=>id===actor.id && !db.closed.includes(monthOf(date))));
+    Object.entries(leads).some(([date,ids])=>ids.includes(actor.id)&&!db.closed.includes(monthOf(date))));
   const rosterPeople = mayAssign ? db.people.filter(p=>p.active).map(({id,name})=>({id,name})) : [];
   const offers={};
   for(const e of db.audit){
     if((e.new?.offer||e.new?.decision)&&shifts.some(s=>s.id===e.id&&s.kind==='off'))offers[e.id]=e.new;
   }
   const acceptedSlots=Object.fromEntries(db.audit.filter(e=>e.action==='acceptedSlot'&&shifts.some(s=>s.id===e.id&&working(s))).map(e=>[e.id,e.new.off]));
-  return {acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
+  return {leave:(db.leave||[]).filter(l=>l.user===actor.id||actor.role==='admin'),acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
     contracts:(db.contracts||[]).filter(c=>actor.role==='admin'||c.user===actor.id)};
 }
 export function demoState() { const db=read();return stateFor(db,getActor(db)); }
@@ -194,6 +205,26 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(['leaveRequest','leaveApprove','leaveReject'].includes(action)){
+    db.leave??=[];
+    if(action==='leaveRequest'){
+      assert(validDate(p.date)&&p.date>=relativeDate(today(),21),'Vraag minimaal 21 dagen vooruit vrij.');
+      writable(db,p.date);
+      assert(!db.leave.some(l=>l.user===actor.id&&l.date===p.date&&l.status!=='rejected')&&!db.shifts.some(s=>s.user===actor.id&&s.date===p.date&&s.kind==='off'),'Voor deze dag is al vrij gevraagd.');
+      const l={id:uid(),user:actor.id,date:p.date,status:'pending',reason:String(p.reason||'')};
+      db.leave.push(l);record(db,actor,action,l.id,l.date,null,l,l.user);
+    }else{
+      adminOnly(actor);const l=db.leave.find(x=>x.id===p.id);
+      assert(l?.status==='pending','Deze aanvraag is al verwerkt.');writable(db,l.date);
+      const old={...l};
+      if(action==='leaveApprove'){
+        assert(!db.shifts.some(s=>s.user===l.user&&s.date===l.date&&s.kind!=='cancelled'),'Er staat al een dienst. Wijzig die eerst in het rooster.');
+        change(db,actor,'plan',{shifts:[{id:l.id,user:l.user,date:l.date,kind:'off'}]});l.status='approved';
+      }else{assert(String(p.reason||'').trim(),'Geef een reden.');l.status='rejected';l.response=p.reason}
+      record(db,actor,action,l.id,l.date,old,l,l.user);
+    }
+    return stateFor(db,actor);
+  }
   if(action==='approveExact'){
     const s=findShift(db,p.id);
     assert(s.user!==actor.id&&s.entry?.start===s.start&&s.entry?.end===s.end,'De uren wijken af.');
@@ -263,7 +294,11 @@ function change(db,actor,action,p) {
     return db.audit.filter(e=>e.id===s.id).map(e=>({...e,before:e.old,after:e.new}));
   }
   if (action==='plan') {
-    adminOnly(actor);
+    if(actor.role!=='admin'){
+      assert(p.shifts?.length===1&&!p.cancelIds?.length,'Alleen voor de bedrijfsleider.');
+      const old=findShift(db,p.shifts[0].id);
+      assert(canManage(db,actor,old.date)&&old.kind!=='off'&&p.shifts[0].kind!=='off','Geen dagrechten.');
+    }
     assert(Array.isArray(p.shifts),'Het rooster ontbreekt.');
     const ids=new Set();
     for(const row of p.shifts) {
@@ -357,15 +392,6 @@ function change(db,actor,action,p) {
       }
     }
     record(db,actor,action==='approve'&&s.user===actor.id?'selfApprove':action,s.id,s.date,old,s,s.user);
-  } else if(action==='lead') {
-    adminOnly(actor);
-    assert(validDate(p.date),'Ongeldige datum.');
-    writable(db,p.date);
-    const who=p.user?activePerson(db,p.user):null;
-    assert(!who || ['admin','lead'].includes(who.role),'Kies een bevoegde dagleider.');
-    const old=db.leads[p.date]||null;
-    if(who) db.leads[p.date]=who.id;else delete db.leads[p.date];
-    record(db,actor,action,p.date,p.date,old,who?.id||null);
   } else if(['norm','close','reopen'].includes(action)) {
     adminOnly(actor);
     assert(/^\d{4}-(?:0[1-9]|1[0-2])$/.test(p.month),'Ongeldige maand.');
@@ -381,7 +407,8 @@ function change(db,actor,action,p) {
         assert(db.people.some(person=>person.id===p.user),'Onbekende medewerker.');
         assert(p.norm<=44640 && p.paid<=44640,'De uren zijn hoger dan het aantal minuten in een maand.');
         const key=p.month+':'+p.user;
-        const next={norm:nonnegativeInteger(p.norm,'De maandnorm'),paid:nonnegativeInteger(p.paid,'Afwezigheid')};
+        assert(reason,'Vul een reden voor de norm in.');
+        const next={reason,norm:nonnegativeInteger(p.norm,'De maandnorm'),paid:nonnegativeInteger(p.paid,'Afwezigheid')};
         record(db,actor,action,key,date,db.norms[key]||null,next,p.user);
         db.norms[key]=next;
       } else {
@@ -422,9 +449,6 @@ function change(db,actor,action,p) {
     }
     record(db,actor,action,person.id,today(),existing,person,person.id);
     if(existing) Object.assign(existing,person);else db.people.push(person);
-    if(!person.active || person.role==='employee') {
-      for(const [date,id] of Object.entries(db.leads)) if(id===person.id && date>=today()) delete db.leads[date];
-    }
   } else throw new Error('Onbekende demo-actie.');
   return stateFor(db,actor);
 }

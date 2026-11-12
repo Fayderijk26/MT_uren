@@ -19,7 +19,7 @@ begin
     (lead2,'lead2@example.test','{}'),(standby,'standby@example.test','{}');
   update mt.people set active=true where id in (worker,lead1,lead2,standby);
   update mt.people set role='lead' where id in (lead1,lead2);
-  insert into mt.leads values(d,lead1);
+  insert into mt.shifts(id,staff,day,starts,ends,kind) values ('mail-lead',lead1,d,'23:58','23:59','shift');
   insert into mt.shifts(id,staff,day,kind,starts,ends) values
     ('test-mail-normal',worker,d,'shift','00:00','00:01'),('test-mail-standby',standby,d,'standby',null,null);
   item:=public.mt_mail_claim('00:00');
@@ -29,7 +29,7 @@ begin
   if (item->>'recipient')::uuid is distinct from worker or item->>'kind'<>'missing' then raise exception 'Verkeerde medewerker'; end if;
   perform public.mt_mail_finish((item->>'lease')::uuid,null);
   if public.mt_mail_claim('00:00') is not null then raise exception 'Duplicaat of onterechte stand-by'; end if;
-  update mt.leads set staff=lead2 where day=d;
+  update mt.shifts set staff=lead2 where id='mail-lead';
   item:=public.mt_mail_claim('00:00');
   if (item->>'recipient')::uuid is distinct from lead2 then raise exception 'Overdracht mislukt'; end if;
   perform public.mt_mail_finish((item->>'lease')::uuid,'test-new-lead');
@@ -43,5 +43,18 @@ begin
   select delivery_state into outcome from mt.mail_delivery where day=d and recipient=worker and kind='missing';
   if outcome<>'sent' then raise exception 'Verzendstatus ontbreekt'; end if;
   if public.mt_mail_claim('00:00') is not null then raise exception 'Duplicaat na herkansing'; end if;
+end $$;
+do $$
+declare d date:='2034-08-01'; worker uuid:=gen_random_uuid(); boss uuid:=gen_random_uuid(); n integer;
+begin
+ insert into auth.users(id,email,invited_at) values(worker,'morning@example.invalid',now()),(boss,'backup@example.invalid',now());
+ update mt.people set active=true,role=case when id=boss then 'admin' else 'employee' end where id in(worker,boss);
+ insert into mt.shifts(id,staff,day,starts,ends,kind) values('morning-check',worker,d,'10:00','17:00','shift');
+ select count(*) into n from mt.mail_candidates(d+1+time '08:59','18:15') where day=d;
+ if n<>0 then raise exception 'Te vroege herinnering'; end if;
+ if not exists(select from mt.mail_candidates(d+1+time '09:00','18:15') where staff=boss and kind='closing_next') then raise exception 'Achtervang ontbreekt'; end if;
+ if not exists(select from mt.mail_candidates(d+1+time '09:00','18:15') where staff=worker and kind='missing_next') then raise exception 'Herinnering ontbreekt'; end if;
+ update mt.shifts set kind='cancelled' where id='morning-check';
+ if exists(select from mt.mail_candidates(d+1+time '09:00','18:15') where day=d) then raise exception 'Afgehandelde dienst gemeld'; end if;
 end $$;
 rollback;

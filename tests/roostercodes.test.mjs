@@ -17,7 +17,7 @@ test('Keuken, kantoor en taaknotaties leveren de afgesproken tijden',()=>{
     assert.deepEqual([row.kind,row.start,row.end,row.area,row.task],['shift',start,end,area,task]);
   }
   const office=parseSlot('kantoor');
-  assert.deepEqual([office.kind,office.start,office.end],['office','','']);
+  assert.deepEqual([office.kind,office.start,office.end],['unknown','','']);
 });
 test('Onbekende of ongeldige tijden wachten op beoordeling',()=>{
   for(const raw of ['08:70','25:05','K SB 28:30','18:00','20:00-19:00','anders']) assert.equal(parseSlot(raw).kind,'unknown');
