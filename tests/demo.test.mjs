@@ -40,18 +40,17 @@ test('T03/04 and T14: submission, approval, correction, return, audit and stale 
   await act('approve',{id:s.id,version:1});
   selectDemo('mila');
   assert.equal(row(s.id).entry.status,'approved');
-  await act('submit',attempt(s.id,'09:00','17:45',30,2));
-  assert.equal(row(s.id).entry.net,495);
-  assert.equal(row(s.id).entry.status,'pending');
+  await assert.rejects(act('submit',attempt(s.id,'09:15','17:45',30,2)),/goedgekeurd/);
   selectDemo('bram');
-  await assert.rejects(act('approve',{id:s.id,version:1}));
-  await act('return',{id:s.id,version:3,reason:'Controleer je pauze'});
+  await assert.rejects(act('return',{id:s.id,version:2,reason:'Controle'}));
+  selectDemo('noor');
+  await act('return',{id:s.id,version:2,reason:'Controleer je pauze'});
   selectDemo('mila');
   assert.equal(row(s.id).entry.reason,'Controleer je pauze');
-  await act('submit',attempt(s.id,'09:00','17:45',15,4));
+  await act('submit',attempt(s.id,'09:00','17:45',15,3));
   assert.equal(row(s.id).entry.net,510);
   const events=await act('history',{id:s.id});
-  assert.deepEqual(events.map(e=>e.action),['submit','approve','submit','return','submit']);
+  assert.deepEqual(events.map(e=>e.action),['submit','approve','return','submit']);
 });
 test('T05/06/18: pause, invalid times, DST and future',async()=>{
   const {id}=ownOpen();

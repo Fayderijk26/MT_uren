@@ -262,6 +262,7 @@ function change(db,actor,action,p) {
     assert(action==='submit'?s.user===actor.id:canManage(db,actor,s.date),'Je hebt geen toegang tot deze dienst.');
     writable(db,s.date);
     if(action==='submit') {
+      assert(s.entry?.status!=='approved','Deze uren zijn al goedgekeurd. Alleen de bedrijfsleider kan ze heropenen.');
       assert(working(s),'Deze dienst staat niet als gewerkte dienst gepland.');
       const allowed=['id','start','end','pause','version','requestId'];
       assert(Object.keys(p).every(key=>allowed.includes(key)), 'Ongeldige velden voor een inzending.');
@@ -280,7 +281,7 @@ function change(db,actor,action,p) {
     } else if(action==='approve' || action==='return') {
       assert(s.user!==actor.id,'Iemand anders moet je eigen uren beoordelen.');
       checkVersion(s.entry,p);
-      assert(s.entry?.status==='pending','Deze dienst wacht niet op beoordeling.');
+      assert(s.entry?.status==='pending'||(s.entry?.status==='approved'&&actor.role==='admin'&&action==='return'),'Deze dienst wacht niet op beoordeling.');
       const reason=String(p.reason||'').trim();
       assert(reason.length<=1000,'Houd de toelichting onder 1000 tekens.');
       assert(action!=='return'||reason,'Vul een reden voor terugsturen in.');

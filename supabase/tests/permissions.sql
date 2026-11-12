@@ -29,7 +29,11 @@ begin
  result:=public.mt_act('approve','{"id":"qa-one","version":1}');
  if result#>>'{shifts,0,entry,status}'<>'approved' then raise exception 'Goedkeuring mislukt'; end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
- result:=public.mt_act('submit',q-'requestId'||'{"pause":15,"version":2}');
+ begin perform public.mt_act('submit',q-'requestId'||'{"pause":15,"version":2}'); raise exception 'Goedgekeurde uren wijzigbaar'; exception when insufficient_privilege then null; end;
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000003',true);
+ perform public.mt_act('return','{"id":"qa-one","version":2,"reason":"Controleer je tijden"}');
+ perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000001',true);
+ result:=public.mt_act('submit',q-'requestId'||'{"pause":15,"version":3}');
  if result#>>'{shifts,0,entry,status}'<>'pending' or result#>>'{shifts,0,entry,net}'<>'510' then raise exception 'Correctie fout'; end if;
  perform set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000004',true);
  begin perform public.mt_state(); raise exception 'Onuitgenodigde medewerker actief'; exception when insufficient_privilege then null; end;
