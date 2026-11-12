@@ -233,3 +233,24 @@ test('Stand-by is geblokkeerd op een vrije dag',async()=>{
  const off=me().shifts.find(s=>s.kind==='off');
  await assert.rejects(act('plan',{shifts:[{id:'standby-conflict',user:off.user,date:off.date,kind:'standby'}]}),/vrij gevraagd/);
 });
+
+test('Bedrijfsleider keurt eigen uren afzonderlijk goed',async()=>{
+  selectDemo('noor');
+  await act('extra',{id:'eigen',user:'noor',date:'2025-05-02',start:'12:00',end:'14:00',pause:0});
+  await assert.rejects(act('approveExact',{id:'eigen',version:1}));
+  await act('approve',{id:'eigen',version:1});
+  assert.equal((await act('history',{id:'eigen'})).at(-1).action,'selfApprove');
+});
+test('Groepsgoedkeuring controleert diensttijden en versie bij opslaan',async()=>{
+  selectDemo('mila');
+  await act('extra',{id:'apart',date:'2025-05-03',start:'09:00',end:'13:00',pause:0});
+  await act('submit',attempt('apart','09:15','13:00',0,1));
+  selectDemo('noor');
+  await assert.rejects(act('approveExact',{id:'apart',version:2}));
+  selectDemo('mila');
+  await act('submit',attempt('apart','09:00','13:00',0,2));
+  selectDemo('noor');
+  await assert.rejects(act('approveExact',{id:'apart',version:2}));
+  await act('approveExact',{id:'apart',version:3});
+  assert.equal(row('apart').entry.status,'approved');
+});

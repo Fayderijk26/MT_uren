@@ -194,6 +194,11 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(action==='approveExact'){
+    const s=findShift(db,p.id);
+    assert(s.user!==actor.id&&s.entry?.start===s.start&&s.entry?.end===s.end,'De uren wijken af.');
+    return change(db,actor,'approve',p);
+  }
   if(['offer','acceptOffer','declineOffer','counterOffer','approveCounter','rejectCounter'].includes(action)){
     const s=findShift(db,p.id);
     writable(db,s.date);
@@ -318,7 +323,7 @@ function change(db,actor,action,p) {
       assert(!overlaps,'Je hebt voor deze periode al uren ingediend.');
       s.entry={start:p.start,end:p.end,pause,net,status:'pending',version:p.version+1,reason:'',reviewer:null,changedAt:new Date().toISOString()};
     } else if(action==='approve' || action==='return') {
-      assert(s.user!==actor.id,'Iemand anders moet je eigen uren beoordelen.');
+      assert(s.user!==actor.id||(actor.role==='admin'&&action==='approve'),'Iemand anders moet je eigen uren beoordelen.');
       checkVersion(s.entry,p);
       assert(s.entry?.status==='pending'||(s.entry?.status==='approved'&&actor.role==='admin'&&action==='return'),'Deze dienst wacht niet op beoordeling.');
       const reason=String(p.reason||'').trim();
@@ -351,7 +356,7 @@ function change(db,actor,action,p) {
         s.user=p.user;
       }
     }
-    record(db,actor,action,s.id,s.date,old,s,s.user);
+    record(db,actor,action==='approve'&&s.user===actor.id?'selfApprove':action,s.id,s.date,old,s,s.user);
   } else if(action==='lead') {
     adminOnly(actor);
     assert(validDate(p.date),'Ongeldige datum.');
