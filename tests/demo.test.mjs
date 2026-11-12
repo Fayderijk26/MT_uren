@@ -75,13 +75,13 @@ test('T05/06/18: pause, invalid times, DST and future',async()=>{
 });
 test('T07/08: two adjacent entries, overlap and replay',async()=>{
   const date='2024-03-01';
-  for(const [id,start,end] of [['a','08:00','10:00'],['b','10:00','12:00'],['c','09:00','11:00']])
+  for(const [id,start,end] of [['a','08:00','10:00'],['b','10:00','12:00']])
     await newRow(id,date,start,end);
   const p={...attempt('a','08:00','10:00',0),requestId:'sample'};
   await Promise.all([act('submit',p),act('submit',p)]);
   assert.equal((await act('history',{id:'a'})).filter(e=>e.action==='submit').length,1);
   await act('submit',attempt('b','10:00','12:00',0));
-  await assert.rejects(act('submit',attempt('c','09:00','11:00',0)),/al uren/);
+  await assert.rejects(newRow('c',date,'09:00','11:00'),/overlappende/);
   await assert.rejects(act('submit',{...p,pause:4}),/verzoeknummer/);
 });
 test('T02/11/12/13/19: tamper, role assignment and atomic import',async()=>{
@@ -151,4 +151,27 @@ test('T15: twee goedgekeurde diensten tellen 14u15, open dienst telt niet mee',a
  const entries=me().shifts.filter(s=>times.some(([id])=>id===s.id));
  assert.equal(entries.filter(s=>s.entry.status==='approved').reduce((n,s)=>n+s.entry.net,0),855);
  assert.equal(entries.filter(s=>s.entry.status==='pending').length,1);
+});
+
+test('Extra dienst atomair indienen, terugsturen, berichten en herstel',async()=>{
+ await newRow('old','2025-02-01','09:00','13:00');
+ await assert.rejects(act('extra',{id:'overlap',date:'2025-02-01',start:'10:00',end:'12:00',pause:0}),/overlappende/);
+ await act('extra',{id:'extra-feedback',date:'2025-02-01',start:'15:00',end:'18:00',pause:15});
+ assert.equal(row('extra-feedback').entry.status,'pending');
+ assert.equal(row('extra-feedback').entry.net,165);
+ selectDemo('noor');
+ await act('return',{id:'extra-feedback',version:1,reason:'Controleer pauze'});
+ selectDemo('mila');
+ assert.ok(me().notifications.some(n=>n.action==='return'&&n.text==='Controleer pauze'));
+ await act('message',{id:'extra-feedback',message:'Ik had 15 minuten pauze.'});
+ selectDemo('noor');
+ assert.ok(me().notifications.some(n=>n.action==='message'));
+ await act('restore',{id:'old',reason:'herstel'}).then(()=>assert.fail(),()=>{});
+ await act('cancel',{id:'old',reason:'Vervallen wegens ruil'});
+ selectDemo('mila');
+ assert.ok(me().notifications.some(n=>n.action==='cancel'));
+ await act('message',{id:'old',message:'Ik heb wel gewerkt.'});
+ selectDemo('noor');
+ await act('restore',{id:'old',reason:'Dienst teruggezet'});
+ assert.equal(row('old').kind,'shift');
 });

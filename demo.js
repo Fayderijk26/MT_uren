@@ -120,7 +120,7 @@ function activePerson(db, id) {
   return person;
 }
 function record(db,actor,action,id,date,oldValue,newValue,user=null) {
-  db.audit.push({action,id,date,user,actor:actor.id,at:new Date().toISOString(),
+  db.audit.push({action,id,date,user,actor:actor.id,actorName:actor.name,at:new Date().toISOString(),
     version:newValue?.entry?.version ?? newValue?.version ?? null,
     old:structuredClone(oldValue),new:structuredClone(newValue)});
 }
@@ -158,7 +158,7 @@ function stateFor(db,actor) {
   const mayAssign = actor.role === 'admin' || (actor.role === 'lead' &&
     Object.entries(db.leads).some(([date,id])=>id===actor.id && !db.closed.includes(monthOf(date))));
   const rosterPeople = mayAssign ? db.people.filter(p=>p.active).map(({id,name})=>({id,name})) : [];
-  return {me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
+  return {notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
     contracts:(db.contracts||[]).filter(c=>actor.role==='admin'||c.user===actor.id)};
 }
 export function demoState() { const db=read();return stateFor(db,getActor(db)); }
@@ -189,6 +189,30 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(action==='seen'){db.seen||=[];db.seen.push(actor.id+p.key);return stateFor(db,actor);}
+  if(['message','restore','reject'].includes(action)){
+    const s=findShift(db,p.id),old=structuredClone(s);
+    assert(s.user===actor.id||canManage(db,actor,s.date),'Geen toegang.');
+    writable(db,s.date);
+    if(action==='message'){
+      assert(typeof p.message==='string'&&p.message.trim()&&p.message.length<=1000,'Vul een bericht in van maximaal 1000 tekens.');
+      record(db,actor,action,s.id,s.date,old,{message:p.message.trim()},s.user);
+    }else{
+      assert(canManage(db,actor,s.date)&&s.user!==actor.id,'Geen beoordelingsrechten.');
+      assert(String(p.reason||'').trim(),'Vul een reden in.');
+      if(action==='reject'){
+        assert(s.entry?.version===p.version,'De registratie is gewijzigd.');
+        assert(s.entry?.status==='pending','Deze uren wachten niet op beoordeling.');
+        Object.assign(s.entry,{status:'rejected',reason:p.reason,version:s.entry.version+1});
+      }else{
+        assert(s.kind==='cancelled'||s.entry?.status==='rejected','Deze dienst is al actief.');
+        if(s.kind==='cancelled')s.kind='shift';
+        if(s.entry)Object.assign(s.entry,{status:'pending',reason:p.reason,version:s.entry.version+1});
+      }
+      record(db,actor,action,s.id,s.date,old,s,s.user);
+    }
+    return stateFor(db,actor);
+  }
   if (action==='history' || action==='audit') {
     const s=findShift(db,p.id);
     assert(s.user===actor.id || canManage(db,actor,s.date),'Geen toegang tot deze historie.');
@@ -229,8 +253,10 @@ function change(db,actor,action,p) {
     const next=planRow(db,{...p,user,kind:'extra'});
     const prior=db.shifts.find(s=>s.id===p.id);
     assert(!prior, 'Een dienst met dit nummer bestaat al.');
+    assert(!db.shifts.some(s=>s.user===user&&s.date===date&&working(s)&&s.start&&next.start<(s.entry?.end||s.end)&&next.end>(s.entry?.start||s.start)),'Je hebt al een overlappende dienst. Pas die registratie aan.');
     db.shifts.push({...next,entry:null});
     record(db,actor,action,p.id,date,null,next,user);
+    if(p.pause!==undefined)change(db,actor,'submit',{id:p.id,start:p.start,end:p.end,pause:p.pause,version:0});
   } else if(['submit','approve','return','cancel','call','swap'].includes(action)) {
     const s=findShift(db,p.id), old=structuredClone(s);
     assert(action==='submit'?s.user===actor.id:canManage(db,actor,s.date),'Je hebt geen toegang tot deze dienst.');
