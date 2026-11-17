@@ -8,3 +8,8 @@ button.stat { text-align: left; color: inherit; font: inherit; width: 100%; }
 .days .dot.leave {background:#9858a4} .days .dot.proposal {background:#db8316}
 dialog .field[hidden]{display:none}
 .availability-actions{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:.8rem}.availability-actions:empty{display:none}
+
+.exceptionCalendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.3rem}
+.exceptionCalendar button{min-width:0;padding:.35rem;overflow-wrap:anywhere}
+.avMobile{display:none}
+@media(max-width:740px){.avDesktop{display:none}.avMobile{display:block}}
