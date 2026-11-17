@@ -90,3 +90,18 @@ test('Proefrooster bevat twee volledige weken en wisselt de weekenddagen blijven
   }
  }
 });
+
+test('Kwartieren gelden ook voor werkelijk gewerkte uren',()=>{
+ assert.throws(()=>apply(seed(),'mila','hours',{id:'s1',start:'09:10',end:'17:30',pause:15}),/kwartier/);
+});
+test('Hele dag en expliciet behoud bestaande diensten',()=>{
+ let db=apply(pilotRoster(),'elise','extra',{date:today()});
+ assert.equal(db.extra[0].start,'08:30');
+ assert.equal(db.extra[0].end,'18:00');
+ db=apply(db,'elise','weekly',{date:today(),weekday:4,start:'10:00',end:'16:00'});
+ const id=db.requests[0].id;
+ assert.throws(()=>apply(db,'eva','decide',{id,accept:true}),/bevestig/);
+ const result=apply(db,'eva','decide',{id,accept:true,keep:'yes'});
+ assert.deepEqual(result.shifts,db.shifts);
+ assert.equal(ruleFor(result,{user:'elise',date:'2026-11-19'}).end,'16:00');
+});

@@ -1,8 +1,9 @@
 import {pilotRoster} from './pilot.js';
+import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
-import {needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
-import {h,button,form,field,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
+import {weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
@@ -10,7 +11,15 @@ import {hoursPage} from './hours.js';
 
 const key='monkeytown-pilot-nov2026', modal=document.querySelector('#dialog');
 if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(pilotRoster()));
-const read=()=>JSON.parse(localStorage.getItem(key));
+const read=()=>{
+ const data=JSON.parse(localStorage.getItem(key));
+ for(const r of [...data.rules,...data.extra]){
+  if(r.start==='00:00')r.start='08:30';
+  if(r.end==='23:59')r.end='18:00';
+ }
+ return data;
+};
+let returnRequest=null;
 let db=read(), actorId=sessionStorage.getItem('pilot-person')||'eva', snapshots={};
 const view={page:'today',day:today(),month:today().slice(0,7)};
 const pages={today:'Vandaag',mine:'Mijn rooster',hours:'Gewerkte uren',availability:'Vrij & beschikbaarheid',team:'Teamrooster',reviews:'Uren goedkeuren',requests:'Aanvragen beoordelen'};
@@ -19,7 +28,7 @@ function render(){
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
- const body=page==='team'&&actor.role==='admin'?weekPage(db,view):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
+ const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role==='admin'?weekPage(db,view):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
  document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+ic(({today:'home',team:'calendar',mine:'calendar',hours:'clock',availability:'calendar'})[k],16)+(k==='hours'&&actor.role!=='employee'?'Uren':pages[k])+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
@@ -31,6 +40,32 @@ const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)',
 function show(action,id){
  db=read();
  const shift=db.shifts.find(s=>s.id===id), entry=db.hours[id], draft=db.drafts.find(s=>s.id===id);
+ if(action==='pause'){
+  const input=modal.querySelector('[name=pause]');
+  if(id==='other'){input.focus();input.select()}else input.value=id;
+  modal.querySelectorAll('[data-act=pause]').forEach(b=>b.classList.toggle('primary',b.dataset.id===id));
+  return;
+ }
+ if(action==='calendarMode'){view.calendarMode=id;render();return}
+ if(action==='calendarMove'){
+  let date=view.calendarDate||today();
+  if(id==='0')date=today();
+  else if(view.calendarMode==='week')date=add(date,Number(id)*7);
+  else{const d=new Date(date.slice(0,7)+'-01T12:00Z');d.setUTCMonth(d.getUTCMonth()+Number(id));date=d.toISOString().slice(0,10)}
+  view.calendarDate=date;render();return;
+ }
+ if(action==='calendarDay'){
+  const items=dayContent(db,actorId,id);
+  let body=items.map(i=>'<p>'+h(i.text)+'</p>'+(i.shift?button('Dienst bekijken','ownShift',i.shift.id):i.offer&&i.offer.turn==='employee'?button('Reageren','proposal',i.offer.id):'')).join('');
+  if(id>=today())body+=button('Vrij vragen','leave',id)+button('Beschikbaarheid opgeven','extra',id);
+  open(dateLabel(id),body);return;
+ }
+ if(action==='ownShift'){
+  open('Mijn dienst','<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p><p>Aangegeven beschikbaarheid: '+h(availability(db,actorId,shift.date))+'</p>'+(shift.date<=today()&&!shift.deadline?button('Gewerkte uren','entry',id):''));return;
+ }
+ if(action==='requestShift'){
+  const [requestId,shiftId]=id.split('|');returnRequest=requestId;show('draft',shiftId);return;
+ }
  if(action==='past')return;
  if(action==='week'||action==='day'){view.day=id;view.single=action==='day';render();return}
  if(action==='shiftDetails'){
@@ -51,35 +86,40 @@ function show(action,id){
   open('Stand-by', '<p>'+h(name(db,shift.user))+' · Bericht vóór '+h(shift.deadline)+'</p>'+form('call',times(shift),'Oproepen',id)+form('release','','Niet nodig',id));return;
  }
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
- if(action==='close'){modal.close();return}
+ if(action==='close'){modal.close();if(returnRequest){const id=returnRequest;returnRequest=null;show('decision',id)}return}
  if(action==='entry'||action==='inspect'){
   const editable=action==='entry'&&(!entry||entry.status==='returned');
   let info='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p><p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
   if(entry)info+='<p>'+h(labels[entry.status])+' · '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
-  if(editable)info+=form('hours',times(entry||shift)+field('Werkelijke pauze in minuten','pause','number',entry?.pause??'','required min="0"'),'Uren indienen',id);
+  if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
   if(action==='inspect'&&entry?.status==='pending')info+=button('Goedkeuren','approve',id,true)+form('return',reason(true),'Terugsturen voor hercontrole',id)+(shift.unplanned?form('rejectHours',reason(true),'Ongeplande dienst afwijzen',id):'');
   open(editable?'Uren invullen':'Gewerkte uren',info);return;
  }
- if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+field('Werkelijke pauze in minuten','pause','number','','required min="0"')+field('Werkplek','area','text','','required'),'Uren indienen'));return}
+ if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
  if(action==='decision'){
   const r=db.requests.find(x=>x.id===id);snapshots={};
   let effects='';
+  if(r.kind==='weekly'){
+   const conflicts=weeklyConflicts(db,r);
+   effects+=conflicts.map(s=>'<p>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>'+button('Dienst bekijken en aanpassen','requestShift',r.id+'|'+s.id)).join('');
+   if(conflicts.length)effects+='<label><input type="checkbox" name="keep" value="yes" required> Nieuwe beschikbaarheid goedkeuren en deze '+conflicts.length+' diensten behouden</label>';
+  }
   for(const s of r.kind==='leave'?affected(db,r):[]){
    snapshots[s.id]=JSON.stringify(s);const parts=remaining(s,r);
    const opts=parts.map((t,i)=>[String(i),'Werken '+clock(t)]);
    if(parts.length===2)opts.unshift(['all','Beide diensten · '+parts.map(clock).join(' en ')]);
    opts.push(['none','Dienst vervalt']);
-   effects+=select(dateLabel(s.date)+' · '+clock(s),'choice-'+s.id,opts);
+   effects+=button('Dienst bekijken en aanpassen','requestShift',r.id+'|'+s.id)+select(dateLabel(s.date)+' · '+clock(s),'choice-'+s.id,opts);
   }
   open('Aanvraag beoordelen','<p>'+h(name(db,r.user)+' · '+requestName(r))+'</p><p>'+h(r.reason)+'</p>'+form('accept',effects,'Aanvraag goedkeuren',id)+form('reject',reason(true),'Aanvraag afwijzen',id));return;
  }
  if(['leave','weekly','extra'].includes(action)){
-  let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',today(),'required min="'+today()+'"');
+  let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',id||today(),'required min="'+today()+'"');
   if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
   if(action==='leave')body+=field('Tot en met (bij meerdere dagen)','through','date');
-  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag beschikbaar'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
+  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag (08:30–18:00)'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
   if(action==='weekly')modes.push(['off','Niet beschikbaar']);
   if(action==='leave')body+='<p id="late" role="status"></p>';
   body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')+(action==='extra'?'':reason());
@@ -121,14 +161,19 @@ function suggestWindow(fill){
  const question=!f.dataset.id&&needsQuestion(db,{user,date,start:f.elements.start.value,end:f.elements.end.value});
  f.querySelector('.primary').textContent=question?'Vraag versturen':'Concept bewaren';
  modal.querySelector('h2').textContent=question?'Vragen om te werken':'Dienst inplannen';
- modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag beschikbaar':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
+ modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag (08:30–18:00)':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
  if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?'18:00':rule.end;}
 }
 async function save(op,p){
  try{
-  const write=()=>localStorage.setItem(key,JSON.stringify(apply(read(),actorId,op,p)));
+  const write=()=>{
+   let next=apply(read(),actorId,op,p);
+   if(op==='draft'&&returnRequest)next=apply(next,actorId,'publish',{date:p.date,through:p.date,onlyId:p.id,confirm:true});
+   localStorage.setItem(key,JSON.stringify(next));
+  };
   if(navigator.locks)await navigator.locks.request(key,write);else write();
   if(modal.open)modal.close();render();
+  if(op==='draft'&&returnRequest){const id=returnRequest;returnRequest=null;show('decision',id)}
  }catch(e){const el=modal.open?modal.querySelector('.err'):null;if(el)el.textContent=e.message;else open('Controleer de gegevens','<p>'+h(e.message)+'</p>');}
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)show(b.dataset.act,b.dataset.id)});
@@ -140,7 +185,7 @@ document.addEventListener('change',e=>{
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
  if(op==='draft')p.user=f.elements.user.value;
- if(p.mode==='from')p.end='23:59';if(p.mode==='until')p.start='00:00';p.off=p.mode==='off';
+ if(p.mode==='from')p.end='18:00';if(p.mode==='until')p.start='08:30';p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

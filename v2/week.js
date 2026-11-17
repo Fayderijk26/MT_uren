@@ -7,8 +7,8 @@ export function availability(db,user,date){
  const rule=ruleFor(db,{user,date});
  if(!rule)return 'Onbekend';
  if(rule.off)return 'Vrij';
- if(rule.start==='00:00')return rule.end==='23:59'?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;
- return rule.end==='23:59'?'Beschikbaar vanaf '+rule.start:'Beschikbaar '+clock(rule);
+ if(rule.start==='08:30')return rule.end==='18:00'?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;
+ return rule.end==='18:00'?'Beschikbaar vanaf '+rule.start:'Beschikbaar '+clock(rule);
 }
 function cell(db,person,date){
  const matches=s=>s.user===person.id&&s.date===date;

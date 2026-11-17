@@ -81,7 +81,7 @@ function recordAvailability({db,actor,op,p}){
   if(start||end)interval(p);
   if(op==='weekly')check(Number.isInteger(+p.weekday)&&+p.weekday>=1&&+p.weekday<=7,'Kies een weekdag.');
   if(op==='extra'){
-   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);db.extra.push({user:actor.id,date:p.date,start:start||'00:00',end:end||'23:59'});
+   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);db.extra.push({user:actor.id,date:p.date,start:start||'08:30',end:end||'18:00'});
   }else{
    const through=p.through||p.date;check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
    if(op==='leave')check(!db.requests.some(r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date&&(!start||!r.start||intersects(r,p))),'Er is al een aanvraag voor deze periode.');
@@ -89,12 +89,19 @@ function recordAvailability({db,actor,op,p}){
   };
 }
 
+export function weeklyConflicts(db,r){
+ return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&weekday(s.date)===r.weekday&&(r.off||s.start<(r.start||'08:30')||s.end>(r.end||'18:00')));
+}
 function decideRequest({db,admin,p,r}){
  check(admin&&r?.status==='pending','Alleen de bedrijfsleider kan een open aanvraag beoordelen.');
   if(!p.accept)check(p.reason?.trim(),'Geef een reden voor afwijzing.');
   if(p.accept&&r.kind==='weekly'){
+   const conflicts=weeklyConflicts(db,r);
+   check(!conflicts.length||p.keep==='yes','Bekijk de bestaande diensten en bevestig dat ze blijven staan.');
+   r.retained=conflicts.map(s=>({date:s.date,start:s.start,end:s.end}));
+   if(conflicts.length)announce(db,{user:r.user,date:r.date},'Nieuwe beschikbaarheid goedgekeurd. Deze diensten blijven staan: '+conflicts.map(s=>s.date+' '+s.start+'–'+s.end).join(', '));
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
-   db.rules.push({...r,start:r.start||'00:00',end:r.end||'23:59'});
+   db.rules.push({...r,start:r.start||'08:30',end:r.end||'18:00'});
   }else if(p.accept){
    for(const old of affected(db,r)){
     check(!db.hours[old.id],'Bij deze dienst zijn al uren ingediend.');
@@ -147,7 +154,7 @@ function saveDraft({db,admin,p,s}){
 
 function publishDrafts({db,admin,p}){
  check(admin,'Alleen voor de bedrijfsleider.');
-  const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through);check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
+  const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
   db.published??=[];
   for(let d=p.date;d<=p.through;d=add(d,1))if(!db.published.includes(d))db.published.push(d);
   for(const {before,accepted,...row} of chosen){
@@ -207,6 +214,9 @@ export function apply(previous,actorId,op,p){
  const db=structuredClone(previous);
  const actor=db.people.find(person=>person.id===actorId);
  check(actor,'Onbekend profiel.');
+ for(const field of ['start','end','deadline']){
+  if(p[field])check(/^([01]\d|2[0-3]):(00|15|30|45)$/.test(p[field]),'Kies tijden per kwartier.');
+ }
  check(Object.hasOwn(actions,op),'Onbekende actie.');
  actions[op]({db,actor,admin:actor.role==='admin',op,p,
   s:db.shifts.find(shift=>shift.id===p.id),
