@@ -1,4 +1,6 @@
-import {today,add,available,affected,remaining,apply,seed} from './model.js';
+import {ic} from '../ui.js';
+import {weekPage} from './week.js';
+import {needsQuestion,ruleFor,today,add,available,affected,remaining,apply,seed} from './model.js';
 import {h,button,form,field,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -7,17 +9,28 @@ import {hoursPage} from './hours.js';
 
 const key='monkeytown-v2-demo-1', modal=document.querySelector('#dialog');
 if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(seed()));
-const read=()=>JSON.parse(localStorage.getItem(key));
+const read=()=>{
+ const data=JSON.parse(localStorage.getItem(key));
+ for(const [id,name] of [['inez','Inez Smit'],['sam','Sam Bakker']]){
+  if(!data.people.some(p=>p.id===id)){
+   data.people.push({id,name,role:'employee'});
+   if(id==='sam')data.rules.push({user:id,date:today(),weekday:6,start:'10:00',end:'18:00'});
+   if(id==='inez')data.shifts.push({user:id,id:'demo-inez-sb',date:today(),start:'11:00',end:'18:00',deadline:'11:00',area:'Speelvloer'});
+  }
+ }
+ return data;
+};
 let db=read(), actorId=sessionStorage.getItem('v2-person')||'mila', snapshots={};
 const view={page:'today',day:today(),month:today().slice(0,7)};
 const pages={today:'Vandaag',mine:'Mijn rooster',hours:'Gewerkte uren',availability:'Vrij & beschikbaarheid',team:'Teamrooster',reviews:'Uren goedkeuren',requests:'Aanvragen beoordelen'};
 function render(){
  db=read();
+ if(!JSON.parse(localStorage.getItem(key)).people.some(p=>p.id==='inez'))localStorage.setItem(key,JSON.stringify(db));
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
- const body=page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
- document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+pages[k]+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
+ const body=page==='team'&&actor.role==='admin'?weekPage(db,view):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
+ document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+ic(({today:'home',team:'calendar',mine:'calendar',hours:'clock',availability:'calendar'})[k],16)+(k==='hours'&&actor.role!=='employee'?'Uren':pages[k])+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
  modal.innerHTML='<div class="modalhead"><h2>'+h(title)+'</h2>'+button('Sluiten','close')+'</div>'+content;
@@ -28,6 +41,11 @@ const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)',
 function show(action,id){
  db=read();
  const shift=db.shifts.find(s=>s.id===id), entry=db.hours[id], draft=db.drafts.find(s=>s.id===id);
+ if(action==='past')return;
+ if(action==='week'||action==='day'){view.day=id;view.single=action==='day';render();return}
+ if(action==='standby'){
+  open('Stand-by', '<p>'+h(name(db,shift.user))+' · Bericht vóór '+h(shift.deadline)+'</p>'+form('call',times(shift),'Oproepen',id)+form('release','','Niet nodig',id));return;
+ }
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();return}
  if(action==='entry'||action==='inspect'){
@@ -66,19 +84,21 @@ function show(action,id){
  if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
-  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:'09:00',end:'18:00'})+field('Werkplek','area','text',s?.area||'Speelvloer','required'),'Concept bewaren',s?.id||''));
+  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:'10:00',end:'18:00'})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
   if(s)modal.querySelector('[name=user]').value=s.user;
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
  }
  if(action==='pubDay'||action==='pubWeek'){
   const end=action==='pubDay'?id:add(id,6), rows=db.drafts.filter(s=>s.date>=id&&s.date<=end);
+  const waiting=db.offers.filter(o=>o.row.date>=id&&o.row.date<=end);
+  const summary=rows.length+' conceptdienst(en) voor publicatie.'+waiting.map(o=>' '+clock(o.row)+' · Wacht op '+(o.turn==='admin'?'bedrijfsleider':name(db,o.row.user))+'.').join('');
   const outside=rows.some(s=>!available(db,s));
-  open('Rooster publiceren',form('publish','<p>'+rows.map(s=>h(name(db,s.user)+' · '+dateLabel(s.date)+' · '+clock(s))).join('<br>')+'</p><p>Bij een vrije dag of een wijziging buiten de opgegeven beschikbaarheid krijgt de medewerker eerst een voorstel.</p>'+(outside?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.</label>':'')+'<input type="hidden" name="through" value="'+end+'">','Publiceren',id));return;
+  open('Rooster publiceren',form('publish','<p>'+h(summary)+'</p><p>'+rows.map(s=>h(name(db,s.user)+' · '+dateLabel(s.date)+' · '+clock(s))).join('<br>')+'</p><p>Bij een vrije dag of een wijziging buiten de opgegeven beschikbaarheid krijgt de medewerker eerst een voorstel.</p>'+(outside?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.</label>':'')+'<input type="hidden" name="through" value="'+end+'">','Publiceren',id));return;
  }
  if(action==='proposal'){
   const o=db.offers.find(x=>x.id===id);
-  open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;
+  open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+(o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:''))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;
  }
 }
 function lateNotice(){
@@ -93,9 +113,12 @@ function toggleTimes(){
 }
 function suggestWindow(fill){
  const f=modal.querySelector('form'), user=f.elements.user.value,date=f.elements.date.value;
- const rule=db.extra.find(x=>x.user===user&&x.date===date)||db.rules.filter(x=>x.user===user&&x.date<=date&&x.weekday===(new Date(date+'T12:00Z').getUTCDay()||7)).sort((a,b)=>b.date.localeCompare(a.date))[0];
+ const rule=ruleFor(db,{user,date});
+ const question=!f.dataset.id&&needsQuestion(db,{user,date,start:f.elements.start.value,end:f.elements.end.value});
+ f.querySelector('.primary').textContent=question?'Vraag versturen':'Concept bewaren';
+ modal.querySelector('h2').textContent=question?'Vragen om te werken':'Dienst inplannen';
  modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag beschikbaar':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
- if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'09:00':rule.start;f.elements.end.value=rule.end==='23:59'?'18:00':rule.end;}
+ if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?'18:00':rule.end;}
 }
 async function save(op,p){
  try{
@@ -108,7 +131,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
 document.addEventListener('change',e=>{
  const el=e.target;if(el.id==='profile'){actorId=el.value;sessionStorage.setItem('v2-person',actorId);view.page='today';render()}
  if(el.dataset.view&&el.value){view[el.dataset.view]=el.value;render()}
- if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);
+ if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
 });
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
