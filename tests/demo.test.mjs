@@ -328,7 +328,8 @@ test('De inbox bewaart leesstatus per ontvanger',async()=>{
 test('Een datumuitzondering gaat voor de vaste week',async()=>{
  selectDemo('mila');
  const date='2032-07-12';
- await act('availabilitySave',{date,weekday:1,mode:'from',start:'11:00'});
+ await act('weeklyRequest',{date,weekday:1,mode:'from',start:'11:00'});
+ selectDemo('noor');await act('periodApprove',{id:me().periodLeave.at(-1).id});selectDemo('mila');
  await act('availabilitySave',{date,mode:'until',end:'13:00'});
  selectDemo('noor');
  await assert.rejects(act('plan',{shifts:[{id:'partial',user:'mila',date,start:'12:00',end:'18:00'}]}),/beschikbaarheid/);
@@ -364,4 +365,42 @@ test('De inbox telt voorbij 200 en beschermt leesstatus en historie',async()=>{
  await act('notifReadAll');await act('notifDismissRead');
  assert.equal(me().unreadCount,0);
  assert.deepEqual(await act('history',{id:s.id}),history);
+});
+
+test('Vaste week wacht op akkoord en een vrije uitzondering moet worden aangevraagd',async()=>{
+ const date='2033-01-03';
+ selectDemo('mila');
+ await act('weeklyRequest',{date,weekday:1,mode:'from',start:'16:00'});
+ assert.ok(!me().availability.some(r=>r.date===date&&r.weekday===1));
+ const req=me().periodLeave.find(r=>r.weekday===1);
+ await assert.rejects(act('availabilitySave',{date,mode:'off'}),/vrijaanvraag/i);
+ selectDemo('noor');await act('periodApprove',{id:req.id});
+ assert.ok(me().availability.some(r=>r.start==='16:00'));
+});
+
+test('Een bewuste afwijking kan bij beperkte uren, een goedgekeurde vrije weekdag blijft vrij',async()=>{
+ const date='2033-02-07',shift={id:'override',user:'mila',date,start:'09:00',end:'15:00',kind:'shift'};
+ selectDemo('mila');await act('weeklyRequest',{date:'2033-01-31',weekday:1,mode:'from',start:'16:00'});
+ selectDemo('noor');await act('periodApprove',{id:me().periodLeave.at(-1).id});
+ await assert.rejects(act('plan',{shifts:[shift]}),/beschikbaarheid/);
+ await act('plan',{shifts:[shift],confirmAvailability:true});
+ selectDemo('mila');await act('weeklyRequest',{date:'2033-02-14',weekday:1,mode:'off'});
+ selectDemo('noor');await act('periodApprove',{id:me().periodLeave.at(-1).id});
+ await assert.rejects(act('plan',{shifts:[{...shift,id:'off',date:'2033-02-21'}],confirmAvailability:true}),/beschikbaarheid/);
+});
+
+test('Ontbrekende uren leiden één keer per ontvanger tot een actie',async()=>{
+ selectDemo('mila');await act('syncMissing');const m=me().inbox.find(n=>n.action==='missing'&&!n.resolved);
+ assert.ok(m);await act('syncMissing');assert.equal(me().inbox.filter(n=>n.id===m.id&&n.action==='missing').length,1);
+ selectDemo('noor');assert.ok(me().inbox.some(n=>n.id===m.id&&n.action==='missing'));
+ selectDemo('mila');const s=row(m.id);await act('submit',{id:s.id,start:s.start,end:s.end,pause:0,version:0});await act('syncMissing');
+ assert.ok(me().inbox.find(n=>n.key===m.key).resolved);
+});
+
+test('Uitzonderingen duren maximaal 31 dagen en kunnen terug naar standaard',async()=>{
+ selectDemo('mila');const date='2033-01-01';
+ await assert.rejects(act('availabilitySave',{date,through:'2033-02-01',mode:'all'}),/31 dagen/);
+ await act('availabilitySave',{date,mode:'until',end:'12:00'});
+ await act('availabilityClear',{date});assert.ok(!me().availability.some(r=>r.date===date));
+ selectDemo('noor');assert.ok(me().inbox.some(n=>n.action==='availabilityChange'&&n.type==='info'));
 });
