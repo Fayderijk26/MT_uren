@@ -1,0 +1,6 @@
+.vheader,.vnav{display:flex;align-items:center;padding:10px max(16px,calc((100vw - 1144px)/2));background:white;gap:12px}
+.vheader{justify-content:space-between}.vheader img{width:85px}.vheader label{font-size:12px}.vheader select{display:block;max-width:100%;padding:5px}
+.vnav{border-bottom:1px solid var(--line);flex-wrap:wrap}.vnav button{background:transparent;color:#405348;padding:6px 12px;border:0}.vnav [aria-current=page]{background:#e4efe1;color:#195835;border-radius:8px}
+.vmain{display:grid;gap:18px}.vrow{display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);gap:12px;padding:14px 0}.vrow small{display:block;margin-top:4px}.vactions,.pair{display:flex;flex-wrap:wrap;gap:8px}.pair>*{flex:1;min-width:100px}
+.vmain h2{margin:0 0 14px}.vmain h3{margin:20px 0 8px}dialog form{display:grid;gap:10px;margin-top:16px}dialog form button{justify-self:start}.err{color:#923918;margin:0}.err:empty{display:none}[hidden]{display:none!important}dialog{padding:24px;max-height:90vh;overflow:auto}.vmain .card>button{margin:3px}
+@media(max-width:600px){.vrow{align-items:flex-start;flex-direction:column}.vnav{gap:3px}.vnav button{font-size:13px;padding:7px}.vheader img{width:70px}.vactions:empty{display:none}}
