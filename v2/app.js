@@ -1,5 +1,5 @@
 import {ic} from '../ui.js';
-import {weekPage} from './week.js';
+import {availability,weekPage} from './week.js';
 import {needsQuestion,ruleFor,today,add,available,affected,remaining,apply,seed} from './model.js';
 import {h,button,form,field,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
@@ -43,6 +43,20 @@ function show(action,id){
  const shift=db.shifts.find(s=>s.id===id), entry=db.hours[id], draft=db.drafts.find(s=>s.id===id);
  if(action==='past')return;
  if(action==='week'||action==='day'){view.day=id;view.single=action==='day';render();return}
+ if(action==='shiftDetails'){
+  const row=draft||shift;
+  if(!row)return;
+  const status=draft?'Conceptdienst':'Ingepland';
+  const availabilityText=availability(db,row.user,row.date);
+  let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p><p>Aangegeven beschikbaarheid: '+h(availabilityText==='Onbekend'?'Geen beschikbaarheid opgegeven':availabilityText)+'</p>';
+  if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
+  if(row.date>=today()){
+   if(!entry)body+=button('Dienst wijzigen','draft',id,true);
+   body+=button('Extra dienst toevoegen','planExtra',row.date+'|'+row.user);
+  }
+  if(!draft&&row.deadline)body+=button('Stand-by afhandelen','standby',id);
+  open(name(db,row.user)+' · '+dateLabel(row.date),body);return;
+ }
  if(action==='standby'){
   open('Stand-by', '<p>'+h(name(db,shift.user))+' · Bericht vóór '+h(shift.deadline)+'</p>'+form('call',times(shift),'Oproepen',id)+form('release','','Niet nodig',id));return;
  }
