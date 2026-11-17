@@ -14,7 +14,7 @@ export function availabilityText(l){
     case 'from':return 'Beschikbaar vanaf '+l.start;
     case 'until':return 'Beschikbaar tot '+l.end;
     case 'range':return 'Beschikbaar van '+l.start+' tot '+l.end;
-    default:return 'Hele dag vrij';
+    default:return l.weekday!=null?'Niet beschikbaar':'Hele dag vrij';
   }
 }
 export function changesFor(shifts,l){
@@ -33,4 +33,12 @@ export function requiresConsent(availability,start,end){
     (availability.start && start < availability.start) ||
     (availability.end && end > availability.end)
   );
+}
+
+export function effectiveAvailability(state,user,date){
+  const rules=(state.availability||[]).filter(r=>r.user===user);
+  const weekday=new Date(date+'T12:00:00Z').getUTCDay()||7;
+  return rules.find(r=>!r.weekday&&r.date===date)
+    ||state.leave?.find(l=>l.user===user&&l.date===date&&l.status==='approved'&&!l.slot)
+    ||rules.filter(r=>r.weekday===weekday&&r.date<=date).sort((a,b)=>b.date.localeCompare(a.date))[0];
 }

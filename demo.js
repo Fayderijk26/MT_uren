@@ -1,4 +1,4 @@
-import {bounds,dayCount,changesFor} from './availability.js';
+import {effectiveAvailability,bounds,dayCount,changesFor} from './availability.js';
 // Fictional, browser-only rehearsal. This module never contacts Supabase.
 const DATA = 'monkeytown.demo.roster.v1';
 const SESSION = 'monkeytown.demo.person.v1';
@@ -97,6 +97,18 @@ function demoSeed() {
   return db;
 }
 function save(db) { localStorage.setItem(DATA, JSON.stringify(db)); }
+function migrateDemo(db){
+ if(db.inboxVersion)return;
+ db.inboxVersion=1;
+ const open=new Map();
+ for(const e of db.audit){
+   const s=db.shifts.find(s=>s.id===e.id),l=(db.leave||[]).find(l=>l.id===e.id);
+   if(e.action==='submit'&&s?.entry?.status==='pending'||e.action==='return'&&s?.entry?.status==='returned'||e.action.startsWith('leave')&&['pending','counter'].includes(l?.status)||s?.kind==='off'&&e.new?.offer)open.set(e.id,e);
+   if(e.new?.decision)open.delete(e.id);
+ }
+ for(const e of open.values()){const actor=db.people.find(p=>p.id===e.actor);if(actor)deliver(db,actor,e);}
+ save(db);
+}
 function read() {
   const raw = localStorage.getItem(DATA);
   if(raw){
@@ -105,9 +117,9 @@ function read() {
       s.kind='shift';s.area='Kantoor';
       s.start=s.start||s.entry?.start||'';s.end=s.end||s.entry?.end||'';
     }
-    return db;
+    migrateDemo(db);return db;
   }
-  const db = demoSeed();
+  const db = demoSeed();migrateDemo(db);
   save(db);
   return db;
 }
@@ -127,10 +139,36 @@ function activePerson(db, id) {
   assert(person, 'Selecteer een actieve medewerker.');
   return person;
 }
+const inboxTitles={"submit": "Uren ingediend", "approve": "Uren goedgekeurd", "selfApprove": "Eigen uren goedgekeurd", "return": "Aanpassing gevraagd", "reject": "Uren afgewezen", "extra": "Ongeplande dienst", "plan": "Planning gewijzigd", "cancel": "Dienst vervallen", "restore": "Dienst hersteld", "swap": "Dienst geruild", "replacement": "Vervangende dienst", "call": "Oproep voor dienst", "message": "Bericht", "leaveRequest": "Beschikbaarheid doorgegeven", "leaveApprove": "Reactie op beschikbaarheid", "leaveReject": "Aanvraag afgewezen"};
+function deliver(db,actor,event){
+ const {id,date,action,user}=event, value=event.new||{};
+ if(!user||!inboxTitles[action])return;
+ db.inbox??=[];
+ const leave=action.startsWith('leave');
+ const group=leave?'leave':action==='message'?'message':['approve','selfApprove','submit','return','reject','extra'].includes(action)?'hours':'plan';
+ for(const n of db.inbox)if(n.id===id&&n.group===group&&n.type==='action'&&(group!=='message'||n.recipient===actor.id||n.actor===user&&actor.id!==user))n.resolved=true;
+ const leads=db.people.filter(p=>p.active&&p.role==='lead'&&p.id!==user&&canManage(db,p,date));
+ for(const p of db.people.filter(p=>p.active&&p.id!==actor.id)){
+   const own=p.id===user, admin=p.role==='admin', lead=leads.some(l=>l.id===p.id);
+   let type=null;
+   if(own)type=(action==='return'||action==='message'&&!value.decision||leave&&value.status==='counter')?'action':'info';
+   else if(admin)type=(leave&&value.status==='pending'||action==='message'&&actor.id===user&&!value.decision||['submit','extra'].includes(action)&&!leads.length)?'action':'activity';
+   else if(lead&&!leave){
+     if(['submit','extra'].includes(action)||action==='message'&&actor.id===user)type=value.decision?'info':'action';
+     else if(group==='plan')type='info';
+   }
+   if(type)db.inbox.unshift({recipient:p.id,key:uid(),id,date,action,actor:actor.id,actorName:actor.name,at:event.at,title:inboxTitles[action],text:value.message||value.response||value.reason||value.entry?.reason||'',availability:leave,group,type,seen:false});
+ }
+}
+function inboxState(db,actor,limit=200){
+ const rows=(db.inbox||[]).filter(n=>n.recipient===actor.id&&!n.dismissed);
+ return {newCount:rows.filter(n=>!n.seen&&n.type!=="activity"&&n.at>(db.visits?.[actor.id]||"")).length,inbox:rows.slice(0,limit),inboxTotal:rows.length,unreadCount:rows.filter(n=>!n.seen&&n.type!=='activity').length,actionCount:rows.filter(n=>n.type==='action'&&!n.resolved).length};
+}
 function record(db,actor,action,id,date,oldValue,newValue,user=null) {
   db.audit.push({action,id,date,user,actor:actor.id,actorName:actor.name,at:new Date().toISOString(),
     version:newValue?.entry?.version ?? newValue?.version ?? null,
     old:structuredClone(oldValue),new:structuredClone(newValue)});
+  deliver(db,actor,db.audit.at(-1));
 }
 function validateInterval(date,start,end) {
   const a = instant(date,start), b = instant(date,end);
@@ -175,7 +213,7 @@ function stateFor(db,actor) {
     if((e.new?.offer||e.new?.decision)&&shifts.some(s=>s.id===e.id&&s.kind==='off'))offers[e.id]=e.new;
   }
   const acceptedSlots=Object.fromEntries(db.audit.filter(e=>e.action==='acceptedSlot'&&shifts.some(s=>s.id===e.id&&working(s))).map(e=>[e.id,e.new.off]));
-  return {drafts:actor.role==='admin'?(db.drafts||[]):[],leave:(db.leave||[]).filter(l=>l.user===actor.id||actor.role==='admin'||(l.status==='approved'&&canManage(db,actor,l.date))).map(l=>({...l,seen:(db.seen||[]).includes(actor.id+'availability:'+l.id+':'+(l.revision||1))})),acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
+  return {periodLeave:(db.periodLeave||[]).filter(r=>r.user===actor.id||actor.role==='admin'),availability:(db.availability||[]).filter(r=>actor.role==="admin"||actor.id===r.user),...inboxState(db,actor),drafts:actor.role==='admin'?(db.drafts||[]):[],leave:(db.leave||[]).filter(l=>l.user===actor.id||actor.role==='admin'||(l.status==='approved'&&canManage(db,actor,l.date))).map(l=>({...l,seen:(db.seen||[]).includes(actor.id+'availability:'+l.id+':'+(l.revision||1))})),acceptedSlots,offers,notifications:(db.audit||[]).filter(e=>e.actor!==actor.id&&shifts.some(s=>s.id===e.id)&&(['return','reject','cancel','plan','restore','message'].includes(e.action)||e.action==='submit'&&e.user!==actor.id)).map((e,i)=>({...e,actorName:e.actorName||db.people.find(p=>p.id===e.actor)?.name,key:e.at+e.id+e.action,text:e.new?.reason||e.new?.entry?.reason||e.new?.message||'',seen:(db.seen||[]).includes(actor.id+e.at+e.id+e.action)})),me:actor.id,people,rosterPeople,shifts,leads,closed:db.closed,norms,periodVersions:db.periodVersions || {},
     contracts:(db.contracts||[]).filter(c=>actor.role==='admin'||c.user===actor.id)};
 }
 export function demoState() { const db=read();return stateFor(db,getActor(db)); }
@@ -206,6 +244,63 @@ function checkVersion(entry,payload) {
   assert(Number.isInteger(payload.version) && payload.version === (entry?.version || 0),'Deze registratie is inmiddels gewijzigd. Vernieuw het overzicht.');
 }
 function change(db,actor,action,p) {
+  if(action==='notifVisit'){db.visits??={};db.visits[actor.id]=new Date().toISOString();return stateFor(db,actor);}
+  if(action==='slotCounter'){
+    const l=db.leave.find(l=>l.id===p.id&&l.user===actor.id&&l.slot&&l.status==='counter'&&l.revision===p.revision);
+    assert(l,'Dit voorstel is gewijzigd.');const old={...l};
+    Object.assign(l,bounds({...p,mode:'range'}),{status:'pending',revision:l.revision+1,response:String(p.reason||'')});
+    record(db,actor,'leaveApprove',l.id,l.date,old,l,l.user);return stateFor(db,actor);
+  }
+  if(action==='periodRequest'){
+    assert(validDate(p.date)&&p.date>=today()&&validDate(p.through)&&p.through>=p.date,'Controleer de periode.');
+    db.periodLeave??=[];
+    assert(!(db.leave||[]).some(l=>l.user===actor.id&&l.mode==='off'&&['pending','approved'].includes(l.status)&&l.date>=p.date&&l.date<=p.through),'Deze periode overlapt een vrijaanvraag.');
+    assert(!db.periodLeave.some(l=>l.user===actor.id&&l.status!=='rejected'&&l.date<=p.through&&l.through>=p.date),'Deze periode overlapt een vrijaanvraag.');
+    const l={id:uid(),user:actor.id,date:p.date,through:p.through,reason:String(p.reason||''),status:'pending',days:dayCount(p.date,today()),mode:'off'};
+    db.periodLeave.push(l);record(db,actor,'leaveRequest',l.id,l.date,null,l,l.user);
+    return stateFor(db,actor);
+  }
+  if(action==='periodApprove'||action==='periodReject'){
+    adminOnly(actor);
+    const l=db.periodLeave?.find(r=>r.id===p.id&&r.status==='pending');
+    assert(l,'Deze aanvraag is al verwerkt.');
+    if(action==='periodApprove'){
+      const affected=db.shifts.filter(s=>s.user===l.user&&s.date>=l.date&&s.date<=l.through&&!['cancelled','off'].includes(s.kind)).sort((a,b)=>a.id.localeCompare(b.id));
+      assert(JSON.stringify(affected.map(s=>[s.id,s.start,s.end]))===JSON.stringify(p.changes||[]),'Controleer de geplande diensten opnieuw.');
+      for(let date=l.date;date<=l.through;date=relativeDate(date,1)){
+        writable(db,date);
+        for(const s of affected.filter(s=>s.date===date)){
+          assert(!s.entry,'Er zijn al uren ingediend.');const old={...s};s.kind='cancelled';record(db,actor,'cancel',s.id,date,old,s,l.user);
+        }
+        if(!db.shifts.some(s=>s.user===l.user&&s.date===date&&s.kind==='off')){
+          const off=planRow(db,{id:l.id+'-'+date,user:l.user,date,kind:'off'});db.shifts.push(off);
+        }
+      }
+    }else assert(String(p.reason||'').trim(),'Geef een reden.');
+    l.status=action==='periodApprove'?'approved':'rejected';l.response=p.reason||'';
+    record(db,actor,action==='periodApprove'?'leaveApprove':'leaveReject',l.id,l.date,null,l,l.user);
+    return stateFor(db,actor);
+  }
+  if(action==='availabilitySave'){
+    const spec=bounds(p),weekday=Number(p.weekday||0),end=p.through||p.date;
+    assert(validDate(p.date)&&p.date>=today()&&validDate(end)&&end>=p.date&&Number.isInteger(weekday)&&weekday>=0&&weekday<=7,'Controleer de periode.');
+    db.availability??=[];
+    for(let date=p.date;date<=end;date=relativeDate(date,1)){
+      db.availability=db.availability.filter(r=>r.user!==actor.id||r.weekday!==weekday||r.date!==date);
+      db.availability.push({...spec,weekday,date,user:actor.id,reason:String(p.reason||'')});
+      if(weekday)break;
+    }
+    return stateFor(db,actor);
+  }
+  if(['notifRead','notifUnread','notifReadAll','notifDismiss','notifDismissRead','notifMore'].includes(action)){
+    const bulk=['notifReadAll','notifDismissRead'].includes(action);
+    for(const n of db.inbox||[]){
+      if(n.recipient!==actor.id||(!bulk&&n.key!==p.key&&!(p.keys||[]).includes(n.key)))continue;
+      if(action==='notifDismiss'||action==='notifDismissRead'&&n.seen)n.dismissed=true;
+      if(['notifRead','notifReadAll','notifUnread'].includes(action))n.seen=action!=='notifUnread';
+    }
+    return {...stateFor(db,actor),...inboxState(db,actor,action==='notifMore'?Math.max(200,Number(p.limit)||200):200)};
+  }
   if(['draftSave','draftDrop','draftPublish'].includes(action)){
     adminOnly(actor);
     db.drafts??=[];
@@ -530,8 +625,8 @@ export async function demoAct(action,payload={}) {
       if(!['plan','extra','restore','call','swap','replacement','acceptedSlot'].includes(event.action))continue;
       const s=db.shifts.find(row=>row.id===event.id);
       if(!s)continue;
-      const limit=(db.leave||[]).find(l=>l.user===s.user&&l.date===s.date&&l.status==='approved'&&l.mode&&l.mode!=='off');
-      if(limit&&!(db.leave||[]).some(l=>l.slot&&l.status==='booked'&&l.id===s.id&&l.user===s.user&&l.start===s.start&&l.end===s.end)&&changesFor([s],limit).length)throw Error('Deze dienst valt buiten de opgegeven beschikbaarheid. Bespreek andere tijden met de medewerker.');
+      const limit=effectiveAvailability(db,s.user,s.date);
+      if(limit&&['shift','extra','office','standby'].includes(s.kind)&&!(db.leave||[]).some(l=>l.slot&&l.status==='booked'&&l.id===s.id&&l.user===s.user&&l.start===s.start&&l.end===s.end)&&!db.audit.some(e=>e.action==='acceptedSlot'&&e.id===s.id&&e.new.start===s.start&&e.new.end===s.end)&&changesFor([s],limit).length)throw Error('Deze dienst valt buiten de opgegeven beschikbaarheid. Bespreek andere tijden met de medewerker.');
       const others=db.shifts.filter(row=>row.id!==s.id&&row.user===s.user&&row.date===s.date);
       const consent=(shift,off)=>db.audit.some(e=>e.action==='acceptedSlot'&&e.id===shift.id&&e.new.off===off.id&&e.new.start===shift.start&&e.new.end===shift.end);
       if(event.old?.kind==='off'&&!['off','cancelled'].includes(s.kind) || (working(s)||s.kind==='standby')&&others.some(o=>o.kind==='off'&&!consent(s,o)) || s.kind==='off'&&others.some(o=>(working(o)||o.kind==='standby')&&!consent(o,s)))

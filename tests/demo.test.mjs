@@ -310,3 +310,58 @@ test('Concepten zijn privé en worden per dag of week definitief',async()=>{
   selectDemo('mila');
   assert.equal(row(b.id).end,'18:00');
 });
+
+test('De inbox bewaart leesstatus per ontvanger',async()=>{
+ selectDemo('mila');
+ const s=ownOpen();
+ await act('message',{id:s.id,message:'Vraag over mijn dienst'});
+ selectDemo('noor');
+ const note=me().inbox.find(n=>n.id===s.id&&n.action==='message');
+ assert.equal(note.type,'action');
+ await act('notifRead',{key:note.key});
+ assert.ok(me().inbox.find(n=>n.key===note.key).seen);
+ await act('notifUnread',{key:note.key});
+ await act('notifDismiss',{key:note.key});
+ assert.ok(!me().inbox.some(n=>n.key===note.key));
+});
+
+test('Een datumuitzondering gaat voor de vaste week',async()=>{
+ selectDemo('mila');
+ const date='2032-07-12';
+ await act('availabilitySave',{date,weekday:1,mode:'from',start:'11:00'});
+ await act('availabilitySave',{date,mode:'until',end:'13:00'});
+ selectDemo('noor');
+ await assert.rejects(act('plan',{shifts:[{id:'partial',user:'mila',date,start:'12:00',end:'18:00'}]}),/beschikbaarheid/);
+ await act('plan',{shifts:[{id:'partial',user:'mila',date,start:'09:00',end:'13:00'}]});
+});
+
+test('Verlofperiode toont de gevolgen en wordt in één keer besloten',async()=>{
+ const date='2032-08-02',through='2032-08-04';
+ selectDemo('noor');
+ await act('plan',{shifts:[{id:'conflict',user:'mila',date,start:'13:00',end:'18:00'}]});
+ selectDemo('mila');
+ await act('periodRequest',{date,through,reason:'Vakantie'});
+ const id=me().periodLeave.at(-1).id;
+ selectDemo('noor');
+ await assert.rejects(act('periodApprove',{id,changes:[]}),/Controleer/);
+ assert.equal(row('conflict').kind,'shift');
+ await act('periodApprove',{id,changes:[['conflict','13:00','18:00']]});
+ assert.equal(row('conflict').kind,'cancelled');
+ assert.equal(me().shifts.filter(s=>s.id.startsWith(id+'-')&&s.kind==='off').length,3);
+ assert.ok(me().inbox.find(n=>n.id===id&&n.resolved));
+});
+
+test('De inbox telt voorbij 200 en beschermt leesstatus en historie',async()=>{
+ selectDemo('mila');
+ const s=ownOpen();
+ for(let i=0;i<204;i++)await act('message',{id:s.id,message:'Bericht '+i});
+ selectDemo('noor');
+ assert.equal(me().inbox.length,200);
+ assert.ok(me().unreadCount>=204);
+ const all=await act('notifMore',{limit:500});
+ assert.ok(all.inbox.some(n=>n.text==='Bericht 0'));
+ const history=await act('history',{id:s.id});
+ await act('notifReadAll');await act('notifDismissRead');
+ assert.equal(me().unreadCount,0);
+ assert.deepEqual(await act('history',{id:s.id}),history);
+});

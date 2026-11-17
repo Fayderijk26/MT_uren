@@ -72,4 +72,21 @@ begin
  result:=public.mt_act('draftPublish',jsonb_build_object('scope','week','date','2032-07-12','versions',jsonb_build_object('qa-draft',rev)));
  if not exists(select from jsonb_array_elements(result->'shifts') x where x->>'id'='qa-draft') then raise exception 'Dienst ontbreekt';end if;
 end $$;
+do $$
+declare r jsonb; pid text; k text; worker text:='00000000-0000-4000-8000-000000000001'; manager text:='00000000-0000-4000-8000-000000000003';
+begin
+ perform set_config('request.jwt.claim.sub',worker,true);
+ r:=public.mt_act('availabilitySave','{"date":"2033-01-03","weekday":1,"mode":"from","start":"11:00"}');
+ if not exists(select from jsonb_array_elements(r->'availability') x where x->>'weekday'='1' and x->>'start'='11:00') then raise exception 'Week ontbreekt';end if;
+ r:=public.mt_act('periodRequest','{"date":"2033-01-04","through":"2033-01-06","reason":"Vakantie"}');
+ select x->>'id' into strict pid from jsonb_array_elements(r->'periodLeave') x where x->>'reason'='Vakantie';
+ perform set_config('request.jwt.claim.sub',manager,true);
+ r:=public.mt_state();
+ select x->>'key' into strict k from jsonb_array_elements(r->'inbox') x where x->>'id'=pid and x->>'type'='action';
+ r:=public.mt_act('notifRead',jsonb_build_object('key',k));
+ if not exists(select from jsonb_array_elements(r->'inbox') x where x->>'key'=k and (x->>'seen')::boolean) then raise exception 'Leesstatus ontbreekt';end if;
+ r:=public.mt_act('periodApprove',jsonb_build_object('id',pid,'changes','[]'::jsonb));
+ if (select count(*) from jsonb_array_elements(r->'shifts') x where x->>'id' like pid||'-%' and x->>'kind'='off')<>3 then raise exception 'Vrije dagen ontbreken';end if;
+ if not exists(select from jsonb_array_elements(r->'inbox') x where x->>'key'=k and (x->>'resolved')::boolean) then raise exception 'Aanvraag niet afgehandeld';end if;
+end $$;
 rollback;

@@ -1,4 +1,4 @@
-import {availabilityText,requiresConsent} from './availability.js';
+import {effectiveAvailability,availabilityText,requiresConsent} from './availability.js';
 import {normExample} from './contract.js';
 import {h,ic,roles,today,monday,dateAdd,fmt,mins,status,badge,btn,duration,initials,modal,input,field,options,toast} from './ui.js';
 import {readRoster,parseSlot,downloadExample,exportMonth} from './excel/roster.js';
@@ -11,7 +11,7 @@ const heading=(label,title)=>'<div class="page-title"><div class="eyebrow green"
 function availabilityList(c){
  const staff=c.state.rosterPeople||[];
  return '<details><summary>Beschikbaarheid op deze dag</summary>'+staff.map(p=>{
-   const l=c.state.leave?.find(l=>l.user===p.id&&l.date===c.view.day&&l.status==='approved');
+   const l=effectiveAvailability(c.state,p.id,c.view.day);
    const off=c.state.shifts.some(s=>s.user===p.id&&s.date===c.view.day&&s.kind==='off');
    return '<p>'+h(p.name)+' · '+h(off?'Vrij gevraagd':l?availabilityText(l):'Geen beschikbaarheid opgegeven')+(c.me.role==='admin'&&!off?btn('Inplannen','planPerson','Plus','secondary','data-id="'+h(p.id)+'" data-day="'+h(c.view.day)+'"'):'')+'</p>';
  }).join('')+'</details>';
@@ -73,7 +73,7 @@ if(act==='bulkReview'){
 }
 if(act==='planPerson'||act==='editDraft'){
  const row=act==='editDraft'?c.state.drafts.find(d=>d.id===id):{id:crypto.randomUUID(),user:id,date:b.dataset.day};
- const l=c.state.leave.find(l=>l.user===row.user&&l.date===row.date&&l.status==='approved');
+ const l=effectiveAvailability(c.state,row.user,row.date);
  draftDialog(c,row,l,act==='editDraft');return;
 }
 if(act==='publishDraft'){
@@ -100,7 +100,7 @@ if(['draftShift','discardDraft','publishDraft'].includes(f.id)){
  const revision=f.dataset.version,expected=revision?{[id]:revision}:{};
  if(f.id==='draftShift'){
    const row={...p,id,user:f.dataset.user,date:f.dataset.day};
-   const availability=c.state.leave.find(l=>l.user===row.user&&l.date===row.date&&l.status==='approved');
+   const availability=effectiveAvailability(c.state,row.user,row.date);
    if(row.kind==='shift' && row.start && row.end && row.end>row.start && requiresConsent(availability,row.start,row.end)){
      if(revision)throw Error('Deze wijziging valt buiten de beschikbaarheid. Kies tijden binnen de beschikbaarheid.');
      const attrs='data-user="'+h(row.user)+'" data-day="'+h(row.date)+'" data-start="'+h(row.start)+'" data-end="'+h(row.end)+'"';
