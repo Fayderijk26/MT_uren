@@ -11,7 +11,12 @@ export function interval(row){
 export function ruleFor(db,s){
   const exact=db.extra.find(r=>r.user===s.user&&r.date===s.date);
   const weekly=db.rules.filter(r=>r.user===s.user&&r.weekday===weekday(s.date)&&r.date<=s.date).sort((a,b)=>b.date.localeCompare(a.date))[0];
-  return exact||weekly;
+  if(exact)return exact;
+  if(weekly?.fortnightly){
+   const weeks=(Date.parse(monday(s.date))-Date.parse(monday(weekly.date)))/604800000;
+   if(weeks%2!==0)return undefined;
+  }
+  return weekly;
 }
 export function available(db,s){
   const r=ruleFor(db,s);
@@ -25,11 +30,6 @@ export function remaining(s,r){
 export function affected(db,r){return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&s.date<=r.through&&freeWindows(r,s.date).some(w=>intersects(s,w)))}
 export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&s.date===day&&db.people.some(p=>p.id===s.user&&p.role==='lead')).map(s=>s.user);
 export const mayReview = (db,actor,s) => actor.role==='admin'||(actor.role==='lead'&&actor.id!==s.user&&leads(db,s.date).includes(actor.id));
-export function seed(day=today()){
-  const people=[{id:'mila',name:'Mila Vos',role:'employee'},{id:'bram',name:'Bram Meijer',role:'lead'},{id:'noor',name:'Noor Post',role:'admin'}];
-  const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
-  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Speelvloer'),shift('s2','bram',0,'09:00','18:00','Dagleiding'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Dagleiding'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Speelvloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[]};
-}
 export function freeWindows(request,date){
  if(date<request.date||date>request.through)return [];
  let windows=[{start:request.start||'00:00',end:request.end||'23:59'}];

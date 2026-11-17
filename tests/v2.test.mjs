@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {apply,seed,today,weekday,remaining} from '../v2/model.js';
+import {apply,add,today,weekday,remaining} from '../v2/model.js';
 
 test('Mila beslist over een wijziging buiten haar beschikbaarheid',()=>{
  let db=seed();
@@ -65,4 +65,28 @@ test('Stand-by vereist een besluit en kan eenmalig worden afgehandeld',()=>{
  const called=apply(db,'noor','call',{id,start:'12:00',end:'18:00'});
  assert.equal(called.shifts.find(s=>s.id===id).start,'12:00');
  assert.throws(()=>apply(called,'noor','release',{id}));
+});
+
+function seed(day=today()){
+  const people=[{id:'mila',name:'Mila Vos',role:'employee'},{id:'bram',name:'Bram Meijer',role:'lead'},{id:'noor',name:'Noor Post',role:'admin'}];
+  const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
+  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Speelvloer'),shift('s2','bram',0,'09:00','18:00','Dagleiding'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Dagleiding'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Speelvloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[]};
+}
+
+import {pilotRoster} from '../v2/pilot.js';
+import {ruleFor} from '../v2/model.js';
+test('Proefrooster bevat twee volledige weken en wisselt de weekenddagen blijvend af',()=>{
+ const db=pilotRoster();
+ assert.equal(db.shifts.length,28);
+ assert.equal(db.people.length,5);
+ for(const [id,days] of Object.entries({eva:[2,4],iris:[1,4,5],sylvia:[2,3,5],isis:[6],elise:[1,4,6]})){
+  for(let n=0;n<56;n++){
+   const day=n%7+1,date=add('2026-11-16',n);
+   const saturday=Math.floor(n/7)%2===0?'iris':'sylvia';
+   const weekend=day>=6&&['iris','sylvia'].includes(id)&&(day===6)===(id===saturday);
+   const works=days.includes(day)||weekend;
+   assert.equal(Boolean(ruleFor(db,{user:id,date})),works);
+   if(n<14)assert.equal(db.shifts.some(s=>s.user===id&&s.date===date),works);
+  }
+ }
 });

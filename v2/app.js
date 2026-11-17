@@ -1,31 +1,21 @@
+import {pilotRoster} from './pilot.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
-import {needsQuestion,ruleFor,today,add,available,affected,remaining,apply,seed} from './model.js';
+import {needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
 import {h,button,form,field,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
 import {hoursPage} from './hours.js';
 
-const key='monkeytown-v2-demo-1', modal=document.querySelector('#dialog');
-if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(seed()));
-const read=()=>{
- const data=JSON.parse(localStorage.getItem(key));
- for(const [id,name] of [['inez','Inez Smit'],['sam','Sam Bakker']]){
-  if(!data.people.some(p=>p.id===id)){
-   data.people.push({id,name,role:'employee'});
-   if(id==='sam')data.rules.push({user:id,date:today(),weekday:6,start:'10:00',end:'18:00'});
-   if(id==='inez')data.shifts.push({user:id,id:'demo-inez-sb',date:today(),start:'11:00',end:'18:00',deadline:'11:00',area:'Speelvloer'});
-  }
- }
- return data;
-};
-let db=read(), actorId=sessionStorage.getItem('v2-person')||'mila', snapshots={};
+const key='monkeytown-pilot-nov2026', modal=document.querySelector('#dialog');
+if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(pilotRoster()));
+const read=()=>JSON.parse(localStorage.getItem(key));
+let db=read(), actorId=sessionStorage.getItem('pilot-person')||'eva', snapshots={};
 const view={page:'today',day:today(),month:today().slice(0,7)};
 const pages={today:'Vandaag',mine:'Mijn rooster',hours:'Gewerkte uren',availability:'Vrij & beschikbaarheid',team:'Teamrooster',reviews:'Uren goedkeuren',requests:'Aanvragen beoordelen'};
 function render(){
  db=read();
- if(!JSON.parse(localStorage.getItem(key)).people.some(p=>p.id==='inez'))localStorage.setItem(key,JSON.stringify(db));
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
@@ -143,7 +133,7 @@ async function save(op,p){
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(b)show(b.dataset.act,b.dataset.id)});
 document.addEventListener('change',e=>{
- const el=e.target;if(el.id==='profile'){actorId=el.value;sessionStorage.setItem('v2-person',actorId);view.page='today';render()}
+ const el=e.target;if(el.id==='profile'){actorId=el.value;sessionStorage.setItem('pilot-person',actorId);view.page='today';render()}
  if(el.dataset.view&&el.value){view[el.dataset.view]=el.value;render()}
  if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
 });
