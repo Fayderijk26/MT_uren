@@ -76,7 +76,10 @@ do $$
 declare r jsonb; pid text; k text; worker text:='00000000-0000-4000-8000-000000000001'; manager text:='00000000-0000-4000-8000-000000000003';
 begin
  perform set_config('request.jwt.claim.sub',worker,true);
- r:=public.mt_act('availabilitySave','{"date":"2033-01-03","weekday":1,"mode":"from","start":"11:00"}');
+ r:=public.mt_act('weeklyRequest','{"date":"2033-01-03","weekday":1,"mode":"from","start":"11:00"}');
+ select x->>'id' into strict pid from jsonb_array_elements(r->'periodLeave') x where x->>'weekday'='1';
+ perform set_config('request.jwt.claim.sub',manager,true);r:=public.mt_act('periodApprove',jsonb_build_object('id',pid));
+ perform set_config('request.jwt.claim.sub',worker,true);
  if not exists(select from jsonb_array_elements(r->'availability') x where x->>'weekday'='1' and x->>'start'='11:00') then raise exception 'Week ontbreekt';end if;
  r:=public.mt_act('periodRequest','{"date":"2033-01-04","through":"2033-01-06","reason":"Vakantie"}');
  select x->>'id' into strict pid from jsonb_array_elements(r->'periodLeave') x where x->>'reason'='Vakantie';
@@ -88,5 +91,17 @@ begin
  r:=public.mt_act('periodApprove',jsonb_build_object('id',pid,'changes','[]'::jsonb));
  if (select count(*) from jsonb_array_elements(r->'shifts') x where x->>'id' like pid||'-%' and x->>'kind'='off')<>3 then raise exception 'Vrije dagen ontbreken';end if;
  if not exists(select from jsonb_array_elements(r->'inbox') x where x->>'key'=k and (x->>'resolved')::boolean) then raise exception 'Aanvraag niet afgehandeld';end if;
+end $$;
+do $$
+declare worker text:='00000000-0000-4000-8000-000000000001'; boss text:='00000000-0000-4000-8000-000000000003'; result jsonb; refused boolean:=false;
+begin
+ perform set_config('request.jwt.claim.sub',worker,true);
+ begin perform public.mt_act('availabilitySave','{"mode":"off","date":"2033-03-03"}');exception when others then refused:=true;end;
+ if not refused then raise exception 'Vrij zonder aanvraag';end if;
+ perform public.mt_act('availabilitySave','{"mode":"from","start":"14:00","date":"2033-03-03"}');
+ perform set_config('request.jwt.claim.sub',boss,true);
+ perform public.mt_act('plan',jsonb_build_object('confirmAvailability',true,'shifts',jsonb_build_array(jsonb_build_object('id','qa-warn','user',worker,'date','2033-03-03','kind','shift','start','10:00','end','17:00'))));
+ result:=public.mt_act('syncMissing','{}');
+ if not exists(select from jsonb_array_elements(result->'inbox') n where n->>'action'='missing') then raise exception 'Geen ontbrekende uren gemeld';end if;
 end $$;
 rollback;

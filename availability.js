@@ -38,7 +38,7 @@ export function requiresConsent(availability,start,end){
 export function effectiveAvailability(state,user,date){
   const rules=(state.availability||[]).filter(r=>r.user===user);
   const weekday=new Date(date+'T12:00:00Z').getUTCDay()||7;
-  return rules.find(r=>!r.weekday&&r.date===date)
-    ||state.leave?.find(l=>l.user===user&&l.date===date&&l.status==='approved'&&!l.slot)
-    ||rules.filter(r=>r.weekday===weekday&&r.date<=date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  const weekly=rules.filter(r=>r.weekday===weekday&&r.date<=date).sort((a,b)=>b.date.localeCompare(a.date))[0];
+  if(weekly?.mode==='off')return weekly;
+  return rules.find(r=>!r.weekday&&r.date===date)||weekly;
 }
