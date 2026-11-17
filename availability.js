@@ -26,3 +26,11 @@ export function changesFor(shifts,l){
   }
   return changes.sort((a,b)=>a.id.localeCompare(b.id));
 }
+
+export function requiresConsent(availability,start,end){
+  if(!availability || availability.mode==='all') return false;
+  return availability.mode==='off' || Boolean(
+    (availability.start && start < availability.start) ||
+    (availability.end && end > availability.end)
+  );
+}

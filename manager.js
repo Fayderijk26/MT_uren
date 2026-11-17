@@ -1,4 +1,4 @@
-import {availabilityText} from './availability.js';
+import {availabilityText,requiresConsent} from './availability.js';
 import {normExample} from './contract.js';
 import {h,ic,roles,today,monday,dateAdd,fmt,mins,status,badge,btn,duration,initials,modal,input,field,options,toast} from './ui.js';
 import {readRoster,parseSlot,downloadExample,exportMonth} from './excel/roster.js';
@@ -92,10 +92,21 @@ if(act==='export'){const {rows,summary}=totals(c);await exportMonth(rows,summary
 if(act==='norm'){const n=c.state.norms[c.view.month+':'+id];const ex=normExample(c.state.contracts||[],id,c.view.month);const hint=ex.missing?'Vaste weekuren ontbreken. Controleer het contract.':ex.minutes!=null?'Rekenvoorbeeld op basis van weekuren × 52 ÷ 12, naar rato: '+duration(ex.minutes)+'. Controleer de norm met de loonadministratie.':'';modal('Maandnorm · '+p.name,form('norm',(hint?'<p>'+h(hint)+'</p>':'')+field('Norm in uren',input('norm','number',n?n.norm/60:'','min="0" step="any" required'))+field('Meetellende afwezigheid in uren',input('paid','number',(n?.paid||0)/60,'min="0" step="any" required'))+field('Reden voor deze norm',input('reason','text','','required maxlength="300"')),'Opslaan','data-id="'+h(id)+'"'));return}
 if(act==='close'||act==='reopen'){modal(act==='close'?'Maand afsluiten':'Maand heropenen',form(act,'<p>'+h(c.view.month)+'</p>'+field(act==='close'?'Reden als openstaande diensten worden uitgezonderd':'Reden voor heropening',input('reason','text','',act==='reopen'?'required':'')),act==='close'?'Afsluiten':'Heropenen'))}}
 export async function manageSubmit(f,p,c){const id=f.dataset.id;
+if(f.id==='askConsent'){
+ await c.action('leaveRequest',{proposeShift:true,mode:'range',user:f.dataset.user,date:f.dataset.day,start:f.dataset.start,end:f.dataset.end,reason:p.reason});
+ dlg.close();await c.refresh();toast('Voorstel verstuurd. De medewerker kan nu reageren.');return;
+}
 if(['draftShift','discardDraft','publishDraft'].includes(f.id)){
  const revision=f.dataset.version,expected=revision?{[id]:revision}:{};
  if(f.id==='draftShift'){
    const row={...p,id,user:f.dataset.user,date:f.dataset.day};
+   const availability=c.state.leave.find(l=>l.user===row.user&&l.date===row.date&&l.status==='approved');
+   if(row.kind==='shift' && row.start && row.end && row.end>row.start && requiresConsent(availability,row.start,row.end)){
+     if(revision)throw Error('Deze wijziging valt buiten de beschikbaarheid. Kies tijden binnen de beschikbaarheid.');
+     const attrs='data-user="'+h(row.user)+'" data-day="'+h(row.date)+'" data-start="'+h(row.start)+'" data-end="'+h(row.end)+'"';
+     modal('Toestemming vragen',form('askConsent','<p>'+h(c.person(row.user))+' · '+h(fmt(row.date,{dateStyle:'long'}))+'</p><p>'+h(availabilityText(availability))+'. Wil je vragen of deze medewerker van '+h(row.start)+' tot '+h(row.end)+' kan werken?</p>'+field('Bericht',input('reason','text','','maxlength="300"')),'Voorstel versturen',attrs));
+     return;
+   }
    await c.action('draftSave',{shifts:[row],versions:expected});
    c.view.day=row.date;c.view.page='roster';
  }else if(f.id==='discardDraft')await c.action('draftDrop',{id,versions:expected});
