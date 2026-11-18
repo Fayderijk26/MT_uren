@@ -1,4 +1,3 @@
-import {DEFAULT_OPENING} from './settings.js';
 import {add,ruleFor} from './model.js';
 
 const firstMonday='2026-11-16';
@@ -14,11 +13,11 @@ export function pilotRoster(){
  const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[]};
  for(const {id,name,role,days,weekend=[]} of team){
   db.people.push({id,name,role});
-  const rule={user:id,date:firstMonday,...DEFAULT_OPENING};
-  for(const weekday of days)db.rules.push({...rule,weekday,wholeDay:true});
-  weekend.forEach((weekday,week)=>db.rules.push({...rule,weekday,date:add(firstMonday,week*7),fortnightly:true,wholeDay:true}));
+  const rule={user:id,date:firstMonday,start:'08:30',end:'18:00'};
+  for(const weekday of days)db.rules.push({...rule,weekday});
+  weekend.forEach((weekday,week)=>db.rules.push({...rule,weekday,date:add(firstMonday,week*7),fortnightly:true}));
  }
- for(const r of db.rules)if((r.user==='sylvia'&&r.weekday===5)||(r.user==='iris'&&r.weekday===4)||(r.user==='elise'&&r.weekday===6)){r.start='10:00';r.wholeDay=false;}
+ for(const r of db.rules)if((r.user==='sylvia'&&r.weekday===5)||(r.user==='iris'&&r.weekday===4)||(r.user==='elise'&&r.weekday===6))r.start='10:00';
  for(let offset=0;offset<14;offset++){
   const date=add(firstMonday,offset);
   db.published.push(date);
@@ -29,8 +28,8 @@ export function pilotRoster(){
    db.shifts.push({id:person.id+'-'+date,user:person.id,date,start:rule.start,end:rule.end,area});
   }
  }
- db.hours['iris-'+firstMonday]={...DEFAULT_OPENING,pause:30,status:'approved'};
- db.hours['elise-'+firstMonday]={...DEFAULT_OPENING,pause:30,status:'pending'};
+ db.hours['iris-'+firstMonday]={start:'08:30',end:'18:00',pause:30,status:'approved'};
+ db.hours['elise-'+firstMonday]={start:'08:30',end:'18:00',pause:30,status:'pending'};
  db.pilotTimesVersion=2;
  return db;
 }

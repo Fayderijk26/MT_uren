@@ -1,4 +1,3 @@
-import {wholeDay} from './settings.js';
 import {today,add,monday,weekday,ruleFor} from './model.js';
 import {h,button,card,clock,dateLabel,requestStatus,weekNames} from './view.js';
 
@@ -7,7 +6,7 @@ export function dayContent(db,user,date){
  const requests=db.requests.filter(r=>r.user===user&&(r.kind==='weekly'?r.date<=date&&r.weekday===weekday(date):r.date<=date&&r.through>=date));
  const rule=ruleFor(db,{user,date});
  const items=shifts.map(s=>({text:s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+' · Ingepland',kind:'planned',shift:s}));
- if(rule)items.push({text:rule.off?'Vrij':wholeDay(db,{...rule,date})?'Hele dag beschikbaar': 'Beschikbaar '+clock(rule),kind:'available'});
+ if(rule)items.push({text:rule.off?'Vrij':rule.start==='08:30'&&rule.end==='18:00'?'Hele dag beschikbaar': 'Beschikbaar '+clock(rule),kind:'available'});
  for(const r of requests)items.push({text:(r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r)):r.start?'Vrij '+clock(r):'Vrij gevraagd')+' · '+requestStatus(r)+(r.response?' · '+r.response:''),kind:r.status,request:r});
  for(const offer of db.offers.filter(o=>o.row.user===user&&o.row.date===date))items.push({text:clock(offer.row)+' · '+(offer.turn==='employee'?'Vraag om te werken':'Wacht op bedrijfsleider'),kind:'pending',offer});
  return items.length?items:[{text:'Onbekend',kind:'unknown'}];
@@ -22,12 +21,7 @@ export function calendarPage(db,actor,view){
  let grid='<div class="calendar-scroll"><div class="personal-calendar">';
  for(const day of weekNames)grid+='<div class="weekday">'+day.slice(0,2)+'</div>';
  for(let d=start;d<end;d=add(d,1)){
-  const items=dayContent(db,actor.id,d),planned=items.some(x=>x.shift),pending=items.some(x=>x.offer||x.request?.status==='pending');
-  const kind=pending?'pending':planned?'planned':'free';
-  const description=pending?'Open vraag of aanvraag':planned?'Dienst ingepland':'Geen dienst';
-  const details=week?items.filter(x=>x.text!=='Hele dag beschikbaar'&&x.text!=='Onbekend').map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join(''):'<span class="calendar-dot '+kind+'" aria-hidden="true"></span>';
-  grid+='<button aria-label="'+h(dateLabel(d)+' · '+description)+'" class="calendar-day '+(week?'week-detail ':'')+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'')+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'+details+'</button>';
-
+  grid+='<button class="calendar-day '+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'')+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'+dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('')+'</button>';
  }
  grid+='</div></div>';
  const title=week?dateLabel(start)+' – '+dateLabel(add(start,6)):new Intl.DateTimeFormat('nl-NL',{month:'long',year:'numeric'}).format(new Date(month+'T12:00Z'));
