@@ -24,5 +24,7 @@ export function calendarPage(db,actor,view){
   grid+='<button class="calendar-day '+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'')+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'+dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('')+'</button>';
  }
  grid+='</div></div>';
- return card('Mijn rooster','<div class="weeknav">'+button('Week','calendarMode','week',week)+button('Maand','calendarMode','month',!week)+button('Vorige','calendarMove','-1')+button('Vandaag','calendarMove','0')+button('Volgende','calendarMove','1')+'</div><p>'+h(dateLabel(date))+'</p>'+grid);
+ const title=week?dateLabel(start)+' – '+dateLabel(add(start,6)):new Intl.DateTimeFormat('nl-NL',{month:'long',year:'numeric'}).format(new Date(month+'T12:00Z'));
+ const mode=(label,id,active)=>'<button data-act="calendarMode" data-id="'+id+'" aria-pressed="'+active+'" class="'+(active?'primary':'secondary')+'">'+label+'</button>';
+ return card('Mijn rooster','<div class="calendar-toolbar"><div class="calendar-modes" role="group" aria-label="Weergave">'+mode('Week','week',week)+mode('Maand','month',!week)+'</div><div class="calendar-navigation" role="group" aria-label="Periode kiezen"><button class="secondary" data-act="calendarMove" data-id="-1" aria-label="Vorige '+(week?'week':'maand')+'">‹</button>'+button('Vandaag','calendarMove','0')+'<button class="secondary" data-act="calendarMove" data-id="1" aria-label="Volgende '+(week?'week':'maand')+'">›</button></div></div><h3 class="calendar-period">'+h(title)+'</h3>'+grid);
 }

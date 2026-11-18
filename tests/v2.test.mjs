@@ -105,3 +105,51 @@ test('Hele dag en expliciet behoud bestaande diensten',()=>{
  assert.deepEqual(result.shifts,db.shifts);
  assert.equal(ruleFor(result,{user:'elise',date:'2026-11-19'}).end,'16:00');
 });
+
+import {migratePilot} from '../v2/pilot.js';
+
+
+test('Beschikbaar vanaf 10:00: basisdienst staat vast, eerder beginnen vraagt toestemming',()=>{
+ let db=pilotRoster();const date='2026-12-04';
+ db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:'18:00',area:'Speelvloer'});
+ db=apply(db,'eva','publish',{date,through:date,confirm:true});
+ const s=db.shifts.find(s=>s.user==='sylvia'&&s.date===date),o=db.offers.at(-1);
+ assert.equal(s.start,'10:00');assert.equal(o.row.start,'08:30');assert.equal(o.availability.start,'10:00');
+ const no=apply(db,'sylvia','offer',{id:o.id,answer:'no'});
+ assert.equal(no.shifts.find(x=>x.id===s.id).start,'10:00');assert.equal(no.offers.length,0);
+ assert.match(no.updates.at(-1).text,/Sylvia.*blijft 10:00/);
+ const yes=apply(db,'sylvia','offer',{id:o.id,answer:'yes'});
+ assert.equal(yes.shifts.find(x=>x.id===s.id).start,'08:30');
+ assert.equal(yes.shifts.filter(x=>x.user==='sylvia'&&x.date===date).length,1);
+ assert.throws(()=>apply(db,'iris','offer',{id:o.id,answer:'yes'}));
+});
+test('Buiten beschikbaarheid zonder overlap, onbekend en vrij geeft geen basisdienst',()=>{
+ for(const scenario of ['outside','unknown','free']){
+  let db=pilotRoster();const date='2026-12-04';
+  if(scenario==='unknown')db.rules=db.rules.filter(r=>r.user!=='sylvia');
+  if(scenario==='free')db.requests.push({id:'vrij',kind:'leave',user:'sylvia',date,through:date,status:'approved'});
+  db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:scenario==='outside'?'09:30':'18:00',area:'Speelvloer'});
+  db=apply(db,'eva','publish',{date,through:date,confirm:true});
+  assert.equal(db.shifts.some(s=>s.date===date&&s.user==='sylvia'),false);
+  assert.equal(db.offers.length,1);
+ }
+});
+test('Dagleiding kan niet plannen of publiceren',()=>{
+ let db=pilotRoster(),date='2026-12-04';
+ db=apply(db,'eva','draft',{user:'sylvia',date,start:'10:00',end:'18:00',area:'Speelvloer'});
+
+ assert.throws(()=>apply(db,'iris','draft',{user:'sylvia',date,start:'10:00',end:'18:00',area:'Speelvloer'}));
+ assert.throws(()=>apply(db,'iris','publish',{date,through:date}));
+});
+test('Voorbeeldmigratie behoudt aangepaste diensten, uren en aanvragen',()=>{
+ const db=pilotRoster();delete db.pilotTimesVersion;
+ for(const r of db.rules)r.start='10:00';for(const s of db.shifts)s.start='10:00';
+ db.shifts.find(s=>s.id==='eva-2026-11-19').start='09:15';
+ const hours=JSON.stringify(db.hours);migratePilot(db);
+ assert.equal(db.shifts.find(s=>s.id==='eva-2026-11-19').start,'09:15');
+ assert.equal(db.shifts.find(s=>s.id==='eva-2026-11-24').start,'08:30');
+ assert.equal(JSON.stringify(db.hours),hours);
+ assert.equal(db.rules.filter(r=>r.start==='10:00').length,3);
+ const snapshot=JSON.stringify(db);migratePilot(db);assert.equal(JSON.stringify(db),snapshot);
+
+});

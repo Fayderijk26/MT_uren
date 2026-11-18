@@ -30,7 +30,7 @@ export function todayPage(db,actor){
  const own=db.requests.filter(r=>r.user===actor.id&&r.kind==='leave'&&r.through>=day);
  if(own.length)html+=card('Mijn vrijaanvragen',own.map(r=>line(requestName(r),requestStatus(r)+(r.response?' · '+r.response:''))).join(''));
  const offers=db.offers.filter(o=>o.turn==='employee'?o.row.user===actor.id:actor.role==='admin');
- if(offers.length)html+=card('Dienstvoorstellen',offers.map(o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),clock(o.row),button('Voorstel bekijken','proposal',o.id))).join(''));
+ if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),(o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row)),button('Voorstel bekijken','proposal',o.id))).join(''));
  const notes=db.updates.filter(n=>n.user===actor.id);
  if(notes.length)html+=card('Roosterwijzigingen',notes.map(n=>line(dateLabel(n.date),n.text,button('Gezien','seen',n.id))).join(''));
  return html;

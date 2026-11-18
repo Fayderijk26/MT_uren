@@ -152,6 +152,12 @@ function saveDraft({db,admin,p,s}){
   }else db.drafts.push({...row,before,accepted:!!prior?.accepted});
 }
 
+export function fallbackShift(db,row){
+ const rule=ruleFor(db,row);
+ if(!rule||rule.off||row.deadline||freeRequests(db,row).length)return null;
+ const start=row.start>rule.start?row.start:rule.start,end=row.end<rule.end?row.end:rule.end;
+ return start<end?{...row,start,end}:null;
+}
 function publishDrafts({db,admin,p}){
  check(admin,'Alleen voor de bedrijfsleider.');
   const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
@@ -160,10 +166,14 @@ function publishDrafts({db,admin,p}){
   for(const {before,accepted,...row} of chosen){
    const old=db.shifts.find(s=>s.id===row.id);
    check((old?JSON.stringify(old):null)===before&&!db.hours[row.id],'De dienst is intussen gewijzigd. Controleer het concept.');
-   const consent=freeRequests(db,row).length>0||old&&!available(db,row)||!old&&!accepted&&needsQuestion(db,row);
+   const consent=!accepted&&(needsQuestion(db,row)||!available(db,row));
    check(consent||available(db,row)||p.confirm,'Bevestig het inplannen buiten de beschikbaarheid.');
    db.offers=db.offers.filter(o=>o.row.id!==row.id);
-   if(consent)db.offers.push({id:crypto.randomUUID(),row,before,turn:'employee'});
+   if(consent){
+    const fallback=old||fallbackShift(db,row);
+    if(fallback&&!old){db.shifts.push(fallback);announce(db,fallback,'Ingepland: '+fallback.start+'–'+fallback.end);}
+    db.offers.push({id:crypto.randomUUID(),row,before:fallback?JSON.stringify(fallback):null,turn:'employee',fallback:fallback?{...fallback}:null,requestedBy:db.people.find(x=>x.role==='admin').id,availability:ruleFor(db,row)});
+   }
    else{db.shifts=db.shifts.filter(s=>s.id!==row.id);db.shifts.push(row);announce(db,row,'Ingepland: '+row.start+'–'+row.end);}
   }
   db.drafts=db.drafts.filter(d=>!chosen.some(c=>c.id===d.id));
@@ -186,7 +196,7 @@ function answerOffer({db,actor,admin,p}){
    else{db.shifts=db.shifts.filter(s=>s.id!==o.row.id);db.shifts.push(o.row);}
    announce(db,o.row,'Voorstel geaccepteerd: '+o.row.start+'–'+o.row.end);
   }
-  announce(db,{date:o.row.date,user:o.turn==='admin'?o.row.user:db.people.find(x=>x.role==='admin').id},(p.answer==='yes'?'Voorstel geaccepteerd':'Voorstel afgewezen')+' · '+o.row.start+'–'+o.row.end);
+  announce(db,{date:o.row.date,user:o.turn==='admin'?o.row.user:o.requestedBy||db.people.find(x=>x.role==='admin').id},db.people.find(x=>x.id===o.row.user).name+' · '+(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end:o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end:'Voorstel afgewezen · '+o.row.start+'–'+o.row.end));
   db.offers=db.offers.filter(x=>x.id!==o.id);
 }
 

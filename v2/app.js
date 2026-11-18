@@ -1,8 +1,8 @@
-import {pilotRoster} from './pilot.js';
+import {pilotRoster,migratePilot} from './pilot.js';
 import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
-import {weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
+import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -12,11 +12,13 @@ import {hoursPage} from './hours.js';
 const key='monkeytown-pilot-nov2026', modal=document.querySelector('#dialog');
 if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(pilotRoster()));
 const read=()=>{
- const data=JSON.parse(localStorage.getItem(key));
+ const stored=localStorage.getItem(key),data=JSON.parse(stored);
  for(const r of [...data.rules,...data.extra]){
   if(r.start==='00:00')r.start='08:30';
   if(r.end==='23:59')r.end='18:00';
  }
+ migratePilot(data);
+ if(JSON.stringify(data)!==stored)localStorage.setItem(key,JSON.stringify(data));
  return data;
 };
 let returnRequest=null;
@@ -28,7 +30,7 @@ function render(){
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
- const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role==='admin'?weekPage(db,view):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
+ const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role!=='employee'?weekPage(db,view,actor.role!=='admin'):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
  document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+ic(({today:'home',team:'calendar',mine:'calendar',hours:'clock',availability:'calendar'})[k],16)+(k==='hours'&&actor.role!=='employee'?'Uren':pages[k])+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
@@ -69,17 +71,18 @@ function show(action,id){
  if(action==='past')return;
  if(action==='week'||action==='day'){view.day=id;view.single=action==='day';render();return}
  if(action==='shiftDetails'){
-  const row=draft||shift;
+  const canEdit=db.people.find(p=>p.id===actorId).role==='admin';
+  const row=canEdit?(draft||shift):shift;
   if(!row)return;
-  const status=draft?'Conceptdienst':'Ingepland';
+  const status=canEdit&&draft?'Conceptdienst':'Ingepland';
   const availabilityText=availability(db,row.user,row.date);
   let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p><p>Aangegeven beschikbaarheid: '+h(availabilityText==='Onbekend'?'Geen beschikbaarheid opgegeven':availabilityText)+'</p>';
   if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
-  if(row.date>=today()){
+  if(row.date>=today()&&db.people.find(p=>p.id===actorId).role==='admin'){
    if(!entry)body+=button('Dienst wijzigen','draft',id,true);
    body+=button('Extra dienst toevoegen','planExtra',row.date+'|'+row.user);
   }
-  if(!draft&&row.deadline)body+=button('Stand-by afhandelen','standby',id);
+  if(!draft&&row.deadline&&db.people.find(p=>p.id===actorId).role==='admin')body+=button('Stand-by afhandelen','standby',id);
   open(name(db,row.user)+' · '+dateLabel(row.date),body);return;
  }
  if(action==='standby'){
@@ -128,7 +131,7 @@ function show(action,id){
  if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
-  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:'10:00',end:'18:00'})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
+  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:'08:30',end:'18:00'})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
   if(s)modal.querySelector('[name=user]').value=s.user;
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
@@ -138,10 +141,17 @@ function show(action,id){
   const waiting=db.offers.filter(o=>o.row.date>=id&&o.row.date<=end);
   const summary=rows.length+' conceptdienst(en) voor publicatie.'+waiting.map(o=>' '+clock(o.row)+' · Wacht op '+(o.turn==='admin'?'bedrijfsleider':name(db,o.row.user))+'.').join('');
   const outside=rows.some(s=>!available(db,s));
-  open('Rooster publiceren',form('publish','<p>'+h(summary)+'</p><p>'+rows.map(s=>h(name(db,s.user)+' · '+dateLabel(s.date)+' · '+clock(s))).join('<br>')+'</p><p>Bij een vrije dag of een wijziging buiten de opgegeven beschikbaarheid krijgt de medewerker eerst een voorstel.</p>'+(outside?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.</label>':'')+'<input type="hidden" name="through" value="'+end+'">','Publiceren',id));return;
+  open('Rooster publiceren',form('publish','<p>'+h(summary)+'</p>'+rows.map(s=>{
+   const question=needsQuestion(db,s)||!available(db,s),base=db.shifts.find(x=>x.id===s.id)||fallbackShift(db,s);
+   return '<section class="publish-row"><strong>'+h(name(db,s.user)+' · '+dateLabel(s.date))+'</strong><p>'+h('Beschikbaarheid: '+availability(db,s.user,s.date))+'</p><p>'+h(question?(base?'Blijft / wordt ingepland: '+clock(base):'Nog niet ingepland; wacht op toestemming'):'Wordt ingepland: '+clock(s))+'</p>'+(question?'<p class="offer-note">'+h('Vraag aan medewerker: werken '+clock(s))+'</p>':'')+'</section>';
+  }).join('')+(outside?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.</label>':'')+'<input type="hidden" name="through" value="'+end+'">','Publiceren',id));return;
  }
  if(action==='proposal'){
   const o=db.offers.find(x=>x.id===id);
+  if(o.fallback&&o.turn==='employee'){
+   const requester=name(db,o.requestedBy||db.people.find(p=>p.role==='admin').id);
+   open('Roosterwijziging','<p>'+h(dateLabel(o.row.date))+'</p><p>'+h('Je bent beschikbaar '+clock(o.availability||o.fallback)+'. '+requester+' vraagt of je '+clock(o.row)+' kunt werken.')+'</p><p>'+h('Je dienst blijft '+clock(o.fallback)+' totdat je accepteert.')+'</p>'+form('yes','','Ja, '+clock(o.row),id)+form('no','','Nee, behoud '+clock(o.fallback),id));return;
+  }
   open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+(o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:''))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;
  }
 }
