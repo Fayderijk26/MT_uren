@@ -1,7 +1,7 @@
 import {today,leads} from './model.js';
 import {card,line,name,clock,dateLabel,button,labels,sortDate,requestName,requestStatus,h} from './view.js';
-import {reviews,reviewRow} from './hours.js';
-export function ownRow(db,s){const e=db.hours[s.id];return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(e?.status==='returned'?'Uren controleren':labels[e?.status]||'Uren invullen','entry',s.id,!e||e.status==='returned'))}
+import {reviews,reviewRow,missingHours,missingRow} from './hours.js';
+export function ownRow(db,s){const e=db.hours[s.id];return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(e?.status==='returned'?'Uren aanpassen':labels[e?.status]||'Uren invullen','entry',s.id,!e||e.status==='returned'))}
 export function requestRow(db,r){return line(name(db,r.user),requestName(r)+' · '+Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000)+' dagen van tevoren aangevraagd'+(r.kind==='leave'&&Date.parse(r.date)-Date.parse(r.created)<21*86400000?' · Te laat aangevraagd':''),button('Beoordelen','decision',r.id))}
 export function todayPage(db,actor){
  const day=today(),mine=db.shifts.filter(s=>!s.deadline&&s.user===actor.id).sort(sortDate),team=db.shifts.filter(s=>!s.deadline&&s.date===day).sort(sortDate);
@@ -12,12 +12,14 @@ export function todayPage(db,actor){
   const current=mine.filter(s=>s.date===day),next=mine.find(s=>s.date>day);
   if(current.length)html+=card('Mijn dienst vandaag',current.map(s=>ownRow(db,s)).join(''));
   if(!current.length&&next)html+=card('Eerstvolgende dienst',line(dateLabel(next.date),clock(next)+' · '+next.area));
-  const open=mine.filter(s=>s.date<day&&(!db.hours[s.id]||db.hours[s.id].status==='returned'));
-  if(open.length)html+=card('Nog in te vullen',open.map(s=>ownRow(db,s)).join(''));
   const pending=mine.filter(s=>db.hours[s.id]?.status==='pending');
   if(pending.length)html+=card('Wacht op beoordeling',pending.map(s=>line(dateLabel(s.date),clock(db.hours[s.id]))).join(''));
   if(current.length&&next)html+=card('Eerstvolgende dienst',line(dateLabel(next.date),clock(next)+' · '+next.area));
  }
+ const ownMissing=missingHours(db,actor).filter(s=>s.user===actor.id);
+ if(ownMissing.length)html+=card('Nog in te vullen',ownMissing.map(s=>ownRow(db,s)).join(''));
+ const forgotten=missingHours(db,actor).filter(s=>s.user!==actor.id);
+ if(actor.role!=='employee'&&forgotten.length)html+=card('Uren ontbreken',forgotten.slice(0,3).map(s=>missingRow(db,actor,s)).join('')+button('Alle ontbrekende uren','missingPage'));
  const standby=db.shifts.filter(s=>s.deadline&&(actor.role==='admin'?s.date<=day:s.user===actor.id&&s.date>=day));
  if(standby.length)html+=card('Stand-by',standby.map(s=>line(actor.role==='admin'?name(db,s.user)+' wacht op bericht':dateLabel(s.date),'Bericht vóór '+s.deadline+(actor.role==='admin'?'':' · Dan hoor je of je werkt.'),actor.role==='admin'?button('Stand-by afhandelen','standby',s.id):'')).join(''));
  if(actor.role!=='employee'){

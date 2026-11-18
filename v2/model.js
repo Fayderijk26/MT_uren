@@ -1,26 +1,30 @@
+import {saveDraft,publishDrafts,answerOffer,generateWeek} from './planning.js';
+export {fallbackShift} from './planning.js';
+import {opening} from './settings.js';
+import {savePerson,saveSettings,closeMonth,reopenMonth,reopenHours} from './administration.js';
 export const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date());
 export function add(day,n){const d=new Date(day+'T12:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 export const weekday = day => new Date(day+'T12:00Z').getUTCDay()||7;
 export const monday = day => add(day,1-weekday(day));
 export const intersects = (a,b) => a.start<b.end && b.start<a.end;
 export const minutes = time => Number(time.slice(0,2))*60+Number(time.slice(3));
-export function check(ok,message){if(!ok)throw Error(message)}
+export function check(ok,message,field=''){if(!ok){const e=Error(message);e.field=field;throw e}}
 export function interval(row){
-  check(/^([01]\d|2[0-3]):[0-5]\d$/.test(row.start)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(row.end)&&row.start<row.end,'Controleer de begin- en eindtijd.');
+  check(/^([01]\d|2[0-3]):[0-5]\d$/.test(row.start)&&/^([01]\d|2[0-3]):[0-5]\d$/.test(row.end)&&row.start<row.end,'Controleer de begin- en eindtijd.','start');
 }
 export function ruleFor(db,s){
   const exact=db.extra.find(r=>r.user===s.user&&r.date===s.date);
   const weekly=db.rules.filter(r=>r.user===s.user&&r.weekday===weekday(s.date)&&r.date<=s.date).sort((a,b)=>b.date.localeCompare(a.date))[0];
-  if(exact)return exact;
+  if(exact)return exact.wholeDay?{...exact,...opening(db,s.date)}:exact;
   if(weekly?.fortnightly){
    const weeks=(Date.parse(monday(s.date))-Date.parse(monday(weekly.date)))/604800000;
    if(weeks%2!==0)return undefined;
   }
-  return weekly;
+  return weekly?.wholeDay?{...weekly,...opening(db,s.date)}:weekly;
 }
 export function available(db,s){
   const r=ruleFor(db,s);
-  return !r||(!r.off&&r.start<=s.start&&r.end>=s.end);
+  return !r||(!r.off&&!r.closed&&r.start<=s.start&&r.end>=s.end);
 }
 export function remaining(s,r){
   if(!r.start)return [];
@@ -38,7 +42,7 @@ export function freeWindows(request,date){
  }
  return windows;
 }
-function freeRequests(db,s){
+export function freeRequests(db,s){
  return db.requests.filter(r=>r.kind==='leave'&&r.status!=='rejected'&&r.user===s.user&&freeWindows(r,s.date).some(w=>intersects(w,s)));
 }
 function validate(db){
@@ -46,7 +50,7 @@ function validate(db){
   interval(s);check(!db.shifts.slice(i+1).some(t=>t.user===s.user&&t.date===s.date&&intersects(t,s)),'Deze dienst overlapt een andere dienst.');
  }
 }
-function announce(db,s,text){db.updates.push({id:crypto.randomUUID(),user:s.user,date:s.date,text})}
+export function announce(db,s,text){db.updates.push({id:crypto.randomUUID(),user:s.user,date:s.date,text})}
 function submitUnplanned({db,actor,p}){
  interval(p);check(p.date<=today()&&/^\d{4}-\d{2}-\d{2}$/.test(p.date),'Kies een gewerkte dag.');
   const id=crypto.randomUUID();
@@ -64,35 +68,36 @@ function submitHours({db,actor,p,s}){
  check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
   interval(p);const pause=Number(p.pause);
-  check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),'Vul de werkelijke pauze in.');
+  check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),'Vul de werkelijke pauze in.','pause');
   check(!db.shifts.some(t=>t.id!==s.id&&t.user===s.user&&t.date===s.date&&intersects(p,db.hours[t.id]||t)),'Deze uren overlappen een andere dienst.');
-  db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending'};
+  db.hours[s.id]={...db.hours[s.id],start:p.start,end:p.end,pause,status:'pending',approvedBy:null,approvedAt:null,submittedAt:new Date().toISOString(),submittedBy:actor.id};
 }
 
 function reviewHours({db,actor,op,p,s}){
  check(s&&mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending','Deze uren kunnen hier niet worden beoordeeld.');
   if(op==='return')check(p.reason?.trim(),'Geef aan wat gecontroleerd moet worden.');
-  Object.assign(db.hours[s.id],{status:op==='return'?'returned':'approved',reason:p.reason||''});
+  Object.assign(db.hours[s.id],{status:op==='return'?'returned':'approved',...(op==='return'?{reason:p.reason}:{approvedBy:actor.id,approvedAt:new Date().toISOString()})});
 }
 
 function recordAvailability({db,actor,op,p}){
  check(p.date>=today(),'Kies vandaag of later.');
-  const start=p.start||'',end=p.end||'';
-  if(start||end)interval(p);
+  const window=opening(db,op==='weekly'?Number(p.weekday):p.date);
+  const start=p.mode==='all'&&op!=='leave'?window.start:p.start||'',end=p.mode==='all'&&op!=='leave'?window.end:p.end||'';
+  if(start||end)interval({start,end});
   if(op==='weekly')check(Number.isInteger(+p.weekday)&&+p.weekday>=1&&+p.weekday<=7,'Kies een weekdag.');
   if(op==='extra'){
-   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);db.extra.push({user:actor.id,date:p.date,start:start||'08:30',end:end||'18:00'});
+   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);db.extra.push({user:actor.id,date:p.date,start:start||window.start,end:end||window.end,wholeDay:!p.start&&!p.end});
   }else{
    const through=p.through||p.date;check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
    if(op==='leave')check(!db.requests.some(r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date&&(!start||!r.start||intersects(r,p))),'Er is al een aanvraag voor deze periode.');
-   db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
+   db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,weekday:Number(p.weekday),off:p.off===true,wholeDay:op==='weekly'&&(!p.start&&!p.end||p.mode==='all'),reason:p.reason||'',status:'pending',created:today()});
   };
 }
 
 export function weeklyConflicts(db,r){
- return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&weekday(s.date)===r.weekday&&(r.off||s.start<(r.start||'08:30')||s.end>(r.end||'18:00')));
+ return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&weekday(s.date)===r.weekday&&(r.off||s.start<(r.start||opening(db,r.weekday).start)||s.end>(r.end||opening(db,r.weekday).end)));
 }
-function decideRequest({db,admin,p,r}){
+function decideRequest({db,admin,actor,p,r}){
  check(admin&&r?.status==='pending','Alleen de bedrijfsleider kan een open aanvraag beoordelen.');
   if(!p.accept)check(p.reason?.trim(),'Geef een reden voor afwijzing.');
   if(p.accept&&r.kind==='weekly'){
@@ -101,7 +106,7 @@ function decideRequest({db,admin,p,r}){
    r.retained=conflicts.map(s=>({date:s.date,start:s.start,end:s.end}));
    if(conflicts.length)announce(db,{user:r.user,date:r.date},'Nieuwe beschikbaarheid goedgekeurd. Deze diensten blijven staan: '+conflicts.map(s=>s.date+' '+s.start+'–'+s.end).join(', '));
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
-   db.rules.push({...r,start:r.start||'08:30',end:r.end||'18:00'});
+   db.rules.push({...r,start:r.start||opening(db,r.weekday).start,end:r.end||opening(db,r.weekday).end});
   }else if(p.accept){
    for(const old of affected(db,r)){
     check(!db.hours[old.id],'Bij deze dienst zijn al uren ingediend.');
@@ -114,11 +119,11 @@ function decideRequest({db,admin,p,r}){
     announce(db,old,keep.length?'Nieuwe werktijden: '+keep.map(t=>t.start+'–'+t.end).join(' en '):'Je dienst vervalt.');
    }
   }
-  r.status=p.accept?'approved':'rejected';r.response=p.reason||'';
+  r.status=p.accept?'approved':'rejected';r.response=p.reason||'';r.decidedBy=actor.id;r.decidedAt=new Date().toISOString();
 }
 
 export function needsQuestion(db,row){
- return !ruleFor(db,row)||ruleFor(db,row).off||freeRequests(db,row).length>0;
+ return !ruleFor(db,row)||ruleFor(db,row).off||ruleFor(db,row).closed||freeRequests(db,row).length>0;
 }
 export function published(db,date){
  return db.published?.includes(date)||db.shifts.some(s=>s.date===date&&!s.unplanned);
@@ -136,75 +141,15 @@ function resolveStandby({db,admin,s,p,op}){
   announce(db,s,'Je bent opgeroepen: '+s.start+'–'+s.end);
  }
 }
-function saveDraft({db,admin,p,s}){
- check(admin&&db.people.some(x=>x.id===p.user)&&p.date>=today(),'Controleer de medewerker en datum.');interval(p);
-  const id=p.id||crypto.randomUUID(), prior=db.drafts.find(d=>d.id===id);
-  check(!s||(!db.hours[id]&&s.date===p.date&&s.user===p.user),'Deze dienst kan niet worden gewijzigd.');
-  const other=db.shifts.filter(t=>!db.drafts.some(d=>d.id===t.id)).concat(db.drafts);
-  check(!other.some(t=>t.id!==id&&t.user===p.user&&t.date===p.date&&intersects(t,p)),'Deze dienst overlapt een andere dienst.');
-  const row={id,user:p.user,date:p.date,start:p.start,end:p.end,area:p.area};
-  if(p.deadline)row.deadline=p.deadline;
-  const before=prior?prior.before:s?JSON.stringify(s):null;
-  check(!db.offers.some(o=>o.row.user===row.user&&o.row.date===row.date&&intersects(o.row,row)),'Er staat al een vraag open voor deze tijden.');
-  db.drafts=db.drafts.filter(x=>x.id!==id);
-  if(!s&&needsQuestion(db,row)&&!(prior?.accepted&&prior.start===row.start&&prior.end===row.end&&prior.user===row.user&&prior.deadline===row.deadline)){
-   db.offers.push({id:crypto.randomUUID(),row,before,turn:'employee',planning:true});
-  }else db.drafts.push({...row,before,accepted:!!prior?.accepted});
-}
-
-export function fallbackShift(db,row){
- const rule=ruleFor(db,row);
- if(!rule||rule.off||row.deadline||freeRequests(db,row).length)return null;
- const start=row.start>rule.start?row.start:rule.start,end=row.end<rule.end?row.end:rule.end;
- return start<end?{...row,start,end}:null;
-}
-function publishDrafts({db,admin,p}){
- check(admin,'Alleen voor de bedrijfsleider.');
-  const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
-  db.published??=[];
-  for(let d=p.date;d<=p.through;d=add(d,1))if(!db.published.includes(d))db.published.push(d);
-  for(const {before,accepted,...row} of chosen){
-   const old=db.shifts.find(s=>s.id===row.id);
-   check((old?JSON.stringify(old):null)===before&&!db.hours[row.id],'De dienst is intussen gewijzigd. Controleer het concept.');
-   const consent=!accepted&&(needsQuestion(db,row)||!available(db,row));
-   check(consent||available(db,row)||p.confirm,'Bevestig het inplannen buiten de beschikbaarheid.');
-   db.offers=db.offers.filter(o=>o.row.id!==row.id);
-   if(consent){
-    const fallback=old||fallbackShift(db,row);
-    if(fallback&&!old){db.shifts.push(fallback);announce(db,fallback,'Ingepland: '+fallback.start+'–'+fallback.end);}
-    db.offers.push({id:crypto.randomUUID(),row,before:fallback?JSON.stringify(fallback):null,turn:'employee',fallback:fallback?{...fallback}:null,requestedBy:db.people.find(x=>x.role==='admin').id,availability:ruleFor(db,row)});
-   }
-   else{db.shifts=db.shifts.filter(s=>s.id!==row.id);db.shifts.push(row);announce(db,row,'Ingepland: '+row.start+'–'+row.end);}
-  }
-  db.drafts=db.drafts.filter(d=>!chosen.some(c=>c.id===d.id));
-}
-
-function answerOffer({db,actor,admin,p}){
- const o=db.offers.find(x=>x.id===p.id);
-  check(o&&(o.turn==='employee'?o.row.user===actor.id:admin),'Dit voorstel wacht op iemand anders.');
-  check(['counter','yes','no'].includes(p.answer),'Kies een antwoord.');
-  if(p.answer==='counter'){check(o.turn==='employee','Alleen de medewerker kan andere tijden voorstellen.');interval(p);Object.assign(o.row,{start:p.start,end:p.end});o.turn='admin';return;}
-  if(p.answer==='yes'){
-   const old=db.shifts.find(s=>s.id===o.row.id);
-   check((old?JSON.stringify(old):null)===o.before&&!db.hours[o.row.id],'De oorspronkelijke dienst is gewijzigd.');
-   for(const request of freeRequests(db,o.row)){
-    (request.exceptions??=[]).push({date:o.row.date,start:o.row.start,end:o.row.end});
-   }
-   check(!db.drafts.some(d=>d.id!==o.row.id&&d.user===o.row.user&&d.date===o.row.date&&intersects(d,o.row)),'De tijden overlappen een conceptdienst.');
-   check(!db.shifts.some(d=>d.id!==o.row.id&&d.user===o.row.user&&d.date===o.row.date&&intersects(d,o.row)),'De tijden overlappen een dienst.');
-   if(o.planning&&!published(db,o.row.date))db.drafts.push({...o.row,before:null,accepted:true});
-   else{db.shifts=db.shifts.filter(s=>s.id!==o.row.id);db.shifts.push(o.row);}
-   announce(db,o.row,'Voorstel geaccepteerd: '+o.row.start+'–'+o.row.end);
-  }
-  announce(db,{date:o.row.date,user:o.turn==='admin'?o.row.user:o.requestedBy||db.people.find(x=>x.role==='admin').id},db.people.find(x=>x.id===o.row.user).name+' · '+(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end:o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end:'Voorstel afgewezen · '+o.row.start+'–'+o.row.end));
-  db.offers=db.offers.filter(x=>x.id!==o.id);
-}
 
 function markSeen({db,actor,p}){
  db.updates=db.updates.filter(x=>x.id!==p.id||x.user!==actor.id);
 }
 
+
+
 const actions={
+  person:savePerson,settings:saveSettings,closeMonth,reopenMonth,reopenHours,generate:generateWeek,
   release:resolveStandby,call:resolveStandby,
   unplanned: submitUnplanned,
   rejectHours: rejectUnplanned,
@@ -223,9 +168,9 @@ const actions={
 export function apply(previous,actorId,op,p){
  const db=structuredClone(previous);
  const actor=db.people.find(person=>person.id===actorId);
- check(actor,'Onbekend profiel.');
+ check(actor&&actor.active!==false,'Dit profiel is niet actief.');
  for(const field of ['start','end','deadline']){
-  if(p[field])check(/^([01]\d|2[0-3]):(00|15|30|45)$/.test(p[field]),'Kies tijden per kwartier.');
+  if(p[field])check(/^([01]\d|2[0-3]):(00|15|30|45)$/.test(p[field]),'Kies tijden per kwartier.',field);
  }
  check(Object.hasOwn(actions,op),'Onbekende actie.');
  actions[op]({db,actor,admin:actor.role==='admin',op,p,
@@ -233,5 +178,17 @@ export function apply(previous,actorId,op,p){
   r:db.requests.find(request=>request.id===p.id)
  });
  validate(db);
+ for(const [month,state] of Object.entries(previous.months||{}))if(state.closed&&op!=='reopenMonth'){
+  const contents=d=>JSON.stringify(d.shifts.filter(s=>s.date.startsWith(month)).map(s=>({s,e:d.hours[s.id]})));
+  check(contents(previous)===contents(db),'Deze maand is afgesloten. De bedrijfsleider moet eerst de maand heropenen.');
+ }
+ db.audit??=[];
+ if(['hours','unplanned','approve','return','rejectHours','reopenHours'].includes(op))for(const [id,e] of Object.entries(db.hours)){
+  if(JSON.stringify(previous.hours[id])!==JSON.stringify(e)){
+   const before=previous.hours[id];
+   e.history=[...(before?.history||[]),{action:op,by:actor.id,at:new Date().toISOString(),reason:p.reason||'',previous:before?Object.fromEntries(Object.entries(before).filter(([k])=>k!=='history')):null}];
+  }
+ }
+ if(['person','settings','closeMonth','reopenMonth','generate'].includes(op))db.audit.push({action:op,by:actor.id,at:new Date().toISOString(),reason:p.reason||'',month:p.month||'',id:p.id||''});
  return db;
 }
