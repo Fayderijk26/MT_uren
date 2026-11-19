@@ -352,8 +352,11 @@ export function fallbackShift(db,row){
  const start=row.start>rule.start?row.start:rule.start,end=row.end<rule.end?row.end:rule.end;
  return start<end?{...row,start,end}:null;
 }
-function publishDrafts({db,actor,admin,p}){
+// Publiceren gaat per week (ma–zo). Alleen een losse aanpassing (onlyId) in een gepubliceerde week gaat per dienst.
+function publishDrafts({db,actor,admin,p:input}){
  check(admin,'Alleen voor de bedrijfsleider.');
+ const from=input.onlyId?input.date:monday(input.date);
+ const p={...input,date:from,through:input.onlyId?input.through:add(from,6)};
   const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
   db.published??=[];
   for(let d=p.date;d<=p.through;d=add(d,1))if(!db.published.includes(d))db.published.push(d);

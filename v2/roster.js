@@ -16,7 +16,6 @@ export function rosterPage(db,actor,v){
   result+=leave.map(r=>line(name(db,r.user), (r.start||r.exceptions?.length?freeWindows(r,d).map(clock).join(' en ')+' · ':'')+(r.status==='pending'?'Vrij gevraagd':'Vrij goedgekeurd'))).join('');
   result+=offers.map(o=>line(name(db,o.row.user),'Voorstel '+clock(o.row),(o.turn==='admin'?admin:o.row.user===actor.id)?button('Bekijken','proposal',o.id):'Wacht op reactie')).join('');
   if(admin&&d>=today())result+=button('Dienst toevoegen','newDraft',d);
-  if(drafts.some(s=>s.date===d))result+=button('Dag publiceren','pubDay',d);
  }
  if(drafts.length)result+=button('Week publiceren','pubWeek',first,true);
  return card(personal?'Mijn rooster':'Teamrooster',result+(!rows.length?'<p>Geen diensten deze week.</p>':''));

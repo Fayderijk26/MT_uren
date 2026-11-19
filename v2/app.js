@@ -243,8 +243,8 @@ function show(action,id){
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
  }
- if(action==='pubDay'||action==='pubWeek'){
-  const end=action==='pubDay'?id:add(id,6), rows=db.drafts.filter(s=>s.date>=id&&s.date<=end);
+ if(action==='pubWeek'){
+  const end=add(id,6), rows=db.drafts.filter(s=>s.date>=id&&s.date<=end);
   const waiting=db.offers.filter(o=>o.row.date>=id&&o.row.date<=end);
   const summary=rows.length+' conceptdienst(en) voor publicatie.'+waiting.map(o=>' '+clock(o.row)+' · Wacht op '+(o.turn==='admin'?'bedrijfsleider':name(db,o.row.user))+'.').join('');
   const outside=rows.some(s=>!available(db,s));

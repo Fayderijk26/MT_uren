@@ -612,3 +612,12 @@ test('Concept uit vaste beschikbaarheid kan niet voor de huidige week of een gep
  for(const week of ['2026-11-16','2026-11-23'])
   assert.throws(()=>apply(pilotRoster(),'eva','planFromRules',{week}),/gepubliceerd/);
 });
+
+test('Publiceren gaat altijd per week: Eva publiceert woensdag en de hele week gaat mee',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'eva','draft',{user:'isis',date:'2026-12-02',start:'08:30',end:'18:00'});
+ db=apply(db,'eva','draft',{user:'eva',date:'2026-12-03',start:'08:30',end:'18:00'});
+ db=apply(db,'eva','publish',{date:'2026-12-02',through:'2026-12-02',confirm:true});
+ assert.equal(db.drafts.length,0,'ook donderdag is gepubliceerd');
+ for(let i=0;i<7;i++)assert.ok(db.published.includes(add('2026-11-30',i)));
+});
