@@ -41,7 +41,8 @@ export function tabs(db,actor,page){
 }
 function ownHoursRow(db,s){
  const status=db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
- return line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
+ const row=line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
+ return '<div class="compact">'+row+'</div>';
 }
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){

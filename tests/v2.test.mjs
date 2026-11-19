@@ -606,3 +606,9 @@ test('Bij een medewerker vul je minstens één werkplek in: vloer, keuken of all
  const db=apply(pilotRoster(),'eva','savePerson',{...person,areas:['Keuken','Bar','Vloer']});
  assert.deepEqual(db.people.at(-1).areas,['Vloer','Keuken']);
 });
+
+test('Concept uit vaste beschikbaarheid kan niet voor de huidige week of een gepubliceerde week',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ for(const week of ['2026-11-16','2026-11-23'])
+  assert.throws(()=>apply(pilotRoster(),'eva','planFromRules',{week}),/gepubliceerd/);
+});

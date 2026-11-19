@@ -45,3 +45,12 @@ test('Isis ziet op Vandaag dat haar vrije dag is afgewezen, met reden en een kno
  assert.match(html,new RegExp('data-act="seen" data-id="'+id+'">Gezien<'));
  assert.doesNotMatch(todayPage(apply(db,'isis','seen',{id}),isis(db)),/Je aanvraag is/);
 });
+
+test('Op Vandaag staat de knop Uren invullen naast mijn dienst en naast nog in te vullen uren, zoals Herinner',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T19:00:00+01:00')});
+ const db=pilotRoster(),html=todayPage(db,db.people.find(p=>p.id==='eva'));
+ for(const title of ['Mijn dienst vandaag','Nog in te vullen']){
+  const part=html.split('<h2>'+title)[1].split('</section>')[0];
+  assert.match(part,/<div class="compact"><article class="vrow">[\s\S]*data-act="entry"/,title);
+ }
+});

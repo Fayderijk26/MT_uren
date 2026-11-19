@@ -53,3 +53,12 @@ test('Werkplek kiezen: geen keuze bij één werkplek, twee knoppen bij vloer en 
  assert.match(both,/value="Vloer"/);
  assert.match(both,/value="Keuken" checked/);
 });
+
+test('Concept uit vaste beschikbaarheid alleen bij een week die nog niet begonnen en niet gepubliceerd is',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ assert.doesNotMatch(weekPage(pilotRoster(),{day:'2026-11-19'}),/planFromRules/,'huidige week');
+ assert.doesNotMatch(weekPage(pilotRoster(),{day:'2026-11-25'}),/planFromRules/,'volgende week, al gepubliceerd');
+ const db=apply(pilotRoster(),'eva','draft',{user:'isis',date:'2026-12-05',start:'08:30',end:'18:00'});
+ const published=apply(db,'eva','publish',{date:'2026-12-05',through:'2026-12-05',confirm:true});
+ assert.doesNotMatch(weekPage(published,{day:'2026-12-03'}),/planFromRules/,'één dag gepubliceerd');
+});
