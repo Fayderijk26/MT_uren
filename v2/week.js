@@ -1,5 +1,5 @@
 import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict} from './model.js';
-import {h,card,button,clock,dateLabel} from './view.js';
+import {h,card,button,clock,dateLabel,areaMark} from './view.js';
 
 export function availability(db,user,date){
  const leave=db.requests.find(r=>r.kind==='leave'&&r.user===user&&r.status!=='rejected'&&freeWindows(r,date).length);
@@ -16,7 +16,8 @@ function cell(db,person,date,readonly){
  const shifts=db.shifts.filter(matches).filter(s=>!drafts.some(d=>d.id===s.id)).concat(drafts).sort((a,b)=>a.start.localeCompare(b.start));
  const offers=db.offers.filter(o=>matches(o.row));
  const blocks=shifts.map(s=>{
-  const text=s.deadline?'<b class="sb">SB</b><small>Bericht vóór '+h(s.deadline)+'</small>':'<b>'+clock(s)+'</b>';
+  const text=(s.deadline?'<b class="sb">SB</b><small>Bericht vóór '+h(s.deadline)+'</small>':'<b>'+clock(s)+'</b>')
+   +areaMark(s);
   const conflict=drafts.includes(s)?availabilityConflict(db,s):'';
   const warn=conflict?'<small class="conflict">Let op: '+h(conflict)+'</small>':'';
   return '<button class="slot" data-act="shiftDetails" data-id="'+h(s.id)+'">'+text+'<small>'

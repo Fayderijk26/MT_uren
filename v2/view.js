@@ -1,5 +1,5 @@
 import {fmt,h} from '../ui.js';
-import {minutes} from './model.js';
+import {minutes,areasOf} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -70,3 +70,16 @@ export const requestLength=r=>r.kind==='weekly'?'':r.start?duration(minutes(r.en
  :days(r)===1?'1 dag':days(r)+' dagen';
 export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.status];
 export const requestChip=r=>chip(r.status,requestStatus(r));
+
+// Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
+export function areaChoice(db,user,current){
+ const own=areasOf(db,user);
+ if(own.length<2)return '';
+ const pick=own.includes(current)?current:own[0];
+ const option=a=>'<label><input type="radio" name="area" value="'+a+'"'+(a===pick?' checked':'')+'> '+a+'</label>';
+ return '<fieldset class="field areas"><span>Werkplek</span>'+own.map(option).join('')+'</fieldset>';
+}
+// Keukendienst: een K in het rooster. Een vloerdienst krijgt niets.
+export const areaMark=s=>s.area==='Keuken'?'<b class="area-k" title="Keuken">K</b>':'';
+// "Vloer", "Keuken" of "Vloer en keuken".
+export const areaNames=areas=>(areas||[]).map((a,i)=>i?a.toLowerCase():a).join(' en ');
