@@ -41,16 +41,16 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 6. Voor uren die precies met het rooster overeenkomen komt een knop **"Alles goedkeuren"**.
 7. De maandnorm wordt berekend uit de contracturen en is niet handmatig in te typen (een bedrijfsleider mag overschrijven, met reden).
 8. Herinneringen: een overzichtsmail aan de leiding en medewerkers op dagen dat ze dienst hebben, en een tweede herinnering de volgende dag om 09:00.
-9. Terugdateren van ongeplande diensten en het invullen van ontbrekende uren kan **zolang de maand nog niet is afgesloten**. Er is verder geen limiet.
+9. Terugdateren van ongeplande diensten en het invullen van ontbrekende uren kan **zolang de maand nog niet is afgesloten**, dus ook in de eerste dagen van de volgende maand. Er is verder geen limiet.
 10. Tijden blijven **per kwartier**.
 11. Uren heropenen mag **alleen de bedrijfsleider**, met een reden, en **nooit na het afsluiten van de maand**.
 12. De knop **"Herinner via WhatsApp"** komt er, voor de bedrijfsleider én voor de dagleiding. Hij opent WhatsApp met een ingevulde tekst. Telefoonnummers worden bewaard, zijn alleen zichtbaar voor leiding en bedrijfsleider, staan alleen in de echte database en **nooit in de repository**.
 13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan.
-14. Voor later: pushmeldingen (wens), collega's zien in het rooster, ziek en verlof, toeslagen.
+14. **Ingediend is ingediend.** De medewerker kan ingediende uren niet zelf aanpassen. Dat kan alleen nadat de leiding "Aanpassen vragen" heeft gedaan (zo werkt het nu al). Eindigen de uren vóór het geplande einde van de dienst, dan krijgt de leiding een **waarschuwing** (niet blokkeren).
+15. Voor later: pushmeldingen (wens), collega's zien in het rooster, ziek en verlof, toeslagen.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
-- Als iemand om 13:00 uren tot 13:00 indient en daarna doorwerkt: mag hij de uren dan nog **aanpassen zolang ze niet zijn beoordeeld**? (Nu kan een ingediende regel pas worden aangepast nadat de leiding "Aanpassen vragen" heeft gedaan.) En krijgt de leiding een waarschuwing als uren eindigen vóór het geplande einde van de dienst?
-- Besluit 9 gaat ervan uit dat ontbrekende uren ingevuld mogen worden tot het afsluiten van de maand (dus ook in de eerste dagen van de volgende maand). Klopt dat?
+- Op dit moment geen open vragen.
 
 ## 6. Nog te bouwen, in rondes
 Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de eigenaar het zelf en loopt de tests door.
@@ -76,6 +76,8 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - Een leidinggevende mag de eigen uren goedkeuren. **Nu is dat geblokkeerd** (`mayReview` in `model.js` weigert dat voor een leidinggevende). Pas dat aan. Meerdere dagleidingen op één dag werken al: controleer met een test dat ze allebei de uren van iedereen kunnen goedkeuren.
 - *Scenario:* Iris en Sylvia hebben allebei dienst. Iris keurt de uren van Elise goed, Sylvia de uren van Iris, en Iris mag ook haar eigen uren goedkeuren.
 - Waarschuwing (niet blokkeren) bij pauze 0 bij een lange dag.
+- Waarschuwing voor de leiding (niet blokkeren) als de uren eindigen vóór het geplande einde van de dienst (besluit 14).
+- *Scenario:* om 13:00 dient Elise 08:30–13:00 in en werkt daarna door. Zij kan haar ingediende uren niet zelf aanpassen. De leiding ziet een waarschuwing dat de uren eerder eindigen dan het rooster en kiest "Aanpassen vragen". Daarna past Elise de eindtijd aan en dient opnieuw in.
 - *Scenario:* Eva heropent goedgekeurde uren van Elise met reden "pauze klopte niet". Elise ziet "Aanpassen", past aan, dient opnieuw in. De leiding ziet wie eerder goedkeurde.
 
 **Ronde 4: maandoverzicht**
