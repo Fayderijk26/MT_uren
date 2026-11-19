@@ -4,7 +4,7 @@ import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
  mayReopen,warnings,closed,minutes,badges} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip}
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -36,10 +36,9 @@ const tabs={today:['Vandaag','LayoutDashboard'],mine:['Rooster','CalendarDays'],
 const tabOf={reviews:'hours',month:'hours',requests:'availability'};
 function tabBar(actor,nav,page){
  const count=badges(db,actor),current=tabOf[page]||page;
- const badge=k=>{const n=k==='hours'?count.hours:k==='availability'?count.requests:0;
-  return n?'<span class="badge" aria-label="'+n+' te doen">'+n+'</span>':''};
+ const counted=k=>badge(k==='hours'?count.hours:k==='availability'?count.requests:0);
  return nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(current===k?'page':'false')+'">'
-  +'<span class="tabicon">'+ic(tabs[k][1],18)+badge(k)+'</span>'+tabs[k][0]+'</button>').join('');
+  +'<span class="tabicon">'+ic(tabs[k][1],18)+counted(k)+'</span>'+tabs[k][0]+'</button>').join('');
 }
 function render(){
  db=read();

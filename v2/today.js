@@ -1,12 +1,13 @@
-import {today,leads,ownTodo,toReview,offersFor} from './model.js';
+import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,chip,h} from './view.js';
-import {reviewRow,teamMissing,missingRow} from './hours.js';
+import {reviewRow,missingRow} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken.
 export function ownRow(db,s){
  const e=db.hours[s.id],todo=!e||e.status==='returned';
  const label=!e?'Uren invullen':e.status==='returned'?'Aanpassen':'Bekijken';
+ const status=e?.status||(ended(s)?'missing':busy(s)?'busy':'');
  return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(label,'entry',s.id,todo),
-  e?chip(e.status):'');
+  status?chip(status):'');
 }
 export function requestRow(db,r){return line(name(db,r.user),requestName(r)+' · '+Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000)+' dagen van tevoren aangevraagd'+(r.kind==='leave'&&Date.parse(r.date)-Date.parse(r.created)<21*86400000?' · Te laat aangevraagd':''),button('Beoordelen','decision',r.id))}
 const shiftLine=s=>line(dateLabel(s.date),clock(s)+' · '+s.area);
@@ -25,7 +26,7 @@ function myShift(db,mine,day){
 // 2. Wat moet ik nog doen en welke aanvragen lopen er.
 function todoCards(db,actor,mine,day){
  const admin=actor.role==='admin';
- const open=ownTodo(db,actor,day);
+ const open=ownTodo(db,actor,day).filter(s=>s.date!==day); // vandaag staat al bovenaan
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,s)).join('')):'';
  const offers=offersFor(db,actor);
  const offerRow=o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),

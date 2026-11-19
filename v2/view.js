@@ -4,10 +4,16 @@ export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
 export const duration=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u '+Math.abs(m)%60+'m';
 export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',
- returned:'Aanpassen gevraagd',missing:'Ontbreekt'};
+ returned:'Aanpassen gevraagd',missing:'Ontbreekt',busy:'Dienst bezig'};
 // Eén set statuslabels: dezelfde tekst en kleur overal in de app.
-const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off'};
+const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy'};
 export const chip=(status,text=labels[status])=>'<span class="chip chip-'+tones[status]+'">'+h(text)+'</span>';
+// Rood bolletje met een aantal; niets als er niets te doen is.
+export const badge=n=>n?'<span class="badge" aria-label="'+n+' te doen">'+n+'</span>':'';
+// Subkopjes boven een pagina: [tekst, pagina, aantal]. Het gekozen kopje is donker.
+const subtab=([label,page,n],current)=>'<button type="button" class="'+(page===current?'primary':'secondary')
+ +'" data-act="page" data-id="'+page+'"><span class="tabicon">'+h(label)+badge(n)+'</span></button>';
+export const subtabs=(items,current)=>'<div class="weeknav">'+items.map(i=>subtab(i,current)).join('')+'</div>';
 export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')+'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
 export const link=(label,href)=>
  '<a class="secondary" href="'+h(href)+'" target="_blank" rel="noopener">'+h(label)+'</a>';
