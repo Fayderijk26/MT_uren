@@ -9,6 +9,7 @@ export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejec
 // Eén set statuslabels: dezelfde tekst en kleur overal in de app.
 const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy'};
 export const chip=(status,text=labels[status])=>'<span class="chip chip-'+tones[status]+'">'+h(text)+'</span>';
+export const roleNames={employee:'Medewerker',lead:'Leidinggevende',admin:'Bedrijfsleider'};
 // Rood bolletje met een aantal; niets als er niets te doen is.
 export const badge=n=>n?'<span class="badge" aria-label="'+n+' te doen">'+n+'</span>':'';
 // Subkopjes boven een pagina: [tekst, pagina, aantal]. Het gekozen kopje is donker.

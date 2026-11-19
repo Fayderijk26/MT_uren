@@ -122,6 +122,9 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 
 **Ronde 7: medewerkers beheren**
 - Toevoegen, rol wijzigen, op inactief zetten, contracturen en telefoonnummer invullen (nummer alleen zichtbaar voor leiding en bedrijfsleider). Meerdere bedrijfsleiders netjes ondersteunen (meldingen niet alleen naar de eerste).
+- **7a:** onder Rooster de subkopjes Teamrooster en Medewerkers (alleen bedrijfsleider). Toevoegen en wijzigen: naam (verplicht, uniek), rol, contracturen (0–40), telefoonnummer (niet verplicht). Er blijft altijd minstens één bedrijfsleider. Nieuwe velden bij een persoon: `phone` en `active`.
+- **7b:** op inactief zetten kan pas als de persoon geen diensten meer in de toekomst heeft (de app laat zien welke). Inactief: niet in rooster, demoprofiel, herinneringen of concept uit vaste beschikbaarheid; oude uren blijven en tellen mee. Kopje Inactief met Weer actief maken.
+- **7c:** meldingen voor de bedrijfsleider gaan naar iedere actieve bedrijfsleider. Leiding ziet de medewerkerslijst niet (besluit eigenaar).
 
 **Ronde 8: gedeelde opslag en inloggen (apart project)**
 - Nu staat alles in de browser. Voor echt gebruik: Supabase met inloggen en één plek voor de gegevens. Dezelfde `model.js` draait op de server (de gebruiker wordt bepaald uit het login-token, niet uit een keuzelijst) en de server stuurt alleen terug wat die rol mag zien. Versienummer tegen tegelijk schrijven. Een testproject met nepgegevens.

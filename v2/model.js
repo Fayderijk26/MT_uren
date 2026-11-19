@@ -383,6 +383,23 @@ function declineExtra({db,admin,p}){
  announce(db,e,'Je bent niet extra ingepland. Bedankt voor het doorgeven.');
 }
 
+// Medewerker toevoegen of wijzigen (alleen de bedrijfsleider). Er blijft altijd minstens één bedrijfsleider.
+function savePerson({db,admin,p}){
+ check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
+ const name=String(p.name||'').trim(),hours=Number(p.contractHours),phone=String(p.phone||'').trim();
+ const old=p.id?db.people.find(x=>x.id===p.id):null;
+ check(!p.id||old,'Deze medewerker bestaat niet.');
+ check(name,'Vul een naam in.');
+ check(!db.people.some(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase()),'Er bestaat al iemand met deze naam.');
+ check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
+ check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
+ check(/^[+0-9 ()-]{0,20}$/.test(phone),'Vul een geldig telefoonnummer in (alleen cijfers).');
+ const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
+ check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
+ const fields={name,role:p.role,contractHours:hours,phone};
+ if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
+}
+
 function answerOffer({db,actor,admin,p}){
  const o=db.offers.find(x=>x.id===p.id);
   check(o&&(o.turn==='employee'?o.row.user===actor.id:admin),'Dit voorstel wacht op iemand anders.');
@@ -423,6 +440,7 @@ const actions={
   approve: reviewHours,
   approveAll,
   planFromRules,
+  savePerson,
   return: reviewHours,
   reopen: reopenHours,
   setNorm,
