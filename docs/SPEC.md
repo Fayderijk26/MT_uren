@@ -50,7 +50,12 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 15. Voor later: pushmeldingen (wens), collega's zien in het rooster, ziek en verlof, toeslagen.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
-- Op dit moment geen open vragen.
+- Op dit moment geen open vragen voor de bouw.
+
+**Te bespreken met het bedrijf** (voorlopig gebouwd zoals hieronder; aanpassen zodra het bedrijf beslist):
+- **Maandnorm:** nu contracturen per week × 52 ÷ 12 (elke maand gelijk). Klopt dat met hoe het bedrijf rekent?
+- **Ziekte en verlof:** tellen nu niet mee voor de norm (vrij verandert de norm niet). Hoe wil het bedrijf dit?
+- **Loonperiode en afsluiten:** nu per kalendermaand; een maand kan dicht vanaf de 1e van de volgende maand. Mogelijk loopt de loonperiode van de 21e tot de 20e. Navragen.
 
 ## 6. Nog te bouwen, in rondes
 Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de eigenaar het zelf en loopt de tests door.
@@ -84,7 +89,12 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 
 **Ronde 4: maandoverzicht**
 - Contracturen per medewerker (nodig voor de norm). Bedrijfsleider ziet per persoon: goedgekeurd, nog open, norm, verschil.
-- Export (CSV of Excel) voor de loonadministratie. Maand afsluiten: vergrendelt de uren van die maand. Daarna kan niemand (ook de bedrijfsleider niet) uren van die maand nog invullen, aanpassen of heropenen.
+- Export (CSV of Excel) voor de loonadministratie. Maand afsluiten: vergrendelt de uren van die maand. Daarna kan niemand (ook de bedrijfsleider niet) uren van die maand nog invullen, aanpassen, goedkeuren of heropenen.
+- Twee delen: **4a** maandoverzicht, norm en Excel-export (alleen goedgekeurde uren); **4b** maand afsluiten.
+- **Norm:** contracturen per week × 52 ÷ 12. De bedrijfsleider kan de norm per persoon per maand overschrijven, met reden.
+- **Afsluiten:** alleen de bedrijfsleider, en pas vanaf de 1e van de volgende maand. Staan er nog uren open, dan eerst een waarschuwing met wie; daarna bevestigen.
+- **Noodknop:** een afgesloten maand gaat niet meer open, behalve via een noodknop voor de bedrijfsleider, met reden. Dat wordt vastgelegd.
+- **Nieuwe velden:** `contractHours` bij een persoon (uren per week); `db.normOverrides` (lijst van `{user, month, minutes, reason, by}`); `db.closedMonths` (lijst van `{month, by, at}`); `db.monthReopens` (lijst van `{month, by, at, reason}`, het logboek van de noodknop).
 - *Scenario:* de bedrijfsleider sluit november af. Er staan nog uren open: de app waarschuwt en toont wie.
 
 **Ronde 5: interface**

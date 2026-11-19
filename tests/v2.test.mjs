@@ -268,3 +268,40 @@ test('Leiding krijgt een waarschuwing bij uren die eerder eindigen dan het roost
  assert.deepEqual(check('12:15','18:00',0),['Geen pauze bij een lange dag']);
  assert.deepEqual(check('08:30','14:15',0),['Eindigt vóór het rooster (gepland tot 18:00)','Geen pauze bij een lange dag']);
 });
+
+import {normMinutes,monthSummary} from '../v2/model.js';
+test('Elise werkt 24 uur per week: haar maandnorm is 104 uur (× 52 ÷ 12)',()=>{
+ const db=pilotRoster();
+ assert.equal(db.people.find(p=>p.id==='elise').contractHours,24);
+ assert.equal(normMinutes(db,'elise','2026-11'),104*60);
+ assert.equal(normMinutes(db,'elise','2026-12'),104*60);
+});
+
+test('Eva overschrijft de norm van Elise voor november met reden; Iris mag dat niet',()=>{
+ const base=pilotRoster(),p={user:'elise',month:'2026-11',minutes:90*60,reason:'Start halverwege de maand'};
+ assert.throws(()=>apply(base,'iris','setNorm',p),/bedrijfsleider/);
+ assert.throws(()=>apply(base,'eva','setNorm',{...p,reason:''}),/reden/);
+ assert.throws(()=>apply(base,'eva','setNorm',{...p,minutes:-5}),/norm/);
+ let db=apply(base,'eva','setNorm',p);
+ assert.equal(normMinutes(db,'elise','2026-11'),90*60);
+ assert.equal(normMinutes(db,'elise','2026-12'),104*60);
+ db=apply(db,'eva','setNorm',{...p,minutes:80*60});
+ assert.equal(db.normOverrides.length,1);
+ assert.equal(normMinutes(db,'elise','2026-11'),80*60);
+});
+
+test('Maandoverzicht november: goedgekeurd, nog open, norm en verschil per persoon',()=>{
+ let db=pilotRoster();
+ db=apply(db,'iris','approve',{id:'elise-2026-11-16'});
+ const rows=monthSummary(db,'2026-11','2026-11-19');
+ const elise=rows.find(r=>r.user==='elise'),iris=rows.find(r=>r.user==='iris');
+ assert.equal(elise.approved,9*60);
+ assert.equal(elise.norm,104*60);
+ assert.equal(elise.diff,9*60-104*60);
+ assert.deepEqual(elise.open.map(o=>o.shift.id),[]);
+ assert.equal(iris.approved,9*60);
+ const sylvia=rows.find(r=>r.user==='sylvia');
+ assert.deepEqual(sylvia.open.map(o=>[o.shift.date,o.status]),[['2026-11-17','missing'],['2026-11-18','missing']]);
+ db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
+ assert.equal(monthSummary(db,'2026-11','2026-11-19').find(r=>r.user==='sylvia').open[0].status,'pending');
+});

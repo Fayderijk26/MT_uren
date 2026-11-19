@@ -91,6 +91,34 @@ export function warnings(db,s){
  if(e.pause===0&&net>330)list.push('Geen pauze bij een lange dag');
  return list;
 }
+export const net = e => minutes(e.end)-minutes(e.start)-e.pause;
+// Maandnorm: contracturen per week × 52 ÷ 12, tenzij de bedrijfsleider hem voor die maand heeft overschreven.
+export function normMinutes(db,user,month){
+ const override=db.normOverrides.find(n=>n.user===user&&n.month===month);
+ if(override)return override.minutes;
+ const person=db.people.find(p=>p.id===user);
+ return Math.round((person?.contractHours||0)*60*52/12);
+}
+// Per persoon: goedgekeurde minuten, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
+export function monthSummary(db,month,day=today()){
+ return db.people.map(person=>{
+  const shifts=db.shifts.filter(s=>s.user===person.id&&!s.deadline&&s.date.startsWith(month+'-'))
+   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
+  const status=s=>db.hours[s.id]?.status||(s.date<day?'missing':'future');
+  const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
+  const open=shifts.filter(s=>['pending','returned','missing'].includes(status(s))).map(s=>({shift:s,status:status(s)}));
+  const norm=normMinutes(db,person.id,month);
+  return {user:person.id,approved,open,norm,diff:approved-norm};
+ });
+}
+function setNorm({db,actor,p}){
+ check(actor.role==='admin','Alleen de bedrijfsleider kan de norm aanpassen.');
+ check(db.people.some(x=>x.id===p.user)&&/^\d{4}-(0[1-9]|1[0-2])$/.test(p.month),'Kies een medewerker en een maand.');
+ check(Number.isInteger(p.minutes)&&p.minutes>=0,'Vul een geldige norm in.');
+ check(p.reason?.trim(),'Geef een reden voor de aangepaste norm.');
+ db.normOverrides=db.normOverrides.filter(n=>!(n.user===p.user&&n.month===p.month));
+ db.normOverrides.push({user:p.user,month:p.month,minutes:p.minutes,reason:p.reason.trim(),by:actor.id});
+}
 function submitHours({db,actor,p,s}){
  check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
@@ -252,6 +280,7 @@ const actions={
   approve: reviewHours,
   return: reviewHours,
   reopen: reopenHours,
+  setNorm,
   leave: recordAvailability,
   weekly: recordAvailability,
   extra: recordAvailability,
