@@ -26,7 +26,8 @@ export function reviewRow(db,s){
 export function tabs(actor){
  if(actor.role==='employee')return '';
  const month=actor.role==='admin'?button('Maandoverzicht','page','month'):'';
- return '<div class="weeknav">'+button('Mijn uren','page','hours')+button('Uren goedkeuren','page','reviews')+month+'</div>';
+ const own=button('Mijn uren','page','hours'),review=button('Uren goedkeuren','page','reviews');
+ return '<div class="weeknav">'+own+review+month+'</div>';
 }
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){

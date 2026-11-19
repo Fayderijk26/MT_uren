@@ -71,7 +71,7 @@ test('Stand-by vereist een besluit en kan eenmalig worden afgehandeld',()=>{
 function seed(day=today()){
   const people=[{id:'mila',name:'Mila Vos',role:'employee'},{id:'bram',name:'Bram Meijer',role:'lead'},{id:'noor',name:'Noor Post',role:'admin'}];
   const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
-  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Speelvloer'),shift('s2','bram',0,'09:00','18:00','Dagleiding'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Dagleiding'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Speelvloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[]};
+  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Speelvloer'),shift('s2','bram',0,'09:00','18:00','Dagleiding'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Dagleiding'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Speelvloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[]};
 }
 
 import {pilotRoster} from '../v2/pilot.js';
@@ -304,4 +304,54 @@ test('Maandoverzicht november: goedgekeurd, nog open, norm en verschil per perso
  assert.deepEqual(sylvia.open.map(o=>[o.shift.date,o.status]),[['2026-11-17','missing'],['2026-11-18','missing']]);
  db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
  assert.equal(monthSummary(db,'2026-11','2026-11-19').find(r=>r.user==='sylvia').open[0].status,'pending');
+});
+
+import {closed} from '../v2/model.js';
+const at=(t,iso)=>t.mock.timers.enable({apis:['Date'],now:new Date(iso)});
+
+test('November kan pas vanaf 1 december dicht, en alleen door de bedrijfsleider',t=>{
+ at(t,'2026-11-30T20:00:00+01:00');
+ assert.throws(()=>apply(pilotRoster(),'eva','closeMonth',{month:'2026-11',confirm:true}),/1e van de volgende maand/);
+ t.mock.timers.setTime(Date.parse('2026-12-01T09:00:00+01:00'));
+ assert.throws(()=>apply(pilotRoster(),'iris','closeMonth',{month:'2026-11',confirm:true}),/bedrijfsleider/);
+});
+
+test('Eva sluit november af terwijl er nog uren open staan: de app waarschuwt en toont wie',t=>{
+ at(t,'2026-12-01T09:00:00+01:00');
+ const db=pilotRoster();
+ assert.throws(()=>apply(db,'eva','closeMonth',{month:'2026-11'}),/Elise B.*Bevestig|Bevestig/);
+ assert.throws(()=>apply(db,'eva','closeMonth',{month:'2026-11'}),/Sylvia/);
+ const after=apply(db,'eva','closeMonth',{month:'2026-11',confirm:true});
+ assert.equal(after.closedMonths[0].month,'2026-11');
+ assert.equal(after.closedMonths[0].by,'eva');
+ assert.ok(closed(after,'2026-11-17'));
+ assert.ok(!closed(after,'2026-12-01'));
+ assert.throws(()=>apply(after,'eva','closeMonth',{month:'2026-11',confirm:true}),/al afgesloten/);
+});
+
+test('Na afsluiten kan niemand meer iets met uren van november',t=>{
+ at(t,'2026-12-01T09:00:00+01:00');
+ let db=pilotRoster(); // uren van Iris op 16 nov zijn al goedgekeurd, die van Elise wachten
+ db=apply(db,'eva','closeMonth',{month:'2026-11',confirm:true});
+ const no=/afgesloten/;
+ assert.throws(()=>apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}),no);
+ assert.throws(()=>apply(db,'eva','approve',{id:'elise-2026-11-16'}),no);
+ assert.throws(()=>apply(db,'eva','return',{id:'elise-2026-11-16',reason:'x'}),no);
+ assert.throws(()=>apply(db,'eva','reopen',{id:'iris-2026-11-16',reason:'x'}),no);
+ assert.throws(()=>apply(db,'isis','unplanned',{date:'2026-11-28',start:'09:00',end:'12:00',pause:0,area:'Keuken'}),no);
+ assert.throws(()=>apply(db,'eva','setNorm',{user:'elise',month:'2026-11',minutes:60,reason:'x'}),no);
+ const eva=db.people.find(p=>p.id==='eva');
+ assert.equal(missing(db,eva,'2026-12-01').length,0);
+});
+
+test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met reden, en dat wordt vastgelegd',t=>{
+ at(t,'2026-12-01T09:00:00+01:00');
+ let db=apply(pilotRoster(),'eva','closeMonth',{month:'2026-11',confirm:true});
+ assert.throws(()=>apply(db,'iris','reopenMonth',{month:'2026-11',reason:'fout'}),/bedrijfsleider/);
+ assert.throws(()=>apply(db,'eva','reopenMonth',{month:'2026-11',reason:''}),/reden/);
+ assert.throws(()=>apply(db,'eva','reopenMonth',{month:'2026-10',reason:'fout'}),/niet afgesloten/);
+ db=apply(db,'eva','reopenMonth',{month:'2026-11',reason:'Uren Sylvia vergeten'});
+ assert.ok(!closed(db,'2026-11-17'));
+ assert.deepEqual(db.monthReopens.map(r=>[r.month,r.by,r.reason]),[['2026-11','eva','Uren Sylvia vergeten']]);
+ assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });

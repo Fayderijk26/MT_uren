@@ -10,7 +10,7 @@ const team=[
 ];
 
 export function pilotRoster(){
- const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],normOverrides:[]};
+ const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],normOverrides:[],closedMonths:[],monthReopens:[]};
  for(const {id,name,role,hours,days,weekend=[]} of team){
   db.people.push({id,name,role,contractHours:hours});
   const rule={user:id,date:firstMonday,start:'08:30',end:'18:00'};
