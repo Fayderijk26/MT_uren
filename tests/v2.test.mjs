@@ -154,3 +154,42 @@ test('Voorbeeldmigratie behoudt aangepaste diensten, uren en aanvragen',()=>{
  const snapshot=JSON.stringify(db);migratePilot(db);assert.equal(JSON.stringify(db),snapshot);
 
 });
+
+import {missing,mayRemind} from '../v2/model.js';
+function forgottenTuesday(){
+ const db=pilotRoster(),tuesday='2026-11-17';
+ db.shifts.push({id:'elise-dinsdag',user:'elise',date:tuesday,start:'08:30',end:'18:00',area:'Speelvloer'});
+ return db;
+}
+const missingOf=(db,actor,user)=>{
+ const person=db.people.find(p=>p.id===actor);
+ return missing(db,person,'2026-11-18').filter(m=>m.shift.user===user);
+};
+
+test('Elise vergeet haar uren van dinsdag: Eva en Sylvia zien het, na invullen verdwijnt het',()=>{
+ let db=forgottenTuesday();
+ for(const actor of ['elise','eva','sylvia']){
+  const rows=missingOf(db,actor,'elise');
+  assert.deepEqual(rows.map(m=>[m.shift.id,m.late]),[['elise-dinsdag',1]]);
+ }
+ assert.equal(missingOf(db,'iris','elise').length,0);
+ db=apply(db,'elise','hours',{id:'elise-dinsdag',start:'08:30',end:'17:30',pause:30});
+ for(const actor of ['elise','eva','sylvia'])assert.equal(missingOf(db,actor,'elise').length,0);
+});
+
+test('Leiding en bedrijfsleider zien ook hun eigen ontbrekende uren',()=>{
+ const db=forgottenTuesday();
+ assert.ok(missingOf(db,'sylvia','sylvia').some(m=>m.shift.date==='2026-11-17'));
+ assert.ok(missingOf(db,'eva','eva').some(m=>m.shift.date==='2026-11-17'));
+ assert.equal(missingOf(db,'elise','sylvia').length,0);
+});
+
+test('Alleen de bedrijfsleider en de dagleiding van die dag mogen herinneren',()=>{
+ const db=forgottenTuesday(),shift=db.shifts.find(s=>s.id==='elise-dinsdag');
+ const person=id=>db.people.find(p=>p.id===id);
+ assert.ok(mayRemind(db,person('eva'),shift));
+ assert.ok(mayRemind(db,person('sylvia'),shift));
+ assert.ok(!mayRemind(db,person('iris'),shift));
+ assert.ok(!mayRemind(db,person('isis'),shift));
+ assert.ok(!mayRemind(db,person('elise'),shift));
+});

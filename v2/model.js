@@ -32,6 +32,17 @@ export function remaining(s,r){
 export function affected(db,r){return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&s.date<=r.through&&freeWindows(r,s.date).some(w=>intersects(s,w)))}
 export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&s.date===day&&db.people.some(p=>p.id===s.user&&p.role==='lead')).map(s=>s.user);
 export const mayReview = (db,actor,s) => actor.role==='admin'||(actor.role==='lead'&&actor.id!==s.user&&leads(db,s.date).includes(actor.id));
+// Ontbrekende uren: een dienst vóór vandaag zonder ingevulde uren. Stand-by telt niet mee.
+// Bedrijfsleider ziet iedereen, leiding de eigen uren en de dagen waarop zij dagleiding was, medewerker de eigen uren.
+export function missing(db,actor,day=today()){
+ const sees=s=>actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
+ const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
+ return db.shifts.filter(s=>!s.deadline&&s.date<day&&!db.hours[s.id]&&sees(s))
+  .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
+}
+// Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
+export const mayRemind = (db,actor,s) => actor.id!==s.user
+ &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
 export function freeWindows(request,date){
  if(date<request.date||date>request.through)return [];
  let windows=[{start:request.start||'00:00',end:request.end||'23:59'}];

@@ -64,7 +64,7 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 **Ronde 2: ontbrekende uren zichtbaar**
 - Leiding en bedrijfsleider zien op Vandaag een kaart "Uren ontbreken (N)": per persoon de dag en hoeveel dagen te laat. Ook de eigen ontbrekende uren (nu zien leiding en bedrijfsleider die niet).
 - Op de tab Uren een lijst "Ontbreekt".
-- Bij elke persoon met ontbrekende uren een knop **"Herinner"** voor de bedrijfsleider en de dagleiding. Die opent WhatsApp met de tekst "Hoi {naam}, wil je je uren van {dag} nog invullen?". Telefoonnummers staan in de demo als nepnummers. Echte nummers komen via ronde 7 en 8, nooit in de repository.
+- Bij elke persoon met ontbrekende uren een knop **"Herinner"** voor de bedrijfsleider en de dagleiding. Die opent WhatsApp met de tekst "Hoi {naam}, wil je je uren van {dag} nog invullen?". Een persoon in `db.people` kan een veld `phone` hebben (nieuw veld). In de demo is dat leeg: "Herinner" opent WhatsApp dan met de tekst maar zonder ontvanger, en je kiest zelf het contact. Zo kan een verzonnen nummer nooit bij een echt persoon uitkomen. Echte nummers komen via ronde 7 en 8, nooit in de repository.
 - Ontbrekende uren kunnen worden ingevuld zolang de maand niet is afgesloten.
 - *Scenario:* Elise vergeet haar uren van dinsdag. Woensdag ziet zij "Nog in te vullen"; Eva (bedrijfsleider) en Sylvia (leiding die dinsdag werkte) zien "Uren ontbreken (1)". Als Elise invult, verdwijnt het bij iedereen.
 
