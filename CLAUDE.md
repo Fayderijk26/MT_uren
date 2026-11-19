@@ -11,7 +11,7 @@ Een kleine web-app waarmee medewerkers van Monkey Town Uithoorn hun uren invulle
 - `v2/pilot.js`: demodata voor de proef.
 - `tests/v2.test.mjs`: de tests van het model.
 - `index.html`, `style.css`, `v2/style.css`, `ui.js`, `assets/`: de pagina en opmaak.
-- `legacy/` (nog te maken in ronde 1): de oude versie. **Niet aanraken**, niet gebruiken en niet kopiëren.
+- `legacy/`: de oude versie (sinds ronde 1). **Niet aanraken**, niet gebruiken en niet kopiëren.
 - `excel/`: de Excel-parser voor roosters. Blijft staan, want die komt terug bij de import (ronde 6).
 
 ## Commando's
