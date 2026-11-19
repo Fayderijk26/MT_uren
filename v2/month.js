@@ -23,7 +23,7 @@ function openAction(db,actor,{shift,status}){
  const own=shift.user===actor.id;
  if(status==='pending')return mayReview(db,actor,shift)?button('Beoordelen','inspect',shift.id,true):'';
  if(own)return button(status==='returned'?'Aanpassen':'Uren invullen','entry',shift.id,true);
- return mayRemind(db,actor,shift)?remindLink(db,shift,status):'';
+ return mayRemind(db,actor,shift)?remindLink(db,[shift],status):'';
 }
 const openTitle=(db,o)=>name(db,o.shift.user)+' · '+dateLabel(o.shift.date);
 function openRow(db,actor,o){

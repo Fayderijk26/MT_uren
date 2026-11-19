@@ -1,15 +1,26 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs} from './view.js';
-export function remindLink(db,s,status='missing'){
- const person=db.people.find(p=>p.id===s.user),todo=status==='returned'?'nog aanpassen':'nog invullen';
- const text='Hoi '+person.name.split(' ')[0]+', wil je je uren van '+dateLabel(s.date)+' '+todo+'?';
+// "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
+const dayList=shifts=>shifts.map(s=>dateLabel(s.date)).join(', ').replace(/, ([^,]*)$/,' en $1');
+// WhatsApp-herinnering voor één of meer diensten van dezelfde medewerker.
+export function remindLink(db,shifts,status='missing'){
+ const person=db.people.find(p=>p.id===shifts[0].user),todo=status==='returned'?'nog aanpassen':'nog invullen';
+ const text='Hoi '+person.name.split(' ')[0]+', wil je je uren van '+dayList(shifts)+' '+todo+'?';
  const phone=(person.phone||'').replace(/\D/g,'');
  return link('Herinner','https://wa.me/'+phone+'?text='+encodeURIComponent(text));
 }
-export function missingRow(db,actor,{shift,late}){
- const when=late===0?'vandaag':late===1?'1 dag te laat':late+' dagen te laat';
- const action=mayRemind(db,actor,shift)?remindLink(db,shift):'';
- const row=line(name(db,shift.user)+' · '+dateLabel(shift.date),clock(shift)+' · '+when,action);
+// Ontbrekende uren per medewerker bij elkaar: één regel en één herinnering voor alle dagen.
+export function missingByPerson(list){
+ const groups=new Map();
+ for(const m of list)groups.set(m.shift.user,[...(groups.get(m.shift.user)||[]),m]);
+ return [...groups.values()];
+}
+export function missingRow(db,actor,group){
+ const {shift,late}=group[0],when=late===0?'vandaag':late===1?'1 dag te laat':late+' dagen te laat';
+ const remind=group.map(m=>m.shift).filter(s=>mayRemind(db,actor,s));
+ const text=group.length===1?dateLabel(shift.date)+' · '+clock(shift)+' · '+when
+  :group.map(m=>dateLabel(m.shift.date)).join(', ');
+ const row=line(name(db,shift.user),text,remind.length?remindLink(db,remind):'');
  return '<div class="compact">'+row+'</div>';
 }
 export function reviewRow(db,s){
@@ -36,7 +47,7 @@ export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
   const absent=teamMissing(db,actor);
   return tabs(db,actor,'reviews')+card('Uren goedkeuren',toReview(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
-   +card('Ontbreekt ('+absent.length+')',absent.map(m=>missingRow(db,actor,m)).join('')||'Er ontbreken geen uren.');
+   +card('Ontbreekt ('+absent.length+')',missingByPerson(absent).map(g=>missingRow(db,actor,g)).join('')||'Er ontbreken geen uren.');
  }
  const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();
  const total=rows.reduce((sum,s)=>{const e=db.hours[s.id];return sum+(e?.status==='approved'?minutes(e.end)-minutes(e.start)-e.pause:0)},0);
