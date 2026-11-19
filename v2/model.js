@@ -278,7 +278,7 @@ function resolveStandby({db,admin,s,p,op}){
   announce(db,s,'Je bent opgeroepen: '+s.start+'–'+s.end);
  }
 }
-function saveDraft({db,admin,p,s}){
+function saveDraft({db,actor,admin,p,s}){
  check(admin&&db.people.some(x=>x.id===p.user)&&p.date>=today(),'Controleer de medewerker en datum.');interval(p);
   check(isActive(db,p.user),'Deze medewerker is inactief.');
   const id=p.id||crypto.randomUUID(), prior=db.drafts.find(d=>d.id===id);
@@ -291,7 +291,7 @@ function saveDraft({db,admin,p,s}){
   check(!db.offers.some(o=>o.row.user===row.user&&o.row.date===row.date&&intersects(o.row,row)),'Er staat al een vraag open voor deze tijden.');
   db.drafts=db.drafts.filter(x=>x.id!==id);
   if(!s&&needsQuestion(db,row)&&!(prior?.accepted&&prior.start===row.start&&prior.end===row.end&&prior.user===row.user&&prior.deadline===row.deadline)){
-   db.offers.push({id:crypto.randomUUID(),row,before,turn:'employee',planning:true});
+   db.offers.push({id:crypto.randomUUID(),row,before,turn:'employee',planning:true,requestedBy:actor.id});
   }else db.drafts.push({...row,before,accepted:!!prior?.accepted});
 }
 
@@ -336,7 +336,7 @@ export function fallbackShift(db,row){
  const start=row.start>rule.start?row.start:rule.start,end=row.end<rule.end?row.end:rule.end;
  return start<end?{...row,start,end}:null;
 }
-function publishDrafts({db,admin,p}){
+function publishDrafts({db,actor,admin,p}){
  check(admin,'Alleen voor de bedrijfsleider.');
   const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
   db.published??=[];
@@ -350,7 +350,7 @@ function publishDrafts({db,admin,p}){
    if(consent){
     const fallback=old||fallbackShift(db,row);
     if(fallback&&!old){db.shifts.push(fallback);announce(db,fallback,'Ingepland: '+fallback.start+'–'+fallback.end);}
-    db.offers.push({id:crypto.randomUUID(),row,before:fallback?JSON.stringify(fallback):null,turn:'employee',fallback:fallback?{...fallback}:null,requestedBy:db.people.find(x=>x.role==='admin').id,availability:ruleFor(db,row)});
+    db.offers.push({id:crypto.randomUUID(),row,before:fallback?JSON.stringify(fallback):null,turn:'employee',fallback:fallback?{...fallback}:null,requestedBy:actor.id,availability:ruleFor(db,row)});
    }
    else{
     db.shifts=db.shifts.filter(s=>s.id!==row.id);db.shifts.push(row);
@@ -378,13 +378,13 @@ function waitingExtra(db,admin,p){
  return e;
 }
 // Inplannen: de hele opgegeven tijd of andere tijden daarbinnen; de dienst staat meteen in het rooster.
-function planExtra({db,admin,p}){
+function planExtra({db,actor,admin,p}){
  const e=waitingExtra(db,admin,p),whole=p.whole==='whole';
  const start=whole?e.start:p.start,end=whole?e.end:p.end;
  check(start>=e.start&&end<=e.end,'Kies tijden binnen de opgegeven tijd ('+e.start+'–'+e.end+').');
  const id=crypto.randomUUID();
- saveDraft({db,admin,p:{id,user:e.user,date:e.date,start,end,area:p.area}});
- publishDrafts({db,admin,p:{date:e.date,through:e.date,onlyId:id}});
+ saveDraft({db,actor,admin,p:{id,user:e.user,date:e.date,start,end,area:p.area}});
+ publishDrafts({db,actor,admin,p:{date:e.date,through:e.date,onlyId:id}});
 }
 function declineExtra({db,admin,p}){
  const e=waitingExtra(db,admin,p);
@@ -439,7 +439,12 @@ function answerOffer({db,actor,admin,p}){
    else{db.shifts=db.shifts.filter(s=>s.id!==o.row.id);db.shifts.push(o.row);}
    announce(db,o.row,'Voorstel geaccepteerd: '+o.row.start+'–'+o.row.end);
   }
-  announce(db,{date:o.row.date,user:o.turn==='admin'?o.row.user:o.requestedBy||db.people.find(x=>x.role==='admin').id},db.people.find(x=>x.id===o.row.user).name+' · '+(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end:o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end:'Voorstel afgewezen · '+o.row.start+'–'+o.row.end));
+  // Antwoord van de bedrijfsleider gaat naar de medewerker; antwoord van de medewerker naar iedere bedrijfsleider.
+  const to=o.turn==='admin'?[o.row.user]:activePeople(db).filter(x=>x.role==='admin').map(x=>x.id);
+  const answer=db.people.find(x=>x.id===o.row.user).name+' · '
+   +(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end
+   :o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end:'Voorstel afgewezen · '+o.row.start+'–'+o.row.end);
+  for(const user of to)announce(db,{date:o.row.date,user},answer);
   db.offers=db.offers.filter(x=>x.id!==o.id);
 }
 
