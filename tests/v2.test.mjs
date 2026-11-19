@@ -483,3 +483,27 @@ test('Concept uit vaste beschikbaarheid: iedereen op de vaste dagen en tijden, b
  assert.ok(db.drafts.every(d=>d.area==='Speelvloer'&&availabilityConflict(db,d)===''));
  assert.throws(()=>apply(db,'eva','planFromRules',{week:'2026-11-30'}),/niets om/);
 });
+
+test('Concept uit vaste beschikbaarheid: deels vrij krijgt de rest van de dag, vrij gevraagd blijft staan met waarschuwing',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'elise','leave',{date:'2026-12-03',start:'14:00',end:'18:00',reason:'Tandarts'});
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
+ db=apply(db,'iris','leave',{date:'2026-12-04',reason:'Verhuizen'});
+ db=apply(db,'eva','planFromRules',{week:'2026-11-30'});
+ const draft=(user,date)=>db.drafts.filter(d=>d.user===user&&d.date===date);
+ assert.deepEqual(draft('elise','2026-12-03').map(d=>d.start+'-'+d.end),['08:30-14:00'],'rest van de dag');
+ assert.equal(availabilityConflict(db,draft('elise','2026-12-03')[0]),'');
+ const iris=draft('iris','2026-12-04');
+ assert.deepEqual(iris.map(d=>d.start+'-'+d.end),['08:30-18:00'],'niet zomaar overgeslagen');
+ assert.equal(availabilityConflict(db,iris[0]),'Vrij gevraagd, nog beoordelen');
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
+ assert.equal(availabilityConflict(db,iris[0]),'Vrij (goedgekeurd)');
+});
+
+test('Iris vraagt vrij en Eva wijst af: de waarschuwing bij het concept verdwijnt',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'iris','leave',{date:'2026-12-04',reason:'Verhuizen'});
+ db=apply(db,'eva','planFromRules',{week:'2026-11-30'});
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:false,reason:'Te druk'});
+ assert.equal(availabilityConflict(db,db.drafts.find(d=>d.user==='iris'&&d.date==='2026-12-04')),'');
+});
