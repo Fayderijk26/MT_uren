@@ -187,6 +187,19 @@ function reviewHours({db,actor,op,p,s}){
   if(op==='approve')Object.assign(db.hours[s.id],{approvedBy:actor.id,approvedAt:new Date().toISOString()});
 }
 
+// Precies volgens rooster: zelfde begin- en eindtijd en geen waarschuwing. De pauze telt niet mee.
+export const asPlanned=(db,actor)=>toReview(db,actor).filter(s=>{
+ const e=db.hours[s.id];
+ return !s.unplanned&&e.start===s.start&&e.end===s.end&&!warnings(db,s).length;
+});
+// Alles goedkeuren: alleen uren die precies volgens rooster zijn; per dienst gelden dezelfde regels.
+function approveAll({db,actor,p}){
+ const ok=asPlanned(db,actor).map(s=>s.id);
+ check(Array.isArray(p.ids)&&p.ids.length&&p.ids.every(id=>ok.includes(id)),
+  'Deze uren zijn niet volgens rooster of al beoordeeld. Bekijk ze een voor een.');
+ for(const id of p.ids)reviewHours({db,actor,op:'approve',p:{id},s:db.shifts.find(s=>s.id===id)});
+}
+
 function reopenHours({db,actor,p,s}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan uren heropenen.');
  if(s)notClosed(db,s.date);
@@ -373,6 +386,7 @@ const actions={
   rejectHours: rejectUnplanned,
   hours: submitHours,
   approve: reviewHours,
+  approveAll,
   return: reviewHours,
   reopen: reopenHours,
   setNorm,
