@@ -57,9 +57,11 @@ const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)
 export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date<day
  &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
-export const toReview = (db,actor) => db.shifts.filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(byDate);
+export const toReview = (db,actor) => db.shifts
+ .filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(byDate);
 // Voorstellen waarop deze persoon moet reageren.
-export const offersFor = (db,actor) => db.offers.filter(o=>o.turn==='employee'?o.row.user===actor.id:actor.role==='admin');
+export const offersFor = (db,actor) =>
+ db.offers.filter(o=>o.turn==='employee'?o.row.user===actor.id:actor.role==='admin');
 // Bolletjes in de tabbalk: hoeveel er bij Uren en Aanvragen nog te doen is.
 export function badges(db,actor,day=today()){
  const review=actor.role==='employee'?0:toReview(db,actor).length;
