@@ -3,14 +3,14 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings} from './model.js';
+ mayReopen,warnings,closed} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
 import {hoursPage} from './hours.js';
-import {monthPage,exportData} from './month.js';
+import {monthPage,exportData,closeMonthBody} from './month.js';
 
 const key='monkeytown-pilot-nov2026', modal=document.querySelector('#dialog');
 if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(pilotRoster()));
@@ -22,7 +22,7 @@ const read=()=>{
  }
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
- data.normOverrides??=[];
+ data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
  for(const p of data.people)p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
  if(JSON.stringify(data)!==stored)localStorage.setItem(key,JSON.stringify(data));
  return data;
@@ -98,10 +98,11 @@ function show(action,id){
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();if(returnRequest){const id=returnRequest;returnRequest=null;show('decision',id)}return}
  if(action==='entry'||action==='inspect'){
-  const editable=action==='entry'&&(!entry||entry.status==='returned');
+  const editable=action==='entry'&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
   let info='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p><p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
   if(entry)info+='<p>'+h(labels[entry.status])+' · '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
+  if(closed(db,shift.date))info+='<p class="notice">Deze maand is afgesloten.</p>';
   if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
   if(action==='inspect')info+=warnings(db,shift).map(w=>'<p class="notice">Let op: '+h(w)+'</p>').join('');
   if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
@@ -117,6 +118,11 @@ function show(action,id){
   open('Norm aanpassen · '+name(db,id),form('setNorm',body,'Norm opslaan',id));return;
  }
  if(action==='export'){exportMonthFile(id);return}
+ if(action==='closeMonth'){open('Maand afsluiten',form('closeMonth',closeMonthBody(db,id),'Maand afsluiten',id));return}
+ if(action==='reopenMonth'){
+  const warn='<p class="notice">Alleen gebruiken als het echt nodig is. Dit wordt vastgelegd.</p>';
+  open('Noodknop: maand heropenen',form('reopenMonth',warn+reason(true),'Maand heropenen',id));return;
+ }
  if(action==='decision'){
   const r=db.requests.find(x=>x.id===id);snapshots={};
   let effects='';
@@ -193,8 +199,8 @@ function suggestWindow(fill){
 async function exportMonthFile(month){
  try{
   const {exportMonth}=await import('../excel/roster.js');
-  const {rows,summary}=exportData(db,month);
-  await exportMonth(rows,summary,month);
+  const {rows,summary,metadata}=exportData(db,month);
+  await exportMonth(rows,summary,month,metadata);
  }catch(e){open('Export mislukt','<p>'+h(e.message)+'</p>')}
 }
 async function save(op,p){
@@ -222,6 +228,7 @@ modal.addEventListener('submit',e=>{
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
+ if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}
  save(op,p);
 });

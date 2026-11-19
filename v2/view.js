@@ -28,7 +28,7 @@ export const select=(label,name,opts)=>'<label class="field"><span>'+label+'</sp
 export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.start||'','required')+field('Tot','end','time',s.end||'','required')+'</div>';
 export const form=(action,body,label,id='')=>'<form data-op="'+action+'" data-id="'+h(id)+'">'+body+'<p role="alert" class="err"></p><button class="primary">'+label+'</button></form>';
 export const name=(db,id)=>db.people.find(p=>p.id===id)?.name||'';
-const moment=iso=>new Intl.DateTimeFormat('nl-NL',
+export const moment=iso=>new Intl.DateTimeFormat('nl-NL',
  {timeZone:'Europe/Amsterdam',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
  .format(new Date(iso));
 // Wie keurde goed (of eerder goed) en wie heropende, als korte tekst.
