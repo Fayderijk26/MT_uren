@@ -3,12 +3,18 @@ export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
 export const duration=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u '+Math.abs(m)%60+'m';
-export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',returned:'Aanpassen gevraagd'};
+export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',
+ returned:'Aanpassen gevraagd',missing:'Ontbreekt'};
+// Eén set statuslabels: dezelfde tekst en kleur overal in de app.
+const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off'};
+export const chip=(status,text=labels[status])=>'<span class="chip chip-'+tones[status]+'">'+h(text)+'</span>';
 export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')+'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
 export const link=(label,href)=>
  '<a class="secondary" href="'+h(href)+'" target="_blank" rel="noopener">'+h(label)+'</a>';
 export const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
-export const line=(title,description,actions='')=>'<article class="vrow"><div><b>'+h(title)+'</b><small>'+h(description)+'</small></div><div class="vactions">'+actions+'</div></article>';
+export const line=(title,description,actions='',status='')=>'<article class="vrow"><div><b>'+h(title)+'</b><small>'
+ +h(description)+'</small>'+(status?'<div class="chips">'+status+'</div>':'')
+ +'</div><div class="vactions">'+actions+'</div></article>';
 export function field(label,name,type,value='',extra=''){
  if(type==='time'){
   const options=['<option value="">Kies tijd</option>'];
@@ -50,3 +56,4 @@ export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar'):dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag vrij');
 export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.status];
+export const requestChip=r=>chip(r.status,requestStatus(r));

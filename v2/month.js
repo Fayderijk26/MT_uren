@@ -1,8 +1,7 @@
 import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview} from './model.js';
-import {button,card,line,field,name,dateLabel,moment,h} from './view.js';
+import {button,card,line,field,name,dateLabel,moment,h,chip,clock} from './view.js';
 import {tabs,remindLink} from './hours.js';
 
-const openLabels={missing:'Ontbreekt',pending:'Wacht op beoordeling',returned:'Aanpassen gevraagd'};
 
 // Korte duur voor in de tabel: 104u, 138u40, −95u.
 const short=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u'+(Math.abs(m)%60?String(Math.abs(m)%60).padStart(2,'0'):'');
@@ -26,8 +25,9 @@ function openAction(db,actor,{shift,status}){
  if(own)return button(status==='returned'?'Aanpassen':'Uren invullen','entry',shift.id,true);
  return mayRemind(db,actor,shift)?remindLink(db,shift,status):'';
 }
+const openTitle=(db,o)=>name(db,o.shift.user)+' · '+dateLabel(o.shift.date);
 function openRow(db,actor,o){
- const row=line(name(db,o.shift.user)+' · '+dateLabel(o.shift.date),openLabels[o.status],openAction(db,actor,o));
+ const row=line(openTitle(db,o),clock(o.shift),openAction(db,actor,o),chip(o.status));
  return '<div class="compact">'+row+'</div>';
 }
 
@@ -47,7 +47,7 @@ function statusCard(db,actor,month){
 export function closeMonthBody(db,month){
  const open=monthSummary(db,month).flatMap(r=>r.open);
  if(!open.length)return '<p>Alle uren zijn goedgekeurd.</p>';
- const rows=open.map(o=>line(name(db,o.shift.user)+' · '+dateLabel(o.shift.date),openLabels[o.status])).join('');
+ const rows=open.map(o=>line(openTitle(db,o),clock(o.shift),'',chip(o.status))).join('');
  const text=open.length===1?'er staat nog 1 dienst open. Die komt'
   :'er staan nog '+open.length+' diensten open. Die komen';
  return '<p class="notice">Let op: '+text+' niet in de export.</p>'+rows

@@ -1,5 +1,5 @@
 import {mayRemind,missing,minutes,today,warnings,toReview} from './model.js';
-import {button,card,line,link,clock,labels,name,dateLabel,field,sortDate,approvalText} from './view.js';
+import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip} from './view.js';
 export const teamMissing=(db,actor)=>missing(db,actor).filter(m=>m.shift.user!==actor.id);
 export function remindLink(db,s,status='missing'){
  const person=db.people.find(p=>p.id===s.user),todo=status==='returned'?'nog aanpassen':'nog invullen';
@@ -28,6 +28,10 @@ export function tabs(actor){
  const own=button('Mijn uren','page','hours'),review=button('Uren goedkeuren','page','reviews');
  return '<div class="weeknav">'+own+review+month+'</div>';
 }
+function ownHoursRow(db,s){
+ const status=db.hours[s.id]?.status||(s.date<today()?'missing':'');
+ return line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
+}
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
   const absent=teamMissing(db,actor);
@@ -36,5 +40,5 @@ export function hoursPage(db,actor,view){
  }
  const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();
  const total=rows.reduce((sum,s)=>{const e=db.hours[s.id];return sum+(e?.status==='approved'?minutes(e.end)-minutes(e.start)-e.pause:0)},0);
- return tabs(actor)+card('Gewerkte uren',button('Ongeplande dienst invullen','unplanned')+field('Maand','month','month',view.month,'data-view="month"')+'<p>'+Math.floor(total/60)+'u '+total%60+'m goedgekeurd</p>'+rows.map(s=>line(dateLabel(s.date),clock(db.hours[s.id]||s)+' · '+(labels[db.hours[s.id]?.status]||'Nog invullen'),button('Bekijken','entry',s.id))).join(''));
+ return tabs(actor)+card('Gewerkte uren',button('Ongeplande dienst invullen','unplanned')+field('Maand','month','month',view.month,'data-view="month"')+'<p>'+Math.floor(total/60)+'u '+total%60+'m goedgekeurd</p>'+rows.map(s=>ownHoursRow(db,s)).join(''));
 }
