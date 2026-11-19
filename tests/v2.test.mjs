@@ -507,3 +507,24 @@ test('Iris vraagt vrij en Eva wijst af: de waarschuwing bij het concept verdwijn
  db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:false,reason:'Te druk'});
  assert.equal(availabilityConflict(db,db.drafts.find(d=>d.user==='iris'&&d.date==='2026-12-04')),'');
 });
+
+test('Eva voegt een nieuwe medewerker toe en past daarna de contracturen en het telefoonnummer aan',()=>{
+ let db=apply(pilotRoster(),'eva','savePerson',{name:' Noor V ',role:'employee',contractHours:'24',phone:'0600000000'});
+ const noor=db.people.at(-1);
+ assert.deepEqual([noor.name,noor.role,noor.contractHours,noor.phone,noor.active],['Noor V','employee',24,'0600000000',true]);
+ db=apply(db,'eva','savePerson',{id:noor.id,name:'Noor V',role:'lead',contractHours:'32',phone:''});
+ assert.deepEqual(['role','contractHours','phone'].map(k=>db.people.find(p=>p.id===noor.id)[k]),['lead',32,'']);
+ assert.equal(db.people.length,pilotRoster().people.length+1);
+});
+
+test('Medewerkers beheren: alleen de bedrijfsleider, met een geldige naam, uren en rol',()=>{
+ const db=pilotRoster(),person={name:'Noor V',role:'employee',contractHours:'24',phone:''};
+ assert.throws(()=>apply(db,'sylvia','savePerson',person),/bedrijfsleider/);
+ assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'  '}),/naam/);
+ assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'iris z'}),/bestaat al/);
+ assert.throws(()=>apply(db,'eva','savePerson',{...person,contractHours:'41'}),/contracturen/);
+ assert.throws(()=>apply(db,'eva','savePerson',{...person,role:'boss'}),/rol/);
+ assert.throws(()=>apply(db,'eva','savePerson',{...person,phone:'bel me'}),/telefoonnummer/);
+ assert.throws(()=>apply(db,'eva','savePerson',{id:'eva',name:'Eva G.',role:'lead',contractHours:'36',phone:''}),
+  /minstens één bedrijfsleider/);
+});

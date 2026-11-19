@@ -4,9 +4,10 @@ import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
  mayReopen,warnings,closed,minutes,badges,asPlanned} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line}
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames}
  from './view.js';
 import {todayPage} from './today.js';
+import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
 import {hoursPage} from './hours.js';
@@ -33,7 +34,7 @@ const view={page:'today',day:today(),month:today().slice(0,7)};
 // Tabbalk: onderaan op een telefoon, bovenaan op een groot scherm. Bolletjes tellen wat nog te doen is.
 const tabs={today:['Vandaag','LayoutDashboard'],mine:['Rooster','CalendarDays'],team:['Rooster','CalendarDays'],
  hours:['Uren','Clock3'],availability:['Aanvragen','Palmtree']};
-const tabOf={reviews:'hours',month:'hours',requests:'availability'};
+const tabOf={reviews:'hours',month:'hours',requests:'availability',people:'team'};
 function tabBar(actor,nav,page){
  const count=badges(db,actor),current=tabOf[page]||page;
  const counted=k=>badge(k==='hours'?count.hours:k==='availability'?count.requests:0);
@@ -45,8 +46,16 @@ function render(){
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
- const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role!=='employee'?weekPage(db,view,actor.role!=='admin'):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):page==='month'&&actor.role==='admin'?monthPage(db,actor,view):availabilityPage(db,actor,view);
- document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+tabBar(actor,nav,page)+'</nav><main id="main" class="shell vmain">'+body+'</main>';
+ const admin=actor.role==='admin',staff=actor.role!=='employee';
+ const body=page==='mine'?calendarPage(db,actor,view)
+  :page==='team'&&staff?rosterTabs(actor,'team')+weekPage(db,view,!admin)
+  :page==='people'&&admin?peoplePage(db,actor)
+  :page==='today'?todayPage(db,actor)
+  :['mine','team'].includes(page)?rosterPage(db,actor,view)
+  :['hours','reviews'].includes(page)?hoursPage(db,actor,view)
+  :page==='month'&&admin?monthPage(db,actor,view)
+  :availabilityPage(db,actor,view);
+ document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+roleNames[p.role]+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+tabBar(actor,nav,page)+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
  modal.innerHTML='<div class="modalhead"><h2>'+h(title)+'</h2>'+button('Sluiten','close')+'</div>'+content;
@@ -170,6 +179,17 @@ function show(action,id){
   if(action==='leave')body+='<p id="late" role="status"></p>';
   body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')+(action==='extra'?'':reason());
   open({leave:'Vrij vragen',weekly:'Vaste beschikbaarheid wijzigen',extra:'Extra beschikbaar'}[action],form(action,body,'Versturen'));toggleTimes();lateNotice();return;
+ }
+ if(action==='person'){
+  // Medewerker toevoegen (zonder id) of wijzigen.
+  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contractHours:'',phone:''};
+  const body=field('Naam','name','text',p.name,'required')
+   +select('Rol','role',Object.entries(roleNames))
+   +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
+   +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
+   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>';
+  open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id));
+  modal.querySelector('[name=role]').value=p.role;return;
  }
  if(action==='planFromRules'){
   open('Concept uit vaste beschikbaarheid','<p>Iedereen wordt als concept ingepland op de vaste dagen en tijden van '
