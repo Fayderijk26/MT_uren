@@ -31,3 +31,10 @@ test('Gekopieerd concept dat botst met een vrije dag toont dat eronder; knop Vor
  assert.match(html,/Concept<\/small><small class="conflict">Let op: Vrij gevraagd<\/small>/);
  assert.doesNotMatch(weekPage(db,{day:'2026-12-03'},true),/copyWeek/,'niet in het alleen-lezen rooster');
 });
+
+test('Teamrooster heeft voor de bedrijfsleider de knop Concept uit vaste beschikbaarheid',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const html=weekPage(pilotRoster(),{day:'2026-12-03'});
+ assert.match(html,/data-act="planFromRules" data-id="2026-11-30">Concept uit vaste beschikbaarheid</);
+ assert.doesNotMatch(weekPage(pilotRoster(),{day:'2026-12-03'},true),/planFromRules/);
+});

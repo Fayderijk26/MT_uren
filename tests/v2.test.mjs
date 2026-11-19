@@ -493,3 +493,17 @@ test('Kopiëren slaat dagen in het verleden en bestaande diensten over',t=>{
  assert.ok(db.drafts.every(d=>d.date>='2026-11-25'),'geen concepten vóór vandaag');
  for(const d of db.drafts)assert.ok(!db.shifts.some(s=>s.user===d.user&&s.date===d.date),'geen dubbele dienst');
 });
+
+test('Concept uit vaste beschikbaarheid: iedereen op de vaste dagen en tijden, behalve als ze vrij zijn',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'elise','leave',{date:'2026-12-03',reason:'Bruiloft'});
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
+ assert.throws(()=>apply(db,'sylvia','planFromRules',{week:'2026-11-30'}));
+ db=apply(db,'eva','planFromRules',{week:'2026-11-30'});
+ const days=user=>db.drafts.filter(d=>d.user===user).map(d=>d.date.slice(8)+' '+d.start+'-'+d.end);
+ assert.deepEqual(days('eva'),['01 08:30-18:00','03 08:30-18:00'],'Eva staat vast op di en do');
+ assert.ok(days('iris').includes('03 10:00-18:00'),'Iris op donderdag vanaf 10:00');
+ assert.deepEqual(days('elise').filter(d=>d.startsWith('03')),[],'Elise is vrij op 3 dec');
+ assert.ok(db.drafts.every(d=>d.area==='Speelvloer'&&availabilityConflict(db,d)===''));
+ assert.throws(()=>apply(db,'eva','planFromRules',{week:'2026-11-30'}),/niets om/);
+});
