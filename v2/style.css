@@ -38,3 +38,4 @@ a.secondary{text-decoration:none}
 .slot small.conflict,.dayslots small.conflict{color:#8f2a1f;font-weight:700;white-space:normal}
 .weektools{display:flex;gap:8px;flex-wrap:wrap}
 .hint{font-size:13px;color:#5d6d62;margin:4px 0 10px}
+#dialog h3{margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
