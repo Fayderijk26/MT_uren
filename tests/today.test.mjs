@@ -32,3 +32,16 @@ test('Vandaag is voor iedere rol gelijk opgebouwd: eerst mijn dienst, dan wat ik
    if(at(before)>0)assert.ok(at(before)<at('Wie werkt er vandaag?'),id+': '+before+' staat boven Wie werkt er vandaag?');
  }
 });
+
+test('Isis ziet op Vandaag dat haar vrije dag is afgewezen, met reden en een knop Gezien',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',reason:'Kerst'});
+ const id=db.requests.at(-1).id,isis=db=>db.people.find(p=>p.id==='isis');
+ assert.match(todayPage(db,isis(db)),/chip-wait">Wacht op akkoord/);
+ db=apply(db,'eva','decide',{id,accept:false,reason:'Te druk met kerst'});
+ const html=todayPage(db,isis(db));
+ assert.match(html,/Je aanvraag is afgewezen · Reden: Te druk met kerst/);
+ assert.match(html,/chip-off">Afgewezen/);
+ assert.match(html,new RegExp('data-act="seen" data-id="'+id+'">Gezien<'));
+ assert.doesNotMatch(todayPage(apply(db,'isis','seen',{id}),isis(db)),/Je aanvraag is/);
+});

@@ -386,3 +386,15 @@ test('Dienst van vandaag: tot de eindtijd bezig, daarna ontbreken de uren, ook v
  assert.ok(ownTodo(db,eva).includes(shift));
  assert.ok(teamMissing(db,eva).some(m=>m.shift.id==='iris-2026-11-19'),'Iris werkte tot 18:00');
 });
+
+test('Isis vraagt vrij en Eva wijst af: Isis ziet het besluit tot ze op Gezien tikt',()=>{
+ let db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',reason:'Kerst'});
+ const id=db.requests.at(-1).id,request=db=>db.requests.find(r=>r.id===id);
+ assert.throws(()=>apply(db,'isis','seen',{id}),/nog geen besluit/);
+ db=apply(db,'eva','decide',{id,accept:false,reason:'Te druk met kerst'});
+ assert.equal(request(db).seen,undefined);
+ assert.throws(()=>apply(db,'eva','seen',{id}),/eigen aanvraag/);
+ db=apply(db,'isis','seen',{id});
+ assert.equal(request(db).seen,true);
+ assert.equal(request(db).status,'rejected');
+});
