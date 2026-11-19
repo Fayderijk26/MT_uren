@@ -304,13 +304,6 @@ function addDrafts(db,admin,rows,empty){
  check(fresh.length,empty);
  for(const row of fresh)db.drafts.push({...row,id:crypto.randomUUID(),before:null,accepted:false});
 }
-// Vorige week kopiëren: elke dienst wordt een concept een week later.
-function copyWeek({db,admin,p}){
- const week=monday(p.week);
- const rows=db.shifts.filter(s=>s.date>=add(week,-7)&&s.date<week&&!s.deadline&&!s.unplanned)
-  .map(s=>({user:s.user,date:add(s.date,7),start:s.start,end:s.end,area:s.area}));
- addDrafts(db,admin,rows,'Er is niets om te kopiëren: deze dagen zijn al ingepland of voorbij.');
-}
 // Concept uit vaste beschikbaarheid: iedereen op zijn beschikbare dagen en tijden, niet als hij vrij is.
 function planFromRules({db,admin,p}){
  const week=monday(p.week),rows=[];
@@ -319,7 +312,8 @@ function planFromRules({db,admin,p}){
   const row={user:person.id,date,start:rule?.start,end:rule?.end,area:'Speelvloer'};
   if(rule&&!rule.off&&!freeRequests(db,row).length)rows.push(row);
  }
- addDrafts(db,admin,rows,'Er is niets om in te plannen: iedereen staat al ingepland, is vrij of de dagen zijn voorbij.');
+ addDrafts(db,admin,rows,'Er is niets om in te plannen: iedereen staat al ingepland, is vrij of de dagen zijn voorbij.'
+ );
 }
 
 export function fallbackShift(db,row){
@@ -423,7 +417,6 @@ const actions={
   hours: submitHours,
   approve: reviewHours,
   approveAll,
-  copyWeek,
   planFromRules,
   return: reviewHours,
   reopen: reopenHours,

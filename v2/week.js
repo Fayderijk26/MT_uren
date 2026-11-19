@@ -26,15 +26,18 @@ function cell(db,person,date,readonly){
  if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
  return blocks.join('');
 }
-// Concepten maken voor een week die nog niet voorbij is: vorige week kopiëren of uit vaste beschikbaarheid.
-const copy=(v,readonly)=>readonly||add(monday(v.day),6)<today()?''
- :button('Vorige week kopiëren','copyWeek',monday(v.day))
- +button('Concept uit vaste beschikbaarheid','planFromRules',monday(v.day));
+// Concept maken uit vaste beschikbaarheid, voor een week die nog niet voorbij is.
+const plan=(v,readonly)=>readonly||add(monday(v.day),6)<today()?''
+ :button('Concept uit vaste beschikbaarheid','planFromRules',monday(v.day));
+// Bovenbalk zoals bij Mijn rooster: links de knoppen, rechts ‹ Vandaag ›.
+const arrow=(day,text,sign)=>'<button class="secondary" data-act="week" data-id="'+day+'" aria-label="'+text+'">'+sign+'</button>';
+const toolbar=(left,prev,next,unit)=>'<div class="calendar-toolbar"><div class="weektools">'+left+'</div>'
+ +'<div class="calendar-navigation" role="group" aria-label="Periode kiezen">'+arrow(prev,'Vorige '+unit,'‹')
+ +button('Vandaag','week',today())+arrow(next,'Volgende '+unit,'›')+'</div></div>';
 // Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
 function dayView(db,v,readonly,pending){
  const day=v.day;
- const nav='<div class="weeknav">'+button('Vorige dag','week',add(day,-1))+button('Vandaag','week',today())
-  +button('Volgende dag','week',add(day,1))+copy(v,readonly)+'</div>';
+ const nav=toolbar(plan(v,readonly),add(day,-1),add(day,1),'dag');
  const rows=db.people.map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
   +'</div></div>').join('');
  const publish=!readonly&&pending(day)?button('Dag publiceren','pubDay',day,true):'';
@@ -44,8 +47,8 @@ function dayView(db,v,readonly,pending){
 function weekView(db,v,readonly,pending){
  const first=monday(v.day),days=v.single?[v.day]:Array.from({length:7},(_,i)=>add(first,i));
  const current=d=>d===today()?'current':'';
- let html='<div class="weeknav">'+button('Vorige week','week',add(first,-7))+button('Vandaag','week',today())
-  +button('Volgende week','week',add(first,7))+(v.single?button('Hele week','week',first):'')+copy(v,readonly)+'</div>';
+ const left=(v.single?button('Hele week','week',first):'')+plan(v,readonly);
+ let html=toolbar(left,add(first,-7),add(first,7),'week');
  html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
   +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
  html+=db.people.map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
