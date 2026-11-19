@@ -32,7 +32,7 @@ export function todayPage(db,actor){
  if(standby.length)html+=card('Stand-by',standby.map(s=>line(actor.role==='admin'?name(db,s.user)+' wacht op bericht':dateLabel(s.date),'Bericht vóór '+s.deadline+(actor.role==='admin'?'':' · Dan hoor je of je werkt.'),actor.role==='admin'?button('Stand-by afhandelen','standby',s.id):'')).join(''));
  if(actor.role!=='employee')html+=absentCard(db,actor);
  if(actor.role!=='employee'){
-  const queue=reviews(db,actor).filter(s=>actor.role==='lead'||s.date===day&&!leads(db,day).length);
+  const queue=reviews(db,actor);
   html+=card('Uren goedkeuren',queue.slice(0,3).map(s=>reviewRow(db,s)).join('')+(queue.length?'':'<p>Geen uren te beoordelen op dit overzicht.</p>')+button('Alle uren bekijken','page','reviews'));
  }
  if(actor.role==='admin'){
