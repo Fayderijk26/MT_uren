@@ -3,7 +3,7 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes} from './model.js';
+ mayReopen,warnings,closed,minutes,badges} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText,duration}
  from './view.js';
 import {todayPage} from './today.js';
@@ -30,14 +30,24 @@ const read=()=>{
 let returnRequest=null;
 let db=read(), actorId=sessionStorage.getItem('pilot-person')||'eva', snapshots={};
 const view={page:'today',day:today(),month:today().slice(0,7)};
-const pages={today:'Vandaag',mine:'Mijn rooster',hours:'Gewerkte uren',availability:'Vrij & beschikbaarheid',team:'Teamrooster',reviews:'Uren goedkeuren',requests:'Aanvragen beoordelen'};
+// Tabbalk: onderaan op een telefoon, bovenaan op een groot scherm. Bolletjes tellen wat nog te doen is.
+const tabs={today:['Vandaag','LayoutDashboard'],mine:['Rooster','CalendarDays'],team:['Rooster','CalendarDays'],
+ hours:['Uren','Clock3'],availability:['Aanvragen','Palmtree']};
+const tabOf={reviews:'hours',month:'hours',requests:'availability'};
+function tabBar(actor,nav,page){
+ const count=badges(db,actor),current=tabOf[page]||page;
+ const badge=k=>{const n=k==='hours'?count.hours:k==='availability'?count.requests:0;
+  return n?'<span class="badge" aria-label="'+n+' te doen">'+n+'</span>':''};
+ return nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(current===k?'page':'false')+'">'
+  +'<span class="tabicon">'+ic(tabs[k][1],18)+badge(k)+'</span>'+tabs[k][0]+'</button>').join('');
+}
 function render(){
  db=read();
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
  const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role!=='employee'?weekPage(db,view,actor.role!=='admin'):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):page==='month'&&actor.role==='admin'?monthPage(db,actor,view):availabilityPage(db,actor,view);
- document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+ic(({today:'home',team:'calendar',mine:'calendar',hours:'clock',availability:'calendar'})[k],16)+(k==='hours'&&actor.role!=='employee'?'Uren':pages[k])+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
+ document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+tabBar(actor,nav,page)+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
  modal.innerHTML='<div class="modalhead"><h2>'+h(title)+'</h2>'+button('Sluiten','close')+'</div>'+content;

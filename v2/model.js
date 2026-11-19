@@ -52,6 +52,20 @@ export function missing(db,actor,day=today()){
  return db.shifts.filter(s=>!s.deadline&&s.date<day&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
 }
+const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
+// Eigen uren die nog moeten: vóór vandaag, maand open, nog niet ingevuld of aanpassen gevraagd.
+export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date<day
+ &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
+// Uren die deze persoon nu kan beoordelen.
+export const toReview = (db,actor) => db.shifts.filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(byDate);
+// Voorstellen waarop deze persoon moet reageren.
+export const offersFor = (db,actor) => db.offers.filter(o=>o.turn==='employee'?o.row.user===actor.id:actor.role==='admin');
+// Bolletjes in de tabbalk: hoeveel er bij Uren en Aanvragen nog te doen is.
+export function badges(db,actor,day=today()){
+ const review=actor.role==='employee'?0:toReview(db,actor).length;
+ const requests=actor.role==='admin'?db.requests.filter(r=>r.status==='pending').length:0;
+ return {hours:ownTodo(db,actor,day).length+review,requests:offersFor(db,actor).length+requests};
+}
 // Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
 export const mayRemind = (db,actor,s) => actor.id!==s.user
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));

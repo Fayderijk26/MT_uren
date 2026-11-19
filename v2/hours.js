@@ -1,6 +1,5 @@
-import {mayReview,mayRemind,missing,minutes,today,warnings} from './model.js';
+import {mayRemind,missing,minutes,today,warnings,toReview} from './model.js';
 import {button,card,line,link,clock,labels,name,dateLabel,field,sortDate,approvalText} from './view.js';
-export function reviews(db,actor){return db.shifts.filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(sortDate)}
 export const teamMissing=(db,actor)=>missing(db,actor).filter(m=>m.shift.user!==actor.id);
 export function remindLink(db,s,status='missing'){
  const person=db.people.find(p=>p.id===s.user),todo=status==='returned'?'nog aanpassen':'nog invullen';
@@ -32,7 +31,7 @@ export function tabs(actor){
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
   const absent=teamMissing(db,actor);
-  return tabs(actor)+card('Uren goedkeuren',reviews(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
+  return tabs(actor)+card('Uren goedkeuren',toReview(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
    +card('Ontbreekt ('+absent.length+')',absent.map(m=>missingRow(db,actor,m)).join('')||'Er ontbreken geen uren.');
  }
  const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();
