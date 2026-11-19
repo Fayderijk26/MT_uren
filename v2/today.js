@@ -6,8 +6,8 @@ export function ownRow(db,s){
  const e=db.hours[s.id],todo=!e||e.status==='returned';
  const label=!e?'Uren invullen':e.status==='returned'?'Aanpassen':'Bekijken';
  const status=e?.status||(ended(s)?'missing':busy(s)?'busy':'');
- return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(label,'entry',s.id,todo),
-  status?chip(status):'');
+ return '<div class="compact">'+line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),
+  button(label,'entry',s.id,todo),status?chip(status):'')+'</div>';
 }
 // Aanvraag om te beoordelen: wie, wanneer, hoe lang en hoe ver van tevoren.
 export function requestRow(db,r){

@@ -326,7 +326,14 @@ function addDrafts(db,admin,rows,empty){
 }
 // Concept uit vaste beschikbaarheid: iedereen op zijn beschikbare dagen en tijden. Goedgekeurd vrij gaat eraf
 // (deels vrij: de rest van de dag blijft). Vrij dat nog wacht blijft staan; het concept toont dan een waarschuwing.
+// Concept uit vaste beschikbaarheid alleen voor een week die nog moet beginnen en waarvan nog niets gepubliceerd is.
+// Daarna zijn het losse aanpassingen.
+export function mayPlanWeek(db,day){
+ const week=monday(day);
+ return week>today()&&!db.published.some(d=>d>=week&&d<=add(week,6));
+}
 function planFromRules({db,admin,p}){
+ check(mayPlanWeek(db,p.week),'Deze week is al begonnen of gepubliceerd. Pas diensten los aan.');
  const week=monday(p.week),rows=[];
  for(const person of activePeople(db))for(let i=0;i<7;i++){
   const date=add(week,i),rule=ruleFor(db,{user:person.id,date});

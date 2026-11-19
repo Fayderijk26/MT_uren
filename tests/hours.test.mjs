@@ -23,3 +23,10 @@ test('Bij Uren goedkeuren staat bovenaan de knop Alles goedkeuren met het aantal
  const html=hoursPage(db,eva,{page:'reviews',month:'2026-11'}).split('<h2>Uren goedkeuren')[1];
  assert.match(html,/^<\/h2>[\s\S]*?data-act="approveAll"[^>]*>Alles goedkeuren \(1\)</);
 });
+
+test('Bij Gewerkte uren staat de knop Bekijken naast de dienst, zoals Herinner',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const db=pilotRoster(),iris=db.people.find(p=>p.id==='iris');
+ const html=hoursPage(db,iris,{page:'hours',month:'2026-11'});
+ assert.match(html,/<div class="compact"><article class="vrow"><div><b>ma 16 nov[\s\S]*?data-act="entry"/);
+});
