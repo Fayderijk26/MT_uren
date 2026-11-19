@@ -3,8 +3,8 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText}
+ mayReopen,warnings,closed,minutes} from './model.js';
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText,duration}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -49,10 +49,16 @@ function show(action,id){
  db=read();
  const shift=db.shifts.find(s=>s.id===id), entry=db.hours[id], draft=db.drafts.find(s=>s.id===id);
  if(action==='pause'){
-  const input=modal.querySelector('[name=pause]');
-  if(id==='other'){input.focus();input.select()}else input.value=id;
-  modal.querySelectorAll('[data-act=pause]').forEach(b=>b.classList.toggle('primary',b.dataset.id===id));
-  return;
+  const other=modal.querySelector('[name=pauseOther]');
+  modal.querySelector('#pauseother').hidden=id!=='other';
+  modal.querySelector('[name=pause]').value=id==='other'?other.value:id;
+  if(id==='other')other.focus();
+  modal.querySelectorAll('[data-act=pause]').forEach(b=>{b.classList.toggle('primary',b.dataset.id===id);
+   b.classList.toggle('secondary',b.dataset.id!==id)});
+  showNet();return;
+ }
+ if(action==='askChange'||action==='askReject'){
+  const box=modal.querySelector('#'+action);box.hidden=false;box.querySelector('[name=reason]').focus();return;
  }
  if(action==='calendarMode'){view.calendarMode=id;render();return}
  if(action==='calendarMove'){
@@ -106,12 +112,12 @@ function show(action,id){
   if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
   if(action==='inspect')info+=warnings(db,shift).map(w=>'<p class="notice">Let op: '+h(w)+'</p>').join('');
   if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
-  if(action==='inspect'&&entry?.status==='pending')info+=button('Goedkeuren','approve',id,true)+form('return',reason(true),'Aanpassen vragen',id)+(shift.unplanned?form('rejectHours',reason(true),'Ongeplande dienst afwijzen',id):'');
+  if(action==='inspect'&&entry?.status==='pending')info+=reviewChoices(shift);
   const actor=db.people.find(p=>p.id===actorId);
   if(mayReopen(db,actor,shift))info+=form('reopen',reason(true),'Heropenen',id);
-  open(editable?'Uren invullen':'Gewerkte uren',info);return;
+  open(editable?'Uren invullen':'Gewerkte uren',info);showNet();return;
  }
- if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));return}
+ if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));showNet();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
  if(action==='norm'){
   const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);
@@ -196,6 +202,23 @@ function suggestWindow(fill){
  modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag ('+TIMES.start+'–'+TIMES.end+')':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
  if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?TIMES.end:rule.end;}
 }
+// Beoordelen: eerst alleen de keuzes; het verplichte veld Reden verschijnt pas na 'Aanpassen vragen' of 'Afwijzen'.
+function reviewChoices(shift){
+ const id=shift.id,reject=shift.unplanned;
+ const choices=button('Goedkeuren','approve',id,true)+button('Aanpassen vragen','askChange',id)
+  +(reject?button('Afwijzen','askReject',id):'');
+ const ask='<div id="askChange" hidden>'+form('return',reason(true),'Versturen',id)+'</div>';
+ const no=reject?'<div id="askReject" hidden>'+form('rejectHours',reason(true),'Afwijzen versturen',id)+'</div>':'';
+ return '<div class="vactions">'+choices+'</div>'+ask+no;
+}
+// Regel met netto uren onder de pauze, bijgewerkt bij elke keuze.
+function showNet(){
+ const el=modal.querySelector('#net');if(!el)return;
+ const f=el.closest('form'),[start,end,pause]=['start','end','pause'].map(n=>f.elements[n].value);
+ if(!start||!end||pause===''||end<=start){el.textContent='Netto: kies begin, eind en pauze.';return}
+ const net=minutes(end)-minutes(start)-Number(pause);
+ el.textContent=net>0?'Netto '+duration(net):'Controleer de pauze.';
+}
 async function exportMonthFile(month){
  try{
   const {exportMonth}=await import('../excel/roster.js');
@@ -220,9 +243,15 @@ document.addEventListener('change',e=>{
  const el=e.target;if(el.id==='profile'){actorId=el.value;sessionStorage.setItem('pilot-person',actorId);view.page='today';render()}
  if(el.dataset.view&&el.value){view[el.dataset.view]=el.value;render()}
  if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
+ if(['start','end'].includes(el.name))showNet();
+});
+document.addEventListener('input',e=>{
+ if(e.target.name!=='pauseOther')return;
+ modal.querySelector('[name=pause]').value=e.target.value;showNet();
 });
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
+ delete p.pauseOther;
  if(op==='draft')p.user=f.elements.user.value;
  if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
