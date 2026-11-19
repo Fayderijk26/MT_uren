@@ -358,7 +358,7 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
 
-import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState,asPlanned,toReview} from '../v2/model.js';
+import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState,asPlanned,toReview,availabilityConflict} from '../v2/model.js';
 test('Bolletjes: wat iemand nog moet doen bij Mijn uren, Uren goedkeuren en Aanvragen',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=pilotRoster();
@@ -468,4 +468,28 @@ test('Alles goedkeuren: Eva keurt in één keer alle uren goed die precies volge
  assert.equal(db.hours['elise-2026-11-16'].approvedBy,'eva');
  assert.deepEqual(toReview(db,eva).map(s=>s.id),['sylvia-2026-11-17','sylvia-2026-11-18']);
  assert.deepEqual(ids(db),[]);
+});
+
+test('Eva kopieert vorige week als concept: een botsing met de beschikbaarheid staat erbij',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'elise','leave',{date:'2026-12-03',reason:'Bruiloft'});
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
+ assert.throws(()=>apply(db,'iris','copyWeek',{week:'2026-11-30'}));
+ db=apply(db,'eva','copyWeek',{week:'2026-11-30'});
+ const week=db.drafts.filter(d=>d.date>='2026-11-30'&&d.date<='2026-12-06');
+ const before=db.shifts.filter(s=>s.date>='2026-11-23'&&s.date<='2026-11-29');
+ assert.equal(week.length,before.length,'elke dienst van vorige week wordt een concept');
+ assert.ok(week.some(d=>d.user==='iris'&&d.date==='2026-12-03'&&d.start==='10:00'));
+ const elise=week.find(d=>d.user==='elise'&&d.date==='2026-12-03');
+ assert.equal(availabilityConflict(db,elise),'Vrij gevraagd');
+ assert.equal(availabilityConflict(db,week.find(d=>d.user==='iris')),'');
+ assert.equal(db.shifts.filter(s=>s.date>='2026-11-30').length,0,'nog niets gepubliceerd');
+ assert.throws(()=>apply(db,'eva','copyWeek',{week:'2026-11-30'}),/niets om te kopiëren/);
+});
+
+test('Kopiëren slaat dagen in het verleden en bestaande diensten over',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-25T12:00:00+01:00')});
+ const db=apply(pilotRoster(),'eva','copyWeek',{week:'2026-11-23'});
+ assert.ok(db.drafts.every(d=>d.date>='2026-11-25'),'geen concepten vóór vandaag');
+ for(const d of db.drafts)assert.ok(!db.shifts.some(s=>s.user===d.user&&s.date===d.date),'geen dubbele dienst');
 });

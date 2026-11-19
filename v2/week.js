@@ -1,4 +1,4 @@
-import {today,add,monday,ruleFor,freeWindows,TIMES} from './model.js';
+import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict} from './model.js';
 import {h,card,button,clock,dateLabel} from './view.js';
 
 export function availability(db,user,date){
@@ -17,17 +17,22 @@ function cell(db,person,date,readonly){
  const offers=db.offers.filter(o=>matches(o.row));
  const blocks=shifts.map(s=>{
   const text=s.deadline?'<b class="sb">SB</b><small>Bericht vóór '+h(s.deadline)+'</small>':'<b>'+clock(s)+'</b>';
-  return '<button class="slot" data-act="shiftDetails" data-id="'+h(s.id)+'">'+text+'<small>'+(drafts.includes(s)?'Concept':'Ingepland')+'</small></button>';
+  const conflict=drafts.includes(s)?availabilityConflict(db,s):'';
+  const warn=conflict?'<small class="conflict">Let op: '+h(conflict)+'</small>':'';
+  return '<button class="slot" data-act="shiftDetails" data-id="'+h(s.id)+'">'+text+'<small>'
+   +(drafts.includes(s)?'Concept':'Ingepland')+'</small>'+warn+'</button>';
  });
  for(const o of offers)blocks.push('<button class="asked" '+(o.turn==='admin'&&!readonly?'data-act="proposal" data-id="'+h(o.id)+'"':'disabled')+'>'+(o.fallback?'Gevraagd: '+clock(o.row):clock(o.row))+'<small>'+h(availability(db,person.id,date))+'</small><small>Wacht op '+(o.turn==='admin'?'bedrijfsleider':h(person.name.split(' ')[0]))+'</small></button>');
  if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
  return blocks.join('');
 }
+// Vorige week kopiëren als concept, voor een week die nog niet voorbij is.
+const copy=(v,readonly)=>readonly||add(monday(v.day),6)<today()?'':button('Vorige week kopiëren','copyWeek',monday(v.day));
 // Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
 function dayView(db,v,readonly,pending){
  const day=v.day;
  const nav='<div class="weeknav">'+button('Vorige dag','week',add(day,-1))+button('Vandaag','week',today())
-  +button('Volgende dag','week',add(day,1))+'</div>';
+  +button('Volgende dag','week',add(day,1))+copy(v,readonly)+'</div>';
  const rows=db.people.map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
   +'</div></div>').join('');
  const publish=!readonly&&pending(day)?button('Dag publiceren','pubDay',day,true):'';
@@ -38,7 +43,7 @@ function weekView(db,v,readonly,pending){
  const first=monday(v.day),days=v.single?[v.day]:Array.from({length:7},(_,i)=>add(first,i));
  const current=d=>d===today()?'current':'';
  let html='<div class="weeknav">'+button('Vorige week','week',add(first,-7))+button('Vandaag','week',today())
-  +button('Volgende week','week',add(first,7))+(v.single?button('Hele week','week',first):'')+'</div>';
+  +button('Volgende week','week',add(first,7))+(v.single?button('Hele week','week',first):'')+copy(v,readonly)+'</div>';
  html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
   +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
  html+=db.people.map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'

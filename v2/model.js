@@ -286,6 +286,27 @@ function saveDraft({db,admin,p,s}){
   }else db.drafts.push({...row,before,accepted:!!prior?.accepted});
 }
 
+// Botst een (concept)dienst met de opgegeven beschikbaarheid? Lege tekst als alles klopt.
+export function availabilityConflict(db,row){
+ if(freeRequests(db,row).length)return 'Vrij gevraagd';
+ const rule=ruleFor(db,row);
+ if(!rule)return 'Beschikbaarheid onbekend';
+ if(rule.off)return 'Niet beschikbaar';
+ return available(db,row)?'':'Beschikbaar '+rule.start+'–'+rule.end;
+}
+// Vorige week kopiëren: elke dienst wordt een concept een week later, behalve in het verleden
+// of als die medewerker dan al een dienst, concept of open vraag heeft.
+function copyWeek({db,admin,p}){
+ check(admin,'Alleen de bedrijfsleider maakt het rooster.');
+ const week=monday(p.week),taken=row=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
+  .some(t=>t.user===row.user&&t.date===row.date&&intersects(t,row));
+ const copies=db.shifts.filter(s=>s.date>=add(week,-7)&&s.date<week&&!s.deadline&&!s.unplanned)
+  .map(s=>({id:crypto.randomUUID(),user:s.user,date:add(s.date,7),start:s.start,end:s.end,area:s.area}))
+  .filter(row=>row.date>=today()&&!taken(row));
+ check(copies.length,'Er is niets om te kopiëren: deze dagen zijn al ingepland of voorbij.');
+ for(const row of copies)db.drafts.push({...row,before:null,accepted:false});
+}
+
 export function fallbackShift(db,row){
  const rule=ruleFor(db,row);
  if(!rule||rule.off||row.deadline||freeRequests(db,row).length)return null;
@@ -387,6 +408,7 @@ const actions={
   hours: submitHours,
   approve: reviewHours,
   approveAll,
+  copyWeek,
   return: reviewHours,
   reopen: reopenHours,
   setNorm,
