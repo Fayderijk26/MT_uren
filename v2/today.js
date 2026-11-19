@@ -1,4 +1,4 @@
-import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended} from './model.js';
+import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h} from './view.js';
 import {reviewRow,missingRow} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken.
@@ -17,6 +17,9 @@ export function requestRow(db,r){
  return line(name(db,r.user),what+' · '+ahead+' dagen van tevoren aangevraagd'+late,
   button('Beoordelen','decision',r.id));
 }
+// Extra beschikbaarheid op een gepubliceerde dag: de bedrijfsleider kiest inplannen of niet.
+export const extraRow=(db,e)=>line(name(db,e.user)+' · '+dateLabel(e.date),clock(e),
+ button('Wat wil je hiermee doen?','extraDecision',e.user+'|'+e.date,true));
 // Voorstel voor het rooster dat iemand moet beantwoorden.
 export const offerRow=(db,o)=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
  o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row),
@@ -62,6 +65,8 @@ function todoCards(db,actor,mine,day){
  const requests=admin?db.requests.filter(r=>r.status==='pending'):[];
  if(requests.length)html+=card('Aanvragen beoordelen',requests.slice(0,3).map(r=>requestRow(db,r)).join('')
   +button('Alle aanvragen bekijken','page','requests'));
+ const extras=admin?extraToDecide(db):[];
+ if(extras.length)html+=card('Extra beschikbaarheid doorgegeven',extras.map(e=>extraRow(db,e)).join(''));
  const pending=mine.filter(s=>db.hours[s.id]?.status==='pending');
  const pendingRow=s=>line(dateLabel(s.date),clock(db.hours[s.id]));
  if(pending.length)html+=card('Wacht op beoordeling',pending.map(pendingRow).join(''));

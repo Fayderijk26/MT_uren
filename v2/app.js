@@ -171,6 +171,16 @@ function show(action,id){
   body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')+(action==='extra'?'':reason());
   open({leave:'Vrij vragen',weekly:'Vaste beschikbaarheid wijzigen',extra:'Extra beschikbaar'}[action],form(action,body,'Versturen'));toggleTimes();lateNotice();return;
  }
+ if(action==='extraDecision'){
+  // Inplannen (hele opgegeven tijd of andere tijden daarbinnen) of niet inplannen.
+  const [user,date]=id.split('|'),e=db.extra.find(x=>x.user===user&&x.date===date);
+  const info='<p><b>'+h(name(db,user))+'</b><br>'+h(dateLabel(date)+' · beschikbaar '+clock(e))+'</p>';
+  const choice=select('Tijden','whole',[['whole','Hele opgegeven tijd ('+clock(e)+')'],['other','Andere tijden']]);
+  const body=choice+'<div id="extratimes" hidden>'+times(e)+'</div>'
+   +field('Werkplek','area','text','Speelvloer','required');
+  const choices=form('planExtra',body,'Inplannen',id)+form('declineExtra','','Niet inplannen',id,false);
+  open('Extra beschikbaarheid',info+'<div class="decide">'+choices+'</div>');return;
+ }
  if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
@@ -260,6 +270,10 @@ document.addEventListener('change',e=>{
  if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
  if(['start','end'].includes(el.name))showNet();
 });
+// Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
+document.addEventListener('change',e=>{
+ if(e.target.name==='whole')modal.querySelector('#extratimes').hidden=e.target.value==='whole';
+});
 document.addEventListener('input',e=>{
  if(e.target.name!=='pauseOther')return;
  modal.querySelector('[name=pause]').value=e.target.value;showNet();
@@ -271,6 +285,7 @@ modal.addEventListener('submit',e=>{
  if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
+ if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

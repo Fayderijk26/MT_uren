@@ -30,3 +30,14 @@ test('Onder Mijn aanvragen staan alleen open aanvragen en aanvragen waarvan de d
  t.mock.timers.setTime(Date.parse('2026-12-25T12:00:00+01:00'));
  assert.doesNotMatch(html(),/do 24 dec/);
 });
+
+test('Extra beschikbaar op een gepubliceerde dag: Eva ziet het bij Beoordelen, Isis ziet het label',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20',start:'12:00',end:'18:00'});
+ const review=availabilityPage(db,person(db,'eva'),{page:'requests'});
+ assert.match(review,/Isis N · vr 20 nov[\s\S]*12:00–18:00[\s\S]*data-act="extraDecision" data-id="isis\|2026-11-20"/);
+ const isis=()=>availabilityPage(db,person(db,'isis'),{page:'availability'});
+ assert.match(isis(),/chip-wait">Wacht op bedrijfsleider/);
+ db=apply(db,'eva','declineExtra',{user:'isis',date:'2026-11-20'});
+ assert.match(isis(),/chip-off">Niet ingepland/);
+});

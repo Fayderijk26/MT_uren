@@ -71,7 +71,7 @@ export const teamMissing=(db,actor,day=today())=>missing(db,actor,day).filter(m=
 export function badges(db,actor,day=today()){
  const mine=ownTodo(db,actor,day).length;
  const review=actor.role==='employee'?0:toReview(db,actor).length+teamMissing(db,actor,day).length;
- const requests=actor.role==='admin'?db.requests.filter(r=>r.status==='pending').length:0;
+ const requests=actor.role==='admin'?db.requests.filter(r=>r.status==='pending').length+extraToDecide(db).length:0;
  return {mine,review,hours:mine+review,requests:offersFor(db,actor).length+requests};
 }
 // Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
@@ -294,9 +294,44 @@ function publishDrafts({db,admin,p}){
     if(fallback&&!old){db.shifts.push(fallback);announce(db,fallback,'Ingepland: '+fallback.start+'–'+fallback.end);}
     db.offers.push({id:crypto.randomUUID(),row,before:fallback?JSON.stringify(fallback):null,turn:'employee',fallback:fallback?{...fallback}:null,requestedBy:db.people.find(x=>x.role==='admin').id,availability:ruleFor(db,row)});
    }
-   else{db.shifts=db.shifts.filter(s=>s.id!==row.id);db.shifts.push(row);announce(db,row,'Ingepland: '+row.start+'–'+row.end);}
+   else{
+    db.shifts=db.shifts.filter(s=>s.id!==row.id);db.shifts.push(row);
+    const extra=!old&&db.extra.some(e=>e.user===row.user&&e.date===row.date);
+    announce(db,row,(extra?'Extra ingepland: ':'Ingepland: ')+row.start+'–'+row.end
+     +(extra?', naar aanleiding van je opgegeven beschikbaarheid.':''));
+   }
   }
   db.drafts=db.drafts.filter(d=>!chosen.some(c=>c.id===d.id));
+}
+
+// Extra beschikbaarheid op een dag waarvan het rooster al gepubliceerd is: de bedrijfsleider beslist.
+// planned = er staat een dienst in die tijd; declined = niet ingepland; waiting = wacht op de bedrijfsleider.
+export function extraState(db,e){
+ if(db.shifts.some(s=>s.user===e.user&&s.date===e.date&&!s.deadline&&intersects(s,e)))return 'planned';
+ if(e.declined)return 'declined';
+ return e.date>=today()&&published(db,e.date)?'waiting':'';
+}
+export const extraToDecide=db=>db.extra.filter(e=>extraState(db,e)==='waiting');
+function waitingExtra(db,admin,p){
+ const e=db.extra.find(x=>x.user===p.user&&x.date===p.date);
+ check(admin&&e,'Alleen de bedrijfsleider beslist over extra beschikbaarheid.');
+ check(published(db,e.date),'Het rooster van deze dag is nog niet gepubliceerd. Plan de dienst in het rooster.');
+ check(extraState(db,e)==='waiting','Deze extra beschikbaarheid is al afgehandeld.');
+ return e;
+}
+// Inplannen: de hele opgegeven tijd of andere tijden daarbinnen; de dienst staat meteen in het rooster.
+function planExtra({db,admin,p}){
+ const e=waitingExtra(db,admin,p),whole=p.whole==='whole';
+ const start=whole?e.start:p.start,end=whole?e.end:p.end;
+ check(start>=e.start&&end<=e.end,'Kies tijden binnen de opgegeven tijd ('+e.start+'–'+e.end+').');
+ const id=crypto.randomUUID();
+ saveDraft({db,admin,p:{id,user:e.user,date:e.date,start,end,area:p.area}});
+ publishDrafts({db,admin,p:{date:e.date,through:e.date,onlyId:id}});
+}
+function declineExtra({db,admin,p}){
+ const e=waitingExtra(db,admin,p);
+ e.declined=true;
+ announce(db,e,'Je bent niet extra ingepland. Bedankt voor het doorgeven.');
 }
 
 function answerOffer({db,actor,admin,p}){
@@ -349,7 +384,9 @@ const actions={
   draft: saveDraft,
   publish: publishDrafts,
   offer: answerOffer,
-  seen: markSeen
+  seen: markSeen,
+  planExtra,
+  declineExtra
 };
 export function apply(previous,actorId,op,p){
  const db=structuredClone(previous);

@@ -356,7 +356,7 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
 
-import {badges,busy,ownTodo,teamMissing} from '../v2/model.js';
+import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState} from '../v2/model.js';
 test('Bolletjes: wat iemand nog moet doen bij Mijn uren, Uren goedkeuren en Aanvragen',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=pilotRoster();
@@ -397,4 +397,47 @@ test('Isis vraagt vrij en Eva wijst af: Isis ziet het besluit tot ze op Gezien t
  db=apply(db,'isis','seen',{id});
  assert.equal(request(db).seen,true);
  assert.equal(request(db).status,'rejected');
+});
+
+test('Isis is extra beschikbaar op een gepubliceerde dag: Eva ziet het en plant haar de hele opgegeven tijd in',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20',start:'12:00',end:'18:00'});
+ const eva=db.people.find(p=>p.id==='eva'),extra=db=>db.extra.find(e=>e.user==='isis'&&e.date==='2026-11-20');
+ assert.deepEqual(extraToDecide(db).map(e=>e.user),['isis']);
+ assert.equal(extraState(db,extra(db)),'waiting');
+ assert.equal(badges(db,eva).requests,1);
+ assert.throws(()=>apply(db,'isis','planExtra',{user:'isis',date:'2026-11-20',whole:'whole',area:'Speelvloer'}));
+ assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',start:'10:00',end:'18:00',area:'Speelvloer'}),
+  /binnen de opgegeven tijd/);
+ db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'whole',area:'Speelvloer'});
+ const shift=db.shifts.find(s=>s.user==='isis'&&s.date==='2026-11-20');
+ assert.deepEqual([shift.start,shift.end,shift.area],['12:00','18:00','Speelvloer']);
+ assert.equal(db.drafts.length,0,'meteen in het rooster, geen concept');
+ assert.match(db.updates.find(n=>n.user==='isis'&&n.date==='2026-11-20').text,
+  /Extra ingepland: 12:00–18:00, naar aanleiding van je opgegeven beschikbaarheid/);
+ assert.deepEqual(extraToDecide(db),[]);
+ assert.equal(extraState(db,extra(db)),'planned');
+});
+
+test('Eva plant Isis niet extra in: Isis krijgt bericht en de melding verdwijnt bij Eva',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20'});
+ db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'other',start:'13:00',end:'17:00',area:'Bar'});
+ assert.deepEqual(db.shifts.filter(s=>s.user==='isis'&&s.date==='2026-11-20').map(s=>s.start+'-'+s.end),['13:00-17:00']);
+ db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20'});
+ db=apply(db,'eva','declineExtra',{user:'isis',date:'2026-11-20'});
+ assert.deepEqual(extraToDecide(db),[]);
+ assert.equal(extraState(db,db.extra.at(-1)),'declined');
+ assert.match(db.updates.at(-1).text,/Je bent niet extra ingepland/);
+});
+
+test('Extra beschikbaar op een dag zonder gepubliceerd rooster: geen melding, wel de tekst bij publiceren',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'isis','extra',{date:'2026-12-10'});
+ assert.deepEqual(extraToDecide(db),[]);
+ assert.equal(extraState(db,db.extra.at(-1)),'');
+ assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-12-10',whole:'whole',area:'Bar'}),/nog niet gepubliceerd/);
+ db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'18:00',area:'Bar'});
+ db=apply(db,'eva','publish',{date:'2026-12-10',through:'2026-12-10'});
+ assert.match(db.updates.at(-1).text,/Extra ingepland: 08:30–18:00/);
 });
