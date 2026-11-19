@@ -11,7 +11,8 @@ function remindLink(db,s){
 export function missingRow(db,actor,{shift,late}){
  const when=late===1?'1 dag te laat':late+' dagen te laat';
  const action=mayRemind(db,actor,shift)?remindLink(db,shift):'';
- return line(name(db,shift.user)+' · '+dateLabel(shift.date),clock(shift)+' · '+when,action);
+ const row=line(name(db,shift.user)+' · '+dateLabel(shift.date),clock(shift)+' · '+when,action);
+ return '<div class="compact">'+row+'</div>';
 }
 export function reviewRow(db,s){
  const e=db.hours[s.id],net=minutes(e.end)-minutes(e.start)-e.pause;
