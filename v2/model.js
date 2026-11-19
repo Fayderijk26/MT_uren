@@ -51,6 +51,14 @@ export const ended=(s,day=today())=>s.date<day||s.date===day&&day===today()&&s.e
 export const busy=s=>s.date===today()&&s.start<=now()&&!ended(s);
 // Wie inactief is, staat niet meer in het rooster en krijgt geen herinneringen; oude uren blijven bewaard.
 export const activePeople=db=>db.people.filter(p=>p.active!==false);
+// Werkplekken: vloer en/of keuken per medewerker. Zonder keuze de eerste (vloer als iemand beide doet).
+export const AREAS=['Vloer','Keuken'];
+export const areasOf=(db,user)=>db.people.find(p=>p.id===user)?.areas||[];
+function areaFor(db,user,area){
+ const own=areasOf(db,user),pick=area||own[0];
+ check(own.includes(pick),'Kies een werkplek waar deze medewerker kan werken.');
+ return pick;
+}
 const isActive=(db,user)=>db.people.find(p=>p.id===user)?.active!==false;
 // Diensten, concepten en open vragen van iemand vanaf vandaag.
 export const futureShifts=(db,user)=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
@@ -105,7 +113,8 @@ function submitUnplanned({db,actor,p}){
  interval(p);check(p.date<=today()&&/^\d{4}-\d{2}-\d{2}$/.test(p.date),'Kies een gewerkte dag.');notClosed(db,p.date);
   const id=crypto.randomUUID();
   check(!db.shifts.some(t=>t.user===actor.id&&t.date===p.date&&intersects(t,p)),'Deze uren overlappen een andere dienst.');
-  db.shifts.push({id,date:p.date,user:actor.id,start:p.start,end:p.end,area:p.area,unplanned:true});
+  const area=areaFor(db,actor.id,p.area);
+  db.shifts.push({id,date:p.date,user:actor.id,start:p.start,end:p.end,area,unplanned:true});
   submitHours({db,actor,p:{...p,id},s:db.shifts.at(-1)});
 }
 
@@ -285,7 +294,7 @@ function saveDraft({db,actor,admin,p,s}){
   check(!s||(!db.hours[id]&&s.date===p.date&&s.user===p.user),'Deze dienst kan niet worden gewijzigd.');
   const other=db.shifts.filter(t=>!db.drafts.some(d=>d.id===t.id)).concat(db.drafts);
   check(!other.some(t=>t.id!==id&&t.user===p.user&&t.date===p.date&&intersects(t,p)),'Deze dienst overlapt een andere dienst.');
-  const row={id,user:p.user,date:p.date,start:p.start,end:p.end,area:p.area};
+  const row={id,user:p.user,date:p.date,start:p.start,end:p.end,area:areaFor(db,p.user,p.area)};
   if(p.deadline)row.deadline=p.deadline;
   const before=prior?prior.before:s?JSON.stringify(s):null;
   check(!db.offers.some(o=>o.row.user===row.user&&o.row.date===row.date&&intersects(o.row,row)),'Er staat al een vraag open voor deze tijden.');
@@ -322,7 +331,7 @@ function planFromRules({db,admin,p}){
  for(const person of activePeople(db))for(let i=0;i<7;i++){
   const date=add(week,i),rule=ruleFor(db,{user:person.id,date});
   if(!rule||rule.off)continue;
-  const row={user:person.id,date,start:rule.start,end:rule.end,area:'Speelvloer'};
+  const row={user:person.id,date,start:rule.start,end:rule.end,area:areaFor(db,person.id)};
   const free=freeRequests(db,row).filter(r=>r.status==='approved').flatMap(r=>freeWindows(r,date));
   rows.push(...free.reduce((parts,w)=>parts.flatMap(part=>remaining(part,w)),[row]));
  }
@@ -403,9 +412,11 @@ function savePerson({db,admin,p}){
  check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
  check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
  check(/^[+0-9 ()-]{0,20}$/.test(phone),'Vul een geldig telefoonnummer in (alleen cijfers).');
+ const areas=AREAS.filter(a=>[].concat(p.areas||[]).includes(a));
+ check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
- const fields={name,role:p.role,contractHours:hours,phone};
+ const fields={name,role:p.role,contractHours:hours,phone,areas};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 

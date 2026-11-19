@@ -3,9 +3,9 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames}
- from './view.js';
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS} from './model.js';
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
+ areaChoice} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -26,7 +26,12 @@ const read=()=>{
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
-  p.active??=true;p.phone??='';
+  p.active??=true;p.phone??='';p.areas??=pilotRoster().people.find(x=>x.id===p.id)?.areas||['Vloer'];
+ }
+ // Oude werkplekken (Speelvloer, Dagleiding, ...): de werkplek van die medewerker, Keuken blijft Keuken als dat kan.
+ for(const s of [...data.shifts,...data.drafts,...data.offers.map(o=>o.row)]){
+  const own=data.people.find(p=>p.id===s.user)?.areas||['Vloer'];
+  if(!own.includes(s.area))s.area=own[0];
  }
  if(JSON.stringify(data)!==stored)localStorage.setItem(key,JSON.stringify(data));
  return data;
@@ -148,7 +153,7 @@ function show(action,id){
   if(mayReopen(db,actor,shift))info+=form('reopen',reason(true),'Heropenen',id);
   open(editable?'Uren invullen':'Gewerkte uren',info);showNet();return;
  }
- if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));showNet();return}
+ if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+areaChoice(db,actorId),'Uren indienen'));showNet();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='norm'){
@@ -201,13 +206,14 @@ function show(action,id){
    +select('Rol','role',Object.entries(roleNames))
    +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
    +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
-   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>';
+   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
+   +areaBoxes(p.areas||['Vloer']);
   open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id)+(id?inactiveBox(p):''));
   modal.querySelector('[name=role]').value=p.role;return;
  }
  if(action==='planFromRules'){
   open('Concept uit vaste beschikbaarheid','<p>Iedereen wordt als concept ingepland op de vaste dagen en tijden van '
-   +h(dateLabel(id)+' – '+dateLabel(add(id,6)))+'. Werkplek: Speelvloer.</p>'
+   +h(dateLabel(id)+' – '+dateLabel(add(id,6)))+'. Werkplek: vloer, of keuken voor wie alleen in de keuken werkt.</p>'
    +'<p>Vrije dagen, voorbije dagen en dagen waarop iemand al staat, worden overgeslagen. Je publiceert zelf.</p>'
    +form('planFromRules','','Concept maken',id));return;
  }
@@ -225,15 +231,14 @@ function show(action,id){
   const [user,date]=id.split('|'),e=db.extra.find(x=>x.user===user&&x.date===date);
   const info='<p><b>'+h(name(db,user))+'</b><br>'+h(dateLabel(date)+' · beschikbaar '+clock(e))+'</p>';
   const choice=select('Tijden','whole',[['whole','Hele opgegeven tijd ('+clock(e)+')'],['other','Andere tijden']]);
-  const body=choice+'<div id="extratimes" hidden>'+times(e)+'</div>'
-   +field('Werkplek','area','text','Speelvloer','required');
+  const body=choice+'<div id="extratimes" hidden>'+times(e)+'</div>'+areaChoice(db,user);
   const choices=form('planExtra',body,'Inplannen',id)+form('declineExtra','','Niet inplannen',id,false);
   open('Extra beschikbaarheid',info+'<div class="decide">'+choices+'</div>');return;
  }
- if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
+ if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;pickArea();suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
-  open('Conceptdienst',form('draft',select('Medewerker','user',activePeople(db).map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:TIMES.start,end:TIMES.end})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
+  open('Conceptdienst',form('draft',select('Medewerker','user',activePeople(db).map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:TIMES.start,end:TIMES.end})+'<div id="areapick">'+areaChoice(db,s?.user||activePeople(db)[0]?.id,s?.area)+'</div>'+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
   if(s)modal.querySelector('[name=user]').value=s.user;
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
@@ -267,6 +272,14 @@ function toggleTimes(){
   const el=modal.querySelector('[name='+n+']');el.closest('label').hidden=!show;el.required=show;el.disabled=!show;
  }
 }
+// Medewerker in het conceptformulier gewijzigd: de werkplekknoppen passen zich aan.
+function pickArea(){
+ const box=modal.querySelector('#areapick');
+ if(box)box.innerHTML=areaChoice(db,modal.querySelector('[name=user]').value);
+}
+// Vinkjes voor de werkplekken van een medewerker.
+const areaBoxes=own=>'<fieldset class="field areas"><span>Werkplek</span>'+AREAS.map(a=>'<label><input type="checkbox"'
+ +' name="areas" value="'+a+'"'+(own.includes(a)?' checked':'')+'> '+a+'</label>').join('')+'</fieldset>';
 function suggestWindow(fill){
  const f=modal.querySelector('form'), user=f.elements.user.value,date=f.elements.date.value;
  const rule=ruleFor(db,{user,date});
@@ -316,7 +329,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(
 document.addEventListener('change',e=>{
  const el=e.target;if(el.id==='profile'){actorId=el.value;sessionStorage.setItem('pilot-person',actorId);view.page='today';render()}
  if(el.dataset.view&&el.value){view[el.dataset.view]=el.value;render()}
- if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user')suggestWindow(true);if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
+ if(el.name==='date')lateNotice();if(el.name==='mode')toggleTimes();if(el.name==='user'){pickArea();suggestWindow(true)}if(['start','end'].includes(el.name)&&modal.querySelector('#window'))suggestWindow(false);
  if(['start','end'].includes(el.name))showNet();
 });
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
@@ -337,6 +350,7 @@ modal.addEventListener('submit',e=>{
  if(op==='approveAll')p.ids=p.ids.split(',');
  if(op==='planFromRules')p.week=p.id;
  if(op==='setActive')p.active=p.active==='true';
+ if(op==='savePerson')p.areas=new FormData(f).getAll('areas');
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}

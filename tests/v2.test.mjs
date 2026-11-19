@@ -69,9 +69,10 @@ test('Stand-by vereist een besluit en kan eenmalig worden afgehandeld',()=>{
 });
 
 function seed(day=today()){
-  const people=[{id:'mila',name:'Mila Vos',role:'employee'},{id:'bram',name:'Bram Meijer',role:'lead'},{id:'noor',name:'Noor Post',role:'admin'}];
+  const people=[{id:'mila',name:'Mila Vos',role:'employee',areas:['Vloer','Keuken']},{id:'bram',name:'Bram Meijer',role:'lead',areas:['Vloer']},
+   {id:'noor',name:'Noor Post',role:'admin',areas:['Vloer','Keuken']}];
   const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
-  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Speelvloer'),shift('s2','bram',0,'09:00','18:00','Dagleiding'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Dagleiding'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Speelvloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[]};
+  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Vloer'),shift('s2','bram',0,'09:00','18:00','Vloer'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Vloer'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Vloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[]};
 }
 
 import {pilotRoster} from '../v2/pilot.js';
@@ -115,7 +116,7 @@ import {migratePilot} from '../v2/pilot.js';
 
 test('Beschikbaar vanaf 10:00: basisdienst staat vast, eerder beginnen vraagt toestemming',()=>{
  let db=pilotRoster();const date='2026-12-04';
- db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:'18:00',area:'Speelvloer'});
+ db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:'18:00'});
  db=apply(db,'eva','publish',{date,through:date,confirm:true});
  const s=db.shifts.find(s=>s.user==='sylvia'&&s.date===date),o=db.offers.at(-1);
  assert.equal(s.start,'10:00');assert.equal(o.row.start,'08:30');assert.equal(o.availability.start,'10:00');
@@ -132,7 +133,7 @@ test('Buiten beschikbaarheid zonder overlap, onbekend en vrij geeft geen basisdi
   let db=pilotRoster();const date='2026-12-04';
   if(scenario==='unknown')db.rules=db.rules.filter(r=>r.user!=='sylvia');
   if(scenario==='free')db.requests.push({id:'vrij',kind:'leave',user:'sylvia',date,through:date,status:'approved'});
-  db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:scenario==='outside'?'09:30':'18:00',area:'Speelvloer'});
+  db=apply(db,'eva','draft',{user:'sylvia',date,start:'08:30',end:scenario==='outside'?'09:30':'18:00'});
   db=apply(db,'eva','publish',{date,through:date,confirm:true});
   assert.equal(db.shifts.some(s=>s.date===date&&s.user==='sylvia'),false);
   assert.equal(db.offers.length,1);
@@ -140,9 +141,9 @@ test('Buiten beschikbaarheid zonder overlap, onbekend en vrij geeft geen basisdi
 });
 test('Dagleiding kan niet plannen of publiceren',()=>{
  let db=pilotRoster(),date='2026-12-04';
- db=apply(db,'eva','draft',{user:'sylvia',date,start:'10:00',end:'18:00',area:'Speelvloer'});
+ db=apply(db,'eva','draft',{user:'sylvia',date,start:'10:00',end:'18:00'});
 
- assert.throws(()=>apply(db,'iris','draft',{user:'sylvia',date,start:'10:00',end:'18:00',area:'Speelvloer'}));
+ assert.throws(()=>apply(db,'iris','draft',{user:'sylvia',date,start:'10:00',end:'18:00'}));
  assert.throws(()=>apply(db,'iris','publish',{date,through:date}));
 });
 test('Voorbeeldmigratie behoudt aangepaste diensten, uren en aanvragen',()=>{
@@ -161,7 +162,7 @@ test('Voorbeeldmigratie behoudt aangepaste diensten, uren en aanvragen',()=>{
 import {missing,mayRemind} from '../v2/model.js';
 function forgottenTuesday(){
  const db=pilotRoster(),tuesday='2026-11-17';
- db.shifts.push({id:'elise-dinsdag',user:'elise',date:tuesday,start:'08:30',end:'18:00',area:'Speelvloer'});
+ db.shifts.push({id:'elise-dinsdag',user:'elise',date:tuesday,start:'08:30',end:'18:00'});
  return db;
 }
 const missingOf=(db,actor,user)=>{
@@ -200,7 +201,7 @@ test('Alleen de bedrijfsleider en de dagleiding van die dag mogen herinneren',()
 // Maandag 16 november: Iris (leiding) en Elise werken; Sylvia krijgt in deze tests ook een dienst.
 function twoLeadsMonday(){
  const db=pilotRoster(),monday='2026-11-16';
- db.shifts.push({id:'sylvia-maandag',user:'sylvia',date:monday,start:'08:30',end:'18:00',area:'Dagleiding'});
+ db.shifts.push({id:'sylvia-maandag',user:'sylvia',date:monday,start:'08:30',end:'18:00',area:'Vloer'});
  db.hours['iris-'+monday]={start:'08:30',end:'18:00',pause:30,status:'pending'};
  return db;
 }
@@ -254,7 +255,7 @@ test('Om 12:50 mag 13:00 al (15 minuten speling), 13:15 nog niet',t=>{
 
 test('Ongeplande dienst van vandaag mag niet in de toekomst eindigen; een eerdere dag wel tot elke tijd',t=>{
  clockAt(t,'13:00');
- const shift={area:'Speelvloer',pause:0};
+ const shift={pause:0};
  assert.throws(()=>apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-19',start:'09:00',end:'16:00'}),/dan nu/);
  assert.ok(apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-19',start:'09:00',end:'13:00'}));
  assert.ok(apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-18',start:'09:00',end:'22:00'}));
@@ -408,12 +409,12 @@ test('Isis is extra beschikbaar op een gepubliceerde dag: Eva ziet het en plant 
  assert.deepEqual(extraToDecide(db).map(e=>e.user),['isis']);
  assert.equal(extraState(db,extra(db)),'waiting');
  assert.equal(badges(db,eva).requests,1);
- assert.throws(()=>apply(db,'isis','planExtra',{user:'isis',date:'2026-11-20',whole:'whole',area:'Speelvloer'}));
- assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',start:'10:00',end:'18:00',area:'Speelvloer'}),
+ assert.throws(()=>apply(db,'isis','planExtra',{user:'isis',date:'2026-11-20',whole:'whole'}));
+ assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',start:'10:00',end:'18:00'}),
   /binnen de opgegeven tijd/);
- db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'whole',area:'Speelvloer'});
+ db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'whole'});
  const shift=db.shifts.find(s=>s.user==='isis'&&s.date==='2026-11-20');
- assert.deepEqual([shift.start,shift.end,shift.area],['12:00','18:00','Speelvloer']);
+ assert.deepEqual([shift.start,shift.end,shift.area],['12:00','18:00','Vloer']);
  assert.equal(db.drafts.length,0,'meteen in het rooster, geen concept');
  assert.match(db.updates.find(n=>n.user==='isis'&&n.date==='2026-11-20').text,
   /Extra ingepland: 12:00–18:00, naar aanleiding van je opgegeven beschikbaarheid/);
@@ -424,7 +425,7 @@ test('Isis is extra beschikbaar op een gepubliceerde dag: Eva ziet het en plant 
 test('Eva plant Isis niet extra in: Isis krijgt bericht en de melding verdwijnt bij Eva',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20'});
- db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'other',start:'13:00',end:'17:00',area:'Bar'});
+ db=apply(db,'eva','planExtra',{user:'isis',date:'2026-11-20',whole:'other',start:'13:00',end:'17:00'});
  assert.deepEqual(db.shifts.filter(s=>s.user==='isis'&&s.date==='2026-11-20').map(s=>s.start+'-'+s.end),['13:00-17:00']);
  db=apply(pilotRoster(),'isis','extra',{date:'2026-11-20'});
  db=apply(db,'eva','declineExtra',{user:'isis',date:'2026-11-20'});
@@ -438,8 +439,8 @@ test('Extra beschikbaar op een dag zonder gepubliceerd rooster: geen melding, we
  let db=apply(pilotRoster(),'isis','extra',{date:'2026-12-10'});
  assert.deepEqual(extraToDecide(db),[]);
  assert.equal(extraState(db,db.extra.at(-1)),'');
- assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-12-10',whole:'whole',area:'Bar'}),/nog niet gepubliceerd/);
- db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'18:00',area:'Bar'});
+ assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-12-10',whole:'whole'}),/nog niet gepubliceerd/);
+ db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'18:00'});
  db=apply(db,'eva','publish',{date:'2026-12-10',through:'2026-12-10'});
  assert.match(db.updates.at(-1).text,/Extra ingepland: 08:30–18:00/);
 });
@@ -480,7 +481,7 @@ test('Concept uit vaste beschikbaarheid: iedereen op de vaste dagen en tijden, b
  assert.deepEqual(days('eva'),['01 08:30-18:00','03 08:30-18:00'],'Eva staat vast op di en do');
  assert.ok(days('iris').includes('03 10:00-18:00'),'Iris op donderdag vanaf 10:00');
  assert.deepEqual(days('elise').filter(d=>d.startsWith('03')),[],'Elise is vrij op 3 dec');
- assert.ok(db.drafts.every(d=>d.area==='Speelvloer'&&availabilityConflict(db,d)===''));
+ assert.ok(db.drafts.every(d=>availabilityConflict(db,d)===''));
  assert.throws(()=>apply(db,'eva','planFromRules',{week:'2026-11-30'}),/niets om/);
 });
 
@@ -509,23 +510,23 @@ test('Iris vraagt vrij en Eva wijst af: de waarschuwing bij het concept verdwijn
 });
 
 test('Eva voegt een nieuwe medewerker toe en past daarna de contracturen en het telefoonnummer aan',()=>{
- let db=apply(pilotRoster(),'eva','savePerson',{name:' Noor V ',role:'employee',contractHours:'24',phone:'0600000000'});
+ let db=apply(pilotRoster(),'eva','savePerson',{name:' Noor V ',role:'employee',contractHours:'24',phone:'0600000000',areas:['Vloer']});
  const noor=db.people.at(-1);
  assert.deepEqual([noor.name,noor.role,noor.contractHours,noor.phone,noor.active],['Noor V','employee',24,'0600000000',true]);
- db=apply(db,'eva','savePerson',{id:noor.id,name:'Noor V',role:'lead',contractHours:'32',phone:''});
+ db=apply(db,'eva','savePerson',{id:noor.id,name:'Noor V',role:'lead',contractHours:'32',phone:'',areas:['Vloer']});
  assert.deepEqual(['role','contractHours','phone'].map(k=>db.people.find(p=>p.id===noor.id)[k]),['lead',32,'']);
  assert.equal(db.people.length,pilotRoster().people.length+1);
 });
 
 test('Medewerkers beheren: alleen de bedrijfsleider, met een geldige naam, uren en rol',()=>{
- const db=pilotRoster(),person={name:'Noor V',role:'employee',contractHours:'24',phone:''};
+ const db=pilotRoster(),person={name:'Noor V',role:'employee',contractHours:'24',phone:'',areas:['Vloer']};
  assert.throws(()=>apply(db,'sylvia','savePerson',person),/bedrijfsleider/);
  assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'  '}),/naam/);
  assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'iris z'}),/bestaat al/);
  assert.throws(()=>apply(db,'eva','savePerson',{...person,contractHours:'41'}),/contracturen/);
  assert.throws(()=>apply(db,'eva','savePerson',{...person,role:'boss'}),/rol/);
  assert.throws(()=>apply(db,'eva','savePerson',{...person,phone:'bel me'}),/telefoonnummer/);
- assert.throws(()=>apply(db,'eva','savePerson',{id:'eva',name:'Eva G.',role:'lead',contractHours:'36',phone:''}),
+ assert.throws(()=>apply(db,'eva','savePerson',{id:'eva',name:'Eva G.',role:'lead',contractHours:'36',phone:'',areas:['Vloer']}),
   /minstens één bedrijfsleider/);
 });
 
@@ -541,7 +542,7 @@ test('Isis stopt: Eva zet haar pas op inactief als haar toekomstige diensten weg
  db=apply(db,'eva','setActive',{id:'isis',active:false});
  assert.equal(db.people.find(p=>p.id==='isis').active,false);
  assert.ok(!activePeople(db).some(p=>p.id==='isis'));
- assert.throws(()=>apply(db,'eva','draft',{user:'isis',date:'2026-12-05',start:'08:30',end:'18:00',area:'Bar'}),/inactief/);
+ assert.throws(()=>apply(db,'eva','draft',{user:'isis',date:'2026-12-05',start:'08:30',end:'18:00'}),/inactief/);
  db=apply(db,'eva','planFromRules',{week:'2026-11-30'});
  assert.ok(!db.drafts.some(d=>d.user==='isis'),'niet in concept uit vaste beschikbaarheid');
  db=apply(db,'eva','setActive',{id:'isis',active:true});
@@ -562,9 +563,9 @@ test('Sylvia is inactief: haar ontbrekende uren tellen niet meer mee bij herinne
 
 test('Twee bedrijfsleiders: als Isis een voorstel afwijst, krijgen Eva en Noor allebei een melding',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
- let db=apply(pilotRoster(),'eva','savePerson',{name:'Noor V',role:'admin',contractHours:'32',phone:''});
+ let db=apply(pilotRoster(),'eva','savePerson',{name:'Noor V',role:'admin',contractHours:'32',phone:'',areas:['Vloer']});
  const noor=db.people.at(-1).id;
- db=apply(db,noor,'draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00',area:'Bar'});
+ db=apply(db,noor,'draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00'});
  const offer=db.offers.at(-1);
  assert.equal(offer.turn,'employee');
  assert.equal(offer.requestedBy,noor,'Noor staat erbij als vrager');
@@ -572,4 +573,36 @@ test('Twee bedrijfsleiders: als Isis een voorstel afwijst, krijgen Eva en Noor a
  db=apply(db,'isis','offer',{id:offer.id,answer:'no'});
  for(const admin of ['eva',noor])
   assert.ok(db.updates.some(n=>n.user===admin&&/Isis N · Voorstel afgewezen/.test(n.text)),admin+' krijgt een melding');
+});
+
+test('Isis werkt alleen op de vloer: haar dienst wordt vanzelf vloer en keuken kan niet',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'eva','draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00'});
+ assert.equal(db.offers.at(-1).row.area,'Vloer');
+ assert.throws(()=>apply(pilotRoster(),'eva','draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00',
+  area:'Keuken'}),/werkplek/);
+ assert.throws(()=>apply(pilotRoster(),'isis','unplanned',{date:'2026-11-19',start:'09:00',end:'10:00',pause:0,
+  area:'Keuken'}),/werkplek/);
+});
+
+test('Iris kan vloer en keuken: de bedrijfsleider kiest, zonder keuze wordt het vloer',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const plan=area=>apply(pilotRoster(),'eva','draft',{user:'iris',date:'2026-12-03',start:'10:00',end:'18:00',area});
+ assert.equal(plan('Keuken').drafts.at(-1).area,'Keuken');
+ assert.equal(plan(undefined).drafts.at(-1).area,'Vloer');
+});
+
+test('Elise werkt alleen in de keuken: concept uit vaste beschikbaarheid zet haar in de keuken',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const db=apply(pilotRoster(),'eva','planFromRules',{week:'2026-11-30'});
+ const area=user=>[...new Set(db.drafts.filter(d=>d.user===user).map(d=>d.area))];
+ assert.deepEqual([area('elise'),area('iris'),area('isis')],[['Keuken'],['Vloer'],['Vloer']]);
+});
+
+test('Bij een medewerker vul je minstens één werkplek in: vloer, keuken of allebei',()=>{
+ const person={name:'Noor V',role:'employee',contractHours:'24',phone:''};
+ assert.throws(()=>apply(pilotRoster(),'eva','savePerson',{...person,areas:[]}),/werkplek/);
+ assert.throws(()=>apply(pilotRoster(),'eva','savePerson',person),/werkplek/);
+ const db=apply(pilotRoster(),'eva','savePerson',{...person,areas:['Keuken','Bar','Vloer']});
+ assert.deepEqual(db.people.at(-1).areas,['Vloer','Keuken']);
 });

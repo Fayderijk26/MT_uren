@@ -1,5 +1,5 @@
 import {activePeople} from './model.js';
-import {card,line,button,subtabs,roleNames} from './view.js';
+import {card,line,button,subtabs,roleNames,areaNames} from './view.js';
 
 // Subkopjes onder Rooster, alleen voor de bedrijfsleider.
 export const rosterTabs=(actor,page)=>actor.role==='admin'
@@ -7,7 +7,8 @@ export const rosterTabs=(actor,page)=>actor.role==='admin'
 
 // Eén regel per persoon: rol, contracturen en telefoonnummer, met de knop Wijzigen.
 const personRow=p=>'<div class="compact">'+line(p.name,
- roleNames[p.role]+' · '+p.contractHours+' uur per week'+(p.phone?' · '+p.phone:''),button('Wijzigen','person',p.id))+'</div>';
+ roleNames[p.role]+' · '+p.contractHours+' uur per week · '+areaNames(p.areas)
+  +(p.phone?' · '+p.phone:''),button('Wijzigen','person',p.id))+'</div>';
 
 export function peoplePage(db,actor){
  const add=button('Medewerker toevoegen','person','',true);
