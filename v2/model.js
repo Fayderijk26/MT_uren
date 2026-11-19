@@ -288,7 +288,9 @@ function saveDraft({db,admin,p,s}){
 
 // Botst een (concept)dienst met de opgegeven beschikbaarheid? Lege tekst als alles klopt.
 export function availabilityConflict(db,row){
- if(freeRequests(db,row).length)return 'Vrij gevraagd';
+ const free=freeRequests(db,row);
+ if(free.some(r=>r.status==='approved'))return 'Vrij (goedgekeurd)';
+ if(free.length)return 'Vrij gevraagd, nog beoordelen';
  const rule=ruleFor(db,row);
  if(!rule)return 'Beschikbaarheid onbekend';
  if(rule.off)return 'Niet beschikbaar';
@@ -304,13 +306,16 @@ function addDrafts(db,admin,rows,empty){
  check(fresh.length,empty);
  for(const row of fresh)db.drafts.push({...row,id:crypto.randomUUID(),before:null,accepted:false});
 }
-// Concept uit vaste beschikbaarheid: iedereen op zijn beschikbare dagen en tijden, niet als hij vrij is.
+// Concept uit vaste beschikbaarheid: iedereen op zijn beschikbare dagen en tijden. Goedgekeurd vrij gaat eraf
+// (deels vrij: de rest van de dag blijft). Vrij dat nog wacht blijft staan; het concept toont dan een waarschuwing.
 function planFromRules({db,admin,p}){
  const week=monday(p.week),rows=[];
  for(const person of db.people)for(let i=0;i<7;i++){
   const date=add(week,i),rule=ruleFor(db,{user:person.id,date});
-  const row={user:person.id,date,start:rule?.start,end:rule?.end,area:'Speelvloer'};
-  if(rule&&!rule.off&&!freeRequests(db,row).length)rows.push(row);
+  if(!rule||rule.off)continue;
+  const row={user:person.id,date,start:rule.start,end:rule.end,area:'Speelvloer'};
+  const free=freeRequests(db,row).filter(r=>r.status==='approved').flatMap(r=>freeWindows(r,date));
+  rows.push(...free.reduce((parts,w)=>parts.flatMap(part=>remaining(part,w)),[row]));
  }
  addDrafts(db,admin,rows,'Er is niets om in te plannen: iedereen staat al ingepland, is vrij of de dagen zijn voorbij.'
  );

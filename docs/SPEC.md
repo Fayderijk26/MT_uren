@@ -117,7 +117,7 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **6a Alles goedkeuren:** bovenaan Uren goedkeuren de knop "Alles goedkeuren (n)" voor uren die precies volgens rooster zijn: zelfde begin- en eindtijd en geen waarschuwing. De pauze telt niet mee (besluit eigenaar). Eerst een bevestiging met de lijst.
 - **6b Vorige week kopiëren:** gebouwd en daarna weer weggehaald (besluit eigenaar: alleen Concept uit vaste beschikbaarheid). Wel gebleven: botst een concept met de opgegeven beschikbaarheid, dan staat dat eronder.
 - Teamrooster heeft dezelfde bovenbalk als Mijn rooster: rechts ‹ Vandaag ›, links de knoppen.
-- **6c Concept uit vaste beschikbaarheid:** iedereen als concept op de vaste dagen en tijden; goedgekeurde vrije dagen worden overgeslagen.
+- **6c Concept uit vaste beschikbaarheid:** iedereen als concept op de vaste dagen en tijden (extra beschikbaarheid en om-de-week tellen mee). Goedgekeurd vrij: hele dag overgeslagen, deels vrij krijgt een concept voor de rest van de dag. Vrij dat nog wacht: concept blijft, met rood "Let op: vrij gevraagd, nog beoordelen". Wordt het later goedgekeurd, dan staat er "Let op: vrij (goedgekeurd)" en haalt de bedrijfsleider de dienst zelf weg.
 - Excel-import als concept: overgeslagen (besluit eigenaar). `excel/` blijft voor de export.
 
 **Ronde 7: medewerkers beheren**
