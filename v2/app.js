@@ -10,6 +10,7 @@ import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
 import {hoursPage} from './hours.js';
+import {monthPage,exportData} from './month.js';
 
 const key='monkeytown-pilot-nov2026', modal=document.querySelector('#dialog');
 if(!localStorage.getItem(key))localStorage.setItem(key,JSON.stringify(pilotRoster()));
@@ -20,6 +21,9 @@ const read=()=>{
   if(r.end==='23:59')r.end='18:00';
  }
  migratePilot(data);
+ // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
+ data.normOverrides??=[];
+ for(const p of data.people)p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
  if(JSON.stringify(data)!==stored)localStorage.setItem(key,JSON.stringify(data));
  return data;
 };
@@ -32,7 +36,7 @@ function render(){
  const actor=db.people.find(p=>p.id===actorId);
  const nav=['today',actor.role==='employee'?'mine':'team','hours','availability'];
  const page=view.page;
- const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role!=='employee'?weekPage(db,view,actor.role!=='admin'):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):availabilityPage(db,actor,view);
+ const body=page==='mine'?calendarPage(db,actor,view):page==='team'&&actor.role!=='employee'?weekPage(db,view,actor.role!=='admin'):page==='today'?todayPage(db,actor):['mine','team'].includes(page)?rosterPage(db,actor,view):['hours','reviews'].includes(page)?hoursPage(db,actor,view):page==='month'&&actor.role==='admin'?monthPage(db,actor,view):availabilityPage(db,actor,view);
  document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+({admin:'Bedrijfsleider',lead:'Dagleiding',employee:'Medewerker'}[p.role])+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+nav.map(k=>'<button data-act="page" data-id="'+k+'" aria-current="'+(page===k?'page':'false')+'">'+ic(({today:'home',team:'calendar',mine:'calendar',hours:'clock',availability:'calendar'})[k],16)+(k==='hours'&&actor.role!=='employee'?'Uren':pages[k])+'</button>').join('')+'</nav><main id="main" class="shell vmain">'+body+'</main>';
 }
 function open(title,content){
@@ -108,6 +112,11 @@ function show(action,id){
  }
  if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='norm'){
+  const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);
+  open('Norm aanpassen · '+name(db,id),form('setNorm',body,'Norm opslaan',id));return;
+ }
+ if(action==='export'){exportMonthFile(id);return}
  if(action==='decision'){
   const r=db.requests.find(x=>x.id===id);snapshots={};
   let effects='';
@@ -181,6 +190,13 @@ function suggestWindow(fill){
  modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag ('+TIMES.start+'–'+TIMES.end+')':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
  if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?TIMES.end:rule.end;}
 }
+async function exportMonthFile(month){
+ try{
+  const {exportMonth}=await import('../excel/roster.js');
+  const {rows,summary}=exportData(db,month);
+  await exportMonth(rows,summary,month);
+ }catch(e){open('Export mislukt','<p>'+h(e.message)+'</p>')}
+}
 async function save(op,p){
  try{
   const write=()=>{
@@ -205,6 +221,7 @@ modal.addEventListener('submit',e=>{
  if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
+ if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}
  save(op,p);
 });
