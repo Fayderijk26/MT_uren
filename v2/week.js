@@ -23,12 +23,32 @@ function cell(db,person,date,readonly){
  if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
  return blocks.join('');
 }
-export function weekPage(db,v,readonly=false){
+// Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
+function dayView(db,v,readonly,pending){
+ const day=v.day;
+ const nav='<div class="weeknav">'+button('Vorige dag','week',add(day,-1))+button('Vandaag','week',today())
+  +button('Volgende dag','week',add(day,1))+'</div>';
+ const rows=db.people.map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
+  +'</div></div>').join('');
+ const publish=!readonly&&pending(day)?button('Dag publiceren','pubDay',day,true):'';
+ return '<div class="dayview">'+nav+'<h3 class="daytitle">'+h(dateLabel(day))+'</h3>'+rows+publish+'</div>';
+}
+// Weekraster voor een groot scherm.
+function weekView(db,v,readonly,pending){
  const first=monday(v.day),days=v.single?[v.day]:Array.from({length:7},(_,i)=>add(first,i));
- let html='<div class="weeknav">'+button('Vorige week','week',add(first,-7))+button('Vandaag','week',today())+button('Volgende week','week',add(first,7))+(v.single?button('Hele week','week',first):'')+'</div>';
- html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'+days.map(d=>'<th class="'+(d===today()?'current':'')+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
- html+=db.people.map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'+days.map(d=>'<td class="'+(d===today()?'current':'')+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+ const current=d=>d===today()?'current':'';
+ let html='<div class="weeknav">'+button('Vorige week','week',add(first,-7))+button('Vandaag','week',today())
+  +button('Volgende week','week',add(first,7))+(v.single?button('Hele week','week',first):'')+'</div>';
+ html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
+  +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
+ html+=db.people.map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
+  +days.map(d=>'<td class="'+current(d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
+  +'</tbody></table></div>';
+ if(!readonly&&days.some(pending))html+=button(v.single?'Dag publiceren':'Week publiceren',v.single?'pubDay':'pubWeek',
+  v.single?v.day:first,true);
+ return '<div class="weekview">'+html+'</div>';
+}
+export function weekPage(db,v,readonly=false){
  const pending=d=>db.drafts.some(s=>s.date===d)||db.offers.some(o=>o.row.date===d);
- if(!readonly&&days.some(pending))html+=button(v.single?'Dag publiceren':'Week publiceren',v.single?'pubDay':'pubWeek',v.single?v.day:first,true);
- return card('Teamrooster',html);
+ return card('Teamrooster',dayView(db,v,readonly,pending)+weekView(db,v,readonly,pending));
 }

@@ -20,3 +20,12 @@ a.secondary{text-decoration:none}
 @media(max-width:600px){.vnav{position:fixed;left:0;right:0;bottom:0;z-index:20;flex-wrap:nowrap;justify-content:space-around;border-top:1px solid var(--line);border-bottom:0;padding:6px 4px calc(6px + env(safe-area-inset-bottom));box-shadow:0 -4px 14px rgba(0,0,0,.06)}
 .vnav button{flex:1;flex-direction:column;gap:3px;font-size:11px;padding:6px 2px}.vmain{padding-bottom:96px}}
 .vnav .tabicon{margin-right:8px}@media(max-width:600px){.vnav .tabicon{margin-right:0}}
+.dayview{display:none}.dayrow{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.dayrow>b{padding-top:8px}.dayslots{display:flex;flex-direction:column;gap:6px;align-items:flex-end;text-align:right}
+.daytitle{margin:14px 0 4px;font-size:16px}
+.weekgrid th.current{border-radius:12px 12px 0 0}.weekgrid tbody tr:last-child td{border-bottom:0}
+.weekgrid tbody tr:last-child td.current{border-radius:0 0 12px 12px;padding-bottom:14px}
+@media(max-width:600px){.dayview{display:block}.weekview{display:none}}
+.dayslots button{display:block;min-width:140px;background:transparent;border:0;padding:8px 10px;color:#46594b;font:inherit;text-align:right}
+.dayslots .slot,.dayslots .asked{border-radius:8px;background:#e4efe2;color:#214c32}.dayslots .asked{background:#fff0cd;color:#654919}
+.dayslots small{display:block}.weekgrid tbody tr:last-child th{border-bottom:0}

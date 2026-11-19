@@ -22,11 +22,15 @@ function todoCards(db,actor,mine,day){
  const open=ownTodo(db,actor,day);
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,s)).join('')):'';
  const offers=offersFor(db,actor);
- if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
-  (o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row)),button('Voorstel bekijken','proposal',o.id))).join(''));
+ const offerRow=o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
+  o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row),
+  button('Voorstel bekijken','proposal',o.id));
+ if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(offerRow).join(''));
  const standby=db.shifts.filter(s=>s.deadline&&(admin?s.date<=day:s.user===actor.id&&s.date>=day));
- if(standby.length)html+=card('Stand-by',standby.map(s=>line(admin?name(db,s.user)+' wacht op bericht':dateLabel(s.date),
-  'Bericht vóór '+s.deadline+(admin?'':' · Dan hoor je of je werkt.'),admin?button('Stand-by afhandelen','standby',s.id):'')).join(''));
+ const standbyRow=s=>line(admin?name(db,s.user)+' wacht op bericht':dateLabel(s.date),
+  'Bericht vóór '+s.deadline+(admin?'':' · Dan hoor je of je werkt.'),
+  admin?button('Stand-by afhandelen','standby',s.id):'');
+ if(standby.length)html+=card('Stand-by',standby.map(standbyRow).join(''));
  if(actor.role!=='employee'){
   html+=absentCard(db,actor);
   const queue=toReview(db,actor);
@@ -37,9 +41,11 @@ function todoCards(db,actor,mine,day){
  if(requests.length)html+=card('Aanvragen beoordelen',requests.slice(0,3).map(r=>requestRow(db,r)).join('')
   +button('Alle aanvragen bekijken','page','requests'));
  const pending=mine.filter(s=>db.hours[s.id]?.status==='pending');
- if(pending.length)html+=card('Wacht op beoordeling',pending.map(s=>line(dateLabel(s.date),clock(db.hours[s.id]))).join(''));
+ const pendingRow=s=>line(dateLabel(s.date),clock(db.hours[s.id]));
+ if(pending.length)html+=card('Wacht op beoordeling',pending.map(pendingRow).join(''));
  const own=db.requests.filter(r=>r.user===actor.id&&r.kind==='leave'&&r.through>=day);
- if(own.length)html+=card('Mijn vrijaanvragen',own.map(r=>line(requestName(r),requestStatus(r)+(r.response?' · '+r.response:''))).join(''));
+ const ownRequest=r=>line(requestName(r),requestStatus(r)+(r.response?' · '+r.response:''));
+ if(own.length)html+=card('Mijn vrijaanvragen',own.map(ownRequest).join(''));
  return html;
 }
 // 3. De rest: wie werkt er vandaag, de dienst daarna en roosterwijzigingen.
@@ -51,12 +57,13 @@ function restCards(db,actor,mine,day){
  const next=mine.find(s=>s.date>day);
  if(mine.some(s=>s.date===day)&&next)html+=card('Eerstvolgende dienst',shiftLine(next));
  const notes=db.updates.filter(n=>n.user===actor.id);
- if(notes.length)html+=card('Roosterwijzigingen',notes.map(n=>line(dateLabel(n.date),n.text,button('Gezien','seen',n.id))).join(''));
+ const note=n=>line(dateLabel(n.date),n.text,button('Gezien','seen',n.id));
+ if(notes.length)html+=card('Roosterwijzigingen',notes.map(note).join(''));
  return html;
 }
 export function todayPage(db,actor){
  const day=today(),mine=db.shifts.filter(s=>!s.deadline&&s.user===actor.id).sort(sortDate);
- const hero='<section class="hero"><div class="jungle"></div><div class="herocontent"><p>'+h(dateLabel(day))+'</p><h1>Hoi, '
-  +h(actor.name.split(' ')[0])+'!</h1></div></section>';
+ const hero='<section class="hero"><div class="jungle"></div><div class="herocontent"><p>'+h(dateLabel(day))
+  +'</p><h1>Hoi, '+h(actor.name.split(' ')[0])+'!</h1></div></section>';
  return hero+myShift(db,mine,day)+todoCards(db,actor,mine,day)+restCards(db,actor,mine,day);
 }
