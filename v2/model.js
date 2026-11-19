@@ -294,17 +294,32 @@ export function availabilityConflict(db,row){
  if(rule.off)return 'Niet beschikbaar';
  return available(db,row)?'':'Beschikbaar '+rule.start+'–'+rule.end;
 }
-// Vorige week kopiëren: elke dienst wordt een concept een week later, behalve in het verleden
-// of als die medewerker dan al een dienst, concept of open vraag heeft.
-function copyWeek({db,admin,p}){
+// Nieuwe concepten toevoegen, behalve in het verleden of als die medewerker dan al een dienst,
+// concept of open vraag heeft.
+function addDrafts(db,admin,rows,empty){
  check(admin,'Alleen de bedrijfsleider maakt het rooster.');
- const week=monday(p.week),taken=row=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
+ const taken=row=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
   .some(t=>t.user===row.user&&t.date===row.date&&intersects(t,row));
- const copies=db.shifts.filter(s=>s.date>=add(week,-7)&&s.date<week&&!s.deadline&&!s.unplanned)
-  .map(s=>({id:crypto.randomUUID(),user:s.user,date:add(s.date,7),start:s.start,end:s.end,area:s.area}))
-  .filter(row=>row.date>=today()&&!taken(row));
- check(copies.length,'Er is niets om te kopiëren: deze dagen zijn al ingepland of voorbij.');
- for(const row of copies)db.drafts.push({...row,before:null,accepted:false});
+ const fresh=rows.filter(row=>row.date>=today()&&!taken(row));
+ check(fresh.length,empty);
+ for(const row of fresh)db.drafts.push({...row,id:crypto.randomUUID(),before:null,accepted:false});
+}
+// Vorige week kopiëren: elke dienst wordt een concept een week later.
+function copyWeek({db,admin,p}){
+ const week=monday(p.week);
+ const rows=db.shifts.filter(s=>s.date>=add(week,-7)&&s.date<week&&!s.deadline&&!s.unplanned)
+  .map(s=>({user:s.user,date:add(s.date,7),start:s.start,end:s.end,area:s.area}));
+ addDrafts(db,admin,rows,'Er is niets om te kopiëren: deze dagen zijn al ingepland of voorbij.');
+}
+// Concept uit vaste beschikbaarheid: iedereen op zijn beschikbare dagen en tijden, niet als hij vrij is.
+function planFromRules({db,admin,p}){
+ const week=monday(p.week),rows=[];
+ for(const person of db.people)for(let i=0;i<7;i++){
+  const date=add(week,i),rule=ruleFor(db,{user:person.id,date});
+  const row={user:person.id,date,start:rule?.start,end:rule?.end,area:'Speelvloer'};
+  if(rule&&!rule.off&&!freeRequests(db,row).length)rows.push(row);
+ }
+ addDrafts(db,admin,rows,'Er is niets om in te plannen: iedereen staat al ingepland, is vrij of de dagen zijn voorbij.');
 }
 
 export function fallbackShift(db,row){
@@ -409,6 +424,7 @@ const actions={
   approve: reviewHours,
   approveAll,
   copyWeek,
+  planFromRules,
   return: reviewHours,
   reopen: reopenHours,
   setNorm,

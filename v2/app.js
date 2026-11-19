@@ -177,6 +177,12 @@ function show(action,id){
    +'<p>Dagen die voorbij zijn of waarop iemand al staat, worden overgeslagen. Je publiceert zelf.</p>'
    +form('copyWeek','','Kopiëren',id));return;
  }
+ if(action==='planFromRules'){
+  open('Concept uit vaste beschikbaarheid','<p>Iedereen wordt als concept ingepland op de vaste dagen en tijden van '
+   +h(dateLabel(id)+' – '+dateLabel(add(id,6)))+'. Werkplek: Speelvloer.</p>'
+   +'<p>Vrije dagen, voorbije dagen en dagen waarop iemand al staat, worden overgeslagen. Je publiceert zelf.</p>'
+   +form('planFromRules','','Concept maken',id));return;
+ }
  if(action==='approveAll'){
   // Eerst laten zien welke uren precies volgens rooster zijn, dan bevestigen.
   const list=asPlanned(db,db.people.find(p=>p.id===actorId));
@@ -301,7 +307,7 @@ modal.addEventListener('submit',e=>{
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(op==='approveAll')p.ids=p.ids.split(',');
- if(op==='copyWeek')p.week=p.id;
+ if(op==='copyWeek'||op==='planFromRules')p.week=p.id;
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}

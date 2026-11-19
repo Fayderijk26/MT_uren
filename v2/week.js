@@ -26,8 +26,10 @@ function cell(db,person,date,readonly){
  if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
  return blocks.join('');
 }
-// Vorige week kopiëren als concept, voor een week die nog niet voorbij is.
-const copy=(v,readonly)=>readonly||add(monday(v.day),6)<today()?'':button('Vorige week kopiëren','copyWeek',monday(v.day));
+// Concepten maken voor een week die nog niet voorbij is: vorige week kopiëren of uit vaste beschikbaarheid.
+const copy=(v,readonly)=>readonly||add(monday(v.day),6)<today()?''
+ :button('Vorige week kopiëren','copyWeek',monday(v.day))
+ +button('Concept uit vaste beschikbaarheid','planFromRules',monday(v.day));
 // Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
 function dayView(db,v,readonly,pending){
  const day=v.day;
