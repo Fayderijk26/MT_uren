@@ -98,12 +98,13 @@ test('Hele dag en expliciet behoud bestaande diensten',()=>{
  let db=apply(pilotRoster(),'elise','extra',{date:today()});
  assert.equal(db.extra[0].start,'08:30');
  assert.equal(db.extra[0].end,'18:00');
- db=apply(db,'elise','weekly',{date:today(),weekday:4,start:'10:00',end:'16:00'});
+ const thursday=add(today(),(4-weekday(today())+7)%7||7);
+ db=apply(db,'elise','weekly',{date:thursday,weekday:4,start:'10:00',end:'16:00'});
  const id=db.requests[0].id;
  assert.throws(()=>apply(db,'eva','decide',{id,accept:true}),/bevestig/);
  const result=apply(db,'eva','decide',{id,accept:true,keep:'yes'});
  assert.deepEqual(result.shifts,db.shifts);
- assert.equal(ruleFor(result,{user:'elise',date:'2026-11-19'}).end,'16:00');
+ assert.equal(ruleFor(result,{user:'elise',date:thursday}).end,'16:00');
 });
 
 import {migratePilot} from '../v2/pilot.js';

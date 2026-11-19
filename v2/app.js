@@ -2,7 +2,7 @@ import {pilotRoster,migratePilot} from './pilot.js';
 import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
-import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply} from './model.js';
+import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -122,7 +122,7 @@ function show(action,id){
   let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',id||today(),'required min="'+today()+'"');
   if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
   if(action==='leave')body+=field('Tot en met (bij meerdere dagen)','through','date');
-  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag (08:30–18:00)'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
+  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
   if(action==='weekly')modes.push(['off','Niet beschikbaar']);
   if(action==='leave')body+='<p id="late" role="status"></p>';
   body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')+(action==='extra'?'':reason());
@@ -131,7 +131,7 @@ function show(action,id){
  if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
-  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:'08:30',end:'18:00'})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
+  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:TIMES.start,end:TIMES.end})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
   if(s)modal.querySelector('[name=user]').value=s.user;
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
@@ -171,8 +171,8 @@ function suggestWindow(fill){
  const question=!f.dataset.id&&needsQuestion(db,{user,date,start:f.elements.start.value,end:f.elements.end.value});
  f.querySelector('.primary').textContent=question?'Vraag versturen':'Concept bewaren';
  modal.querySelector('h2').textContent=question?'Vragen om te werken':'Dienst inplannen';
- modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag (08:30–18:00)':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
- if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?'18:00':rule.end;}
+ modal.querySelector('#window').textContent=rule?(rule.off?'Niet beschikbaar':rule.start==='00:00'&&rule.end==='23:59'?'Hele dag ('+TIMES.start+'–'+TIMES.end+')':'Beschikbaar '+clock(rule)):'Geen beschikbaarheid opgegeven';
+ if(fill&&rule&&!rule.off){f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;f.elements.end.value=rule.end==='23:59'?TIMES.end:rule.end;}
 }
 async function save(op,p){
  try{
@@ -195,7 +195,7 @@ document.addEventListener('change',e=>{
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
  if(op==='draft')p.user=f.elements.user.value;
- if(p.mode==='from')p.end='18:00';if(p.mode==='until')p.start='08:30';p.off=p.mode==='off';
+ if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}
