@@ -2,7 +2,7 @@ import {fmt,h} from '../ui.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
-export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',returned:'Opnieuw controleren'};
+export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',returned:'Aanpassen gevraagd'};
 export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')+'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
 export const link=(label,href)=>
  '<a class="secondary" href="'+h(href)+'" target="_blank" rel="noopener">'+h(label)+'</a>';
@@ -27,6 +27,16 @@ export const select=(label,name,opts)=>'<label class="field"><span>'+label+'</sp
 export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.start||'','required')+field('Tot','end','time',s.end||'','required')+'</div>';
 export const form=(action,body,label,id='')=>'<form data-op="'+action+'" data-id="'+h(id)+'">'+body+'<p role="alert" class="err"></p><button class="primary">'+label+'</button></form>';
 export const name=(db,id)=>db.people.find(p=>p.id===id)?.name||'';
+const moment=iso=>new Intl.DateTimeFormat('nl-NL',
+ {timeZone:'Europe/Amsterdam',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
+ .format(new Date(iso));
+// Wie keurde goed (of eerder goed) en wie heropende, als korte tekst.
+export function approvalText(db,e){
+ if(!e?.approvedBy)return '';
+ const by=name(db,e.approvedBy)+' · '+moment(e.approvedAt);
+ if(e.status==='approved')return 'Goedgekeurd door '+by;
+ return 'Eerder goedgekeurd door '+by+(e.reopenedBy?' · Heropend door '+name(db,e.reopenedBy):'');
+}
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar'):dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag vrij');

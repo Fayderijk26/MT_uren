@@ -1,5 +1,5 @@
 import {mayReview,mayRemind,missing,minutes,today} from './model.js';
-import {button,card,line,link,clock,labels,name,dateLabel,field,sortDate} from './view.js';
+import {button,card,line,link,clock,labels,name,dateLabel,field,sortDate,approvalText} from './view.js';
 export function reviews(db,actor){return db.shifts.filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(sortDate)}
 export const teamMissing=(db,actor)=>missing(db,actor).filter(m=>m.shift.user!==actor.id);
 function remindLink(db,s){
@@ -16,7 +16,7 @@ export function missingRow(db,actor,{shift,late}){
 }
 export function reviewRow(db,s){
  const e=db.hours[s.id],net=minutes(e.end)-minutes(e.start)-e.pause;
- return line(name(db,s.user)+' · '+dateLabel(s.date),clock(e)+' · '+e.pause+' min pauze · '+Math.floor(net/60)+'u '+net%60+'m · '+(clock(s)===clock(e)?'Volgens rooster':'Gepland '+clock(s)),button('Goedkeuren','approve',s.id,true)+button('Bekijken','inspect',s.id));
+ return line(name(db,s.user)+' · '+dateLabel(s.date),clock(e)+' · '+e.pause+' min pauze · '+Math.floor(net/60)+'u '+net%60+'m · '+(clock(s)===clock(e)?'Volgens rooster':'Gepland '+clock(s))+(e.approvedBy?' · '+approvalText(db,e):''),button('Goedkeuren','approve',s.id,true)+button('Bekijken','inspect',s.id));
 }
 export function hoursPage(db,actor,view){
  const tabs=actor.role==='employee'?'':'<div class="weeknav">'+button('Mijn uren','page','hours')+button('Uren goedkeuren','page','reviews')+'</div>';

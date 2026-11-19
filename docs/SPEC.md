@@ -68,14 +68,16 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - Ontbrekende uren kunnen worden ingevuld zolang de maand niet is afgesloten.
 - *Scenario:* Elise vergeet haar uren van dinsdag. Woensdag ziet zij "Nog in te vullen"; Eva (bedrijfsleider) en Sylvia (leiding die dinsdag werkte) zien "Uren ontbreken (1)". Als Elise invult, verdwijnt het bij iedereen.
 
-**Ronde 3: regels rond uren**
-- Uren mogen al **tijdens de dienst** worden ingediend, maar de **eindtijd mag niet later zijn dan het huidige tijdstip** (`Europe/Amsterdam`). Voorbeeld: iemand staat tot 16:00 ingepland en wil om 13:00 al uren invullen. Dat kan, maar dan tot en met 13:00 en niet tot 16:00. Voor een dag in het verleden mag de eindtijd elke tijd zijn. Hetzelfde geldt voor een ongeplande dienst: het einde mag niet in de toekomst liggen.
+**Ronde 3: regels rond uren** (in twee delen: 3a goedkeuren en heropenen, 3b tijdregels en waarschuwingen)
+- Uren mogen al **tijdens de dienst** worden ingediend, maar de **eindtijd mag niet later zijn dan het huidige tijdstip** (`Europe/Amsterdam`). Voorbeeld: iemand staat tot 16:00 ingepland en wil om 13:00 al uren invullen. Dat kan, maar dan tot en met 13:00 en niet tot 16:00. Er is **15 minuten speling**: om 12:50 mag 13:00 al worden ingevuld. Voor een dag in het verleden mag de eindtijd elke tijd zijn. Hetzelfde geldt voor een ongeplande dienst: het einde mag niet in de toekomst liggen.
 - *Scenario:* het is 13:00 en Elise staat tot 18:00 ingepland. Zij vult 08:30–13:00 in en dat lukt. 08:30–16:00 wordt geweigerd met de uitleg dat de eindtijd niet later kan zijn dan nu.
 - De bedrijfsleider (alleen die) kan goedgekeurde uren heropenen, met reden. Dat kan nooit meer nadat de maand is afgesloten (zie ronde 4). Leidinggevenden kunnen niet heropenen.
 - Bewaar bij goedkeuring door wie en wanneer, en laat dat zien. Dat geldt ook als iemand zijn eigen uren goedkeurt.
+  Nieuwe velden bij ingediende uren (`db.hours`): `approvedBy` (wie), `approvedAt` (wanneer), `reopenedBy` (wie heropende). Bij heropenen en opnieuw indienen blijven `approvedBy` en `approvedAt` staan, zodat de leiding ziet wie eerder goedkeurde.
+- De bedrijfsleider opent uren van anderen via het weekrooster: dienst aantikken, dan "Uren bekijken".
 - Een leidinggevende mag de eigen uren goedkeuren. **Nu is dat geblokkeerd** (`mayReview` in `model.js` weigert dat voor een leidinggevende). Pas dat aan. Meerdere dagleidingen op één dag werken al: controleer met een test dat ze allebei de uren van iedereen kunnen goedkeuren.
 - *Scenario:* Iris en Sylvia hebben allebei dienst. Iris keurt de uren van Elise goed, Sylvia de uren van Iris, en Iris mag ook haar eigen uren goedkeuren.
-- Waarschuwing (niet blokkeren) bij pauze 0 bij een lange dag.
+- Waarschuwing (niet blokkeren) bij pauze 0 bij een lange dag: **meer dan 5,5 uur** gewerkt (Arbeidstijdenwet).
 - Waarschuwing voor de leiding (niet blokkeren) als de uren eindigen vóór het geplande einde van de dienst (besluit 14).
 - *Scenario:* om 13:00 dient Elise 08:30–13:00 in en werkt daarna door. Zij kan haar ingediende uren niet zelf aanpassen. De leiding ziet een waarschuwing dat de uren eerder eindigen dan het rooster en kiest "Aanpassen vragen". Daarna past Elise de eindtijd aan en dient opnieuw in.
 - *Scenario:* Eva heropent goedgekeurde uren van Elise met reden "pauze klopte niet". Elise ziet "Aanpassen", past aan, dient opnieuw in. De leiding ziet wie eerder goedkeurde.

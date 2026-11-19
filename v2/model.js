@@ -31,7 +31,10 @@ export function remaining(s,r){
 }
 export function affected(db,r){return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&s.date<=r.through&&freeWindows(r,s.date).some(w=>intersects(s,w)))}
 export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&s.date===day&&db.people.some(p=>p.id===s.user&&p.role==='lead')).map(s=>s.user);
-export const mayReview = (db,actor,s) => actor.role==='admin'||(actor.role==='lead'&&actor.id!==s.user&&leads(db,s.date).includes(actor.id));
+// Beoordelen: bedrijfsleider altijd; leiding op een dag dat zij dagleiding is, ook de eigen uren.
+export const mayReview = (db,actor,s) => actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
+// Heropenen van goedgekeurde uren: alleen de bedrijfsleider.
+export const mayReopen = (db,actor,s) => actor.role==='admin'&&db.hours[s.id]?.status==='approved';
 // Ontbrekende uren: een dienst vóór vandaag zonder ingevulde uren. Stand-by telt niet mee.
 // Bedrijfsleider ziet iedereen, leiding de eigen uren en de dagen waarop zij dagleiding was, medewerker de eigen uren.
 export function missing(db,actor,day=today()){
@@ -79,13 +82,22 @@ function submitHours({db,actor,p,s}){
   interval(p);const pause=Number(p.pause);
   check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),'Vul de werkelijke pauze in.');
   check(!db.shifts.some(t=>t.id!==s.id&&t.user===s.user&&t.date===s.date&&intersects(p,db.hours[t.id]||t)),'Deze uren overlappen een andere dienst.');
-  db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending'};
+  const {approvedBy,approvedAt,reopenedBy}=db.hours[s.id]||{};
+  db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending',approvedBy,approvedAt,reopenedBy};
 }
 
 function reviewHours({db,actor,op,p,s}){
  check(s&&mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending','Deze uren kunnen hier niet worden beoordeeld.');
   if(op==='return')check(p.reason?.trim(),'Geef aan wat gecontroleerd moet worden.');
   Object.assign(db.hours[s.id],{status:op==='return'?'returned':'approved',reason:p.reason||''});
+  if(op==='approve')Object.assign(db.hours[s.id],{approvedBy:actor.id,approvedAt:new Date().toISOString()});
+}
+
+function reopenHours({db,actor,p,s}){
+ check(actor.role==='admin','Alleen de bedrijfsleider kan uren heropenen.');
+ check(s&&mayReopen(db,actor,s),'Alleen goedgekeurde uren kunnen worden heropend.');
+ check(p.reason?.trim(),'Geef een reden voor het heropenen.');
+ Object.assign(db.hours[s.id],{status:'returned',reason:p.reason.trim(),reopenedBy:actor.id});
 }
 
 function recordAvailability({db,actor,op,p}){
@@ -224,6 +236,7 @@ const actions={
   hours: submitHours,
   approve: reviewHours,
   return: reviewHours,
+  reopen: reopenHours,
   leave: recordAvailability,
   weekly: recordAvailability,
   extra: recordAvailability,

@@ -193,3 +193,40 @@ test('Alleen de bedrijfsleider en de dagleiding van die dag mogen herinneren',()
  assert.ok(!mayRemind(db,person('isis'),shift));
  assert.ok(!mayRemind(db,person('elise'),shift));
 });
+
+// Maandag 16 november: Iris (leiding) en Elise werken; Sylvia krijgt in deze tests ook een dienst.
+function twoLeadsMonday(){
+ const db=pilotRoster(),monday='2026-11-16';
+ db.shifts.push({id:'sylvia-maandag',user:'sylvia',date:monday,start:'08:30',end:'18:00',area:'Dagleiding'});
+ db.hours['iris-'+monday]={start:'08:30',end:'18:00',pause:30,status:'pending'};
+ return db;
+}
+
+test('Iris en Sylvia hebben allebei dienst: zij keuren elkaars en hun eigen uren goed',()=>{
+ const base=twoLeadsMonday();
+ let db=apply(base,'iris','approve',{id:'elise-2026-11-16'});
+ assert.equal(db.hours['elise-2026-11-16'].approvedBy,'iris');
+ assert.ok(db.hours['elise-2026-11-16'].approvedAt);
+ db=apply(base,'sylvia','approve',{id:'iris-2026-11-16'});
+ assert.equal(db.hours['iris-2026-11-16'].approvedBy,'sylvia');
+ db=apply(base,'iris','approve',{id:'iris-2026-11-16'});
+ assert.equal(db.hours['iris-2026-11-16'].status,'approved');
+ assert.equal(db.hours['iris-2026-11-16'].approvedBy,'iris');
+ assert.throws(()=>apply(base,'elise','approve',{id:'elise-2026-11-16'}));
+});
+
+test('Eva heropent goedgekeurde uren van Elise: Elise past aan, leiding ziet wie eerder goedkeurde',()=>{
+ let db=apply(twoLeadsMonday(),'iris','approve',{id:'elise-2026-11-16'});
+ const id='elise-2026-11-16';
+ assert.throws(()=>apply(db,'iris','reopen',{id,reason:'pauze klopte niet'}),/bedrijfsleider/);
+ assert.throws(()=>apply(db,'eva','reopen',{id,reason:''}),/reden/);
+ db=apply(db,'eva','reopen',{id,reason:'pauze klopte niet'});
+ assert.equal(db.hours[id].status,'returned');
+ assert.equal(db.hours[id].reason,'pauze klopte niet');
+ assert.equal(db.hours[id].reopenedBy,'eva');
+ db=apply(db,'elise','hours',{id,start:'08:30',end:'18:00',pause:45});
+ assert.equal(db.hours[id].status,'pending');
+ assert.equal(db.hours[id].pause,45);
+ assert.equal(db.hours[id].approvedBy,'iris');
+ assert.throws(()=>apply(db,'eva','reopen',{id,reason:'nog eens'}),/goedgekeurde/);
+});
