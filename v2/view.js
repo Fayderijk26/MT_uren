@@ -4,6 +4,8 @@ export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
 export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',returned:'Opnieuw controleren'};
 export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')+'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
+export const link=(label,href)=>
+ '<a class="secondary" href="'+h(href)+'" target="_blank" rel="noopener">'+h(label)+'</a>';
 export const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
 export const line=(title,description,actions='')=>'<article class="vrow"><div><b>'+h(title)+'</b><small>'+h(description)+'</small></div><div class="vactions">'+actions+'</div></article>';
 export function field(label,name,type,value='',extra=''){
