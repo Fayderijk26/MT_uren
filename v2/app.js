@@ -251,7 +251,7 @@ function show(action,id){
  if(action==='proposal'){
   const o=db.offers.find(x=>x.id===id);
   if(o.fallback&&o.turn==='employee'){
-   const requester=name(db,o.requestedBy||db.people.find(p=>p.role==='admin').id);
+   const requester=o.requestedBy?name(db,o.requestedBy):'de bedrijfsleider';
    open('Roosterwijziging','<p>'+h(dateLabel(o.row.date))+'</p><p>'+h('Je bent beschikbaar '+clock(o.availability||o.fallback)+'. '+requester+' vraagt of je '+clock(o.row)+' kunt werken.')+'</p><p>'+h('Je dienst blijft '+clock(o.fallback)+' totdat je accepteert.')+'</p>'+form('yes','','Ja, '+clock(o.row),id)+form('no','','Nee, behoud '+clock(o.fallback),id));return;
   }
   open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+(o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:''))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;

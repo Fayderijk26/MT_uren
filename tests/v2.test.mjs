@@ -358,7 +358,7 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
 
-import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState,asPlanned,toReview,availabilityConflict,futureShifts,activePeople} from '../v2/model.js';
+import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState,asPlanned,toReview,availabilityConflict,futureShifts,activePeople,offersFor} from '../v2/model.js';
 test('Bolletjes: wat iemand nog moet doen bij Mijn uren, Uren goedkeuren en Aanvragen',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=pilotRoster();
@@ -558,4 +558,18 @@ test('Sylvia is inactief: haar ontbrekende uren tellen niet meer mee bij herinne
  assert.ok(db.shifts.some(s=>s.user==='sylvia'&&s.date==='2026-11-17'),'oude diensten blijven');
  assert.ok(monthSummary(db,'2026-11').some(r=>r.user==='sylvia'),'telt mee in de maand waarin ze werkte');
  assert.ok(!monthSummary(db,'2027-01').some(r=>r.user==='sylvia'),'niet in een maand zonder diensten');
+});
+
+test('Twee bedrijfsleiders: als Isis een voorstel afwijst, krijgen Eva en Noor allebei een melding',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ let db=apply(pilotRoster(),'eva','savePerson',{name:'Noor V',role:'admin',contractHours:'32',phone:''});
+ const noor=db.people.at(-1).id;
+ db=apply(db,noor,'draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00',area:'Bar'});
+ const offer=db.offers.at(-1);
+ assert.equal(offer.turn,'employee');
+ assert.equal(offer.requestedBy,noor,'Noor staat erbij als vrager');
+ assert.ok(offersFor(db,db.people.find(p=>p.id==='isis')).includes(offer));
+ db=apply(db,'isis','offer',{id:offer.id,answer:'no'});
+ for(const admin of ['eva',noor])
+  assert.ok(db.updates.some(n=>n.user===admin&&/Isis N · Voorstel afgewezen/.test(n.text)),admin+' krijgt een melding');
 });
