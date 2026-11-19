@@ -320,7 +320,14 @@ function answerOffer({db,actor,admin,p}){
   db.offers=db.offers.filter(x=>x.id!==o.id);
 }
 
+// Gezien: een melding over het rooster, of het besluit over je eigen aanvraag.
 function markSeen({db,actor,p}){
+ const r=db.requests.find(x=>x.id===p.id);
+ if(r){
+  check(r.user===actor.id,'Je kunt alleen je eigen aanvraag als gezien markeren.');
+  check(r.status!=='pending','Deze aanvraag heeft nog geen besluit.');
+  r.seen=true;return;
+ }
  db.updates=db.updates.filter(x=>x.id!==p.id||x.user!==actor.id);
 }
 

@@ -4,7 +4,7 @@ import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
  mayReopen,warnings,closed,minutes,badges} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge}
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -153,7 +153,13 @@ function show(action,id){
    opts.push(['none','Dienst vervalt']);
    effects+=button('Dienst bekijken en aanpassen','requestShift',r.id+'|'+s.id)+select(dateLabel(s.date)+' · '+clock(s),'choice-'+s.id,opts);
   }
-  open('Aanvraag beoordelen','<p>'+h(name(db,r.user)+' · '+requestName(r))+'</p><p>'+h(r.reason)+'</p>'+form('accept',effects,'Aanvraag goedkeuren',id)+form('reject',reason(true),'Aanvraag afwijzen',id));return;
+  // Wie, wanneer en hoe lang; twee knoppen. De reden voor afwijzen verschijnt pas na Aanvraag afwijzen.
+  const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
+  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'');
+  const choices='<div class="decide">'+form('accept',effects,'Aanvraag goedkeuren',id)
+   +button('Aanvraag afwijzen','askReject',id)+'</div>';
+  const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
+  open('Aanvraag beoordelen',info+choices+no);return;
  }
  if(['leave','weekly','extra'].includes(action)){
   let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',id||today(),'required min="'+today()+'"');

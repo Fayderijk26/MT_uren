@@ -1,4 +1,5 @@
 import {fmt,h} from '../ui.js';
+import {minutes} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -61,5 +62,9 @@ export function approvalText(db,e){
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar'):dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag vrij');
+// Hoe lang iemand vrij vraagt: een aantal dagen of de duur van een deel van de dag.
+const days=r=>Math.round((Date.parse(r.through)-Date.parse(r.date))/86400000)+1;
+export const requestLength=r=>r.kind==='weekly'?'':r.start?duration(minutes(r.end)-minutes(r.start))
+ :days(r)===1?'1 dag':days(r)+' dagen';
 export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.status];
 export const requestChip=r=>chip(r.status,requestStatus(r));

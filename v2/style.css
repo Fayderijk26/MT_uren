@@ -33,3 +33,5 @@ a.secondary{text-decoration:none}
 .chip-ok{background:#dff0de;color:#1b5e33}.chip-wait{background:#fff0cd;color:#6b4d12}.chip-bad{background:#fbe1dd;color:#8f2a1f}.chip-off{background:#ececec;color:#555}
 .chip-busy{background:#ffe2c2;color:#8a4a0c}
 .weeknav .tabicon .badge{position:static;margin-left:6px}.weeknav .tabicon{align-items:center}
+.decide{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.decide>form{display:contents}
+.decide>form>*{flex-basis:100%}.decide>form>button{flex-basis:auto}.decide>form>.err:empty{display:none}

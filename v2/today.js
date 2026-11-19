@@ -1,5 +1,5 @@
 import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended} from './model.js';
-import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,chip,h} from './view.js';
+import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h} from './view.js';
 import {reviewRow,missingRow} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken.
 export function ownRow(db,s){
@@ -9,7 +9,25 @@ export function ownRow(db,s){
  return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(label,'entry',s.id,todo),
   status?chip(status):'');
 }
-export function requestRow(db,r){return line(name(db,r.user),requestName(r)+' · '+Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000)+' dagen van tevoren aangevraagd'+(r.kind==='leave'&&Date.parse(r.date)-Date.parse(r.created)<21*86400000?' · Te laat aangevraagd':''),button('Beoordelen','decision',r.id))}
+// Aanvraag om te beoordelen: wie, wanneer, hoe lang en hoe ver van tevoren.
+export function requestRow(db,r){
+ const ahead=Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000);
+ const late=r.kind==='leave'&&ahead<21?' · Te laat aangevraagd':'';
+ const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
+ return line(name(db,r.user),what+' · '+ahead+' dagen van tevoren aangevraagd'+late,
+  button('Beoordelen','decision',r.id));
+}
+// Voorstel voor het rooster dat iemand moet beantwoorden.
+export const offerRow=(db,o)=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
+ o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row),
+ button('Voorstel bekijken','proposal',o.id));
+// Eigen aanvraag op Vandaag: wacht nog op akkoord, of het besluit tot je op Gezien tikt.
+function ownRequestRow(r){
+ if(r.status==='pending')return line(requestName(r),'','',requestChip(r));
+ const text=(r.status==='approved'?'Je aanvraag is goedgekeurd':'Je aanvraag is afgewezen')
+  +(r.response?' · Reden: '+r.response:'');
+ return line(requestName(r),text,button('Gezien','seen',r.id),requestChip(r));
+}
 const shiftLine=s=>line(dateLabel(s.date),clock(s)+' · '+s.area);
 function absentCard(db,actor){
  const absent=teamMissing(db,actor);
@@ -29,10 +47,7 @@ function todoCards(db,actor,mine,day){
  const open=ownTodo(db,actor,day).filter(s=>s.date!==day); // vandaag staat al bovenaan
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,s)).join('')):'';
  const offers=offersFor(db,actor);
- const offerRow=o=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
-  o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row),
-  button('Voorstel bekijken','proposal',o.id));
- if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(offerRow).join(''));
+ if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>offerRow(db,o)).join(''));
  const standby=db.shifts.filter(s=>s.deadline&&(admin?s.date<=day:s.user===actor.id&&s.date>=day));
  const standbyRow=s=>line(admin?name(db,s.user)+' wacht op bericht':dateLabel(s.date),
   'Bericht vóór '+s.deadline+(admin?'':' · Dan hoor je of je werkt.'),
@@ -50,9 +65,8 @@ function todoCards(db,actor,mine,day){
  const pending=mine.filter(s=>db.hours[s.id]?.status==='pending');
  const pendingRow=s=>line(dateLabel(s.date),clock(db.hours[s.id]));
  if(pending.length)html+=card('Wacht op beoordeling',pending.map(pendingRow).join(''));
- const own=db.requests.filter(r=>r.user===actor.id&&r.kind==='leave'&&r.through>=day);
- const ownRequest=r=>line(requestName(r),r.response||'','',requestChip(r));
- if(own.length)html+=card('Mijn vrijaanvragen',own.map(ownRequest).join(''));
+ const own=db.requests.filter(r=>r.user===actor.id&&(r.status==='pending'?(r.through||r.date)>=day:!r.seen));
+ if(own.length)html+=card('Mijn aanvragen',own.map(ownRequestRow).join(''));
  return html;
 }
 // 3. De rest: wie werkt er vandaag, de dienst daarna en roosterwijzigingen.
