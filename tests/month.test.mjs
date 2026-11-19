@@ -30,3 +30,9 @@ test('Bij elke open dienst staat de juiste knop voor de bedrijfsleider',()=>{
  assert.match(openRow(html,'Sylvia · wo 18 nov'),/wa\.me[^"]*nog%20invullen[^>]*>Herinner</);
  assert.match(openRow(html,'Sylvia · di 17 nov'),/wa\.me[^"]*aanpassen[^>]*>Herinner</);
 });
+
+test('Open diensten in het maandoverzicht tonen hun status als label',()=>{
+ const html=page(pilotRoster());
+ assert.match(openRow(html,'Elise B · ma 16 nov'),/<span class="chip chip-wait">Wacht op beoordeling<\/span>/);
+ assert.match(openRow(html,'Eva G. · di 17 nov'),/<span class="chip chip-bad">Ontbreekt<\/span>/);
+});

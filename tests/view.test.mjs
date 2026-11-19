@@ -24,3 +24,13 @@ test('Pauze: een bekende pauze kleurt die knop, een andere pauze kleurt Anders e
  assert.deepEqual(chosen(other),['other']);
  assert.match(other,/<label class="field" id="pauseother">/);
 });
+
+const {chip}=await import('../v2/view.js');
+test('Eén set statuslabels: overal dezelfde tekst en kleur',()=>{
+ assert.equal(chip('approved'),'<span class="chip chip-ok">Goedgekeurd</span>');
+ assert.equal(chip('pending'),'<span class="chip chip-wait">Wacht op beoordeling</span>');
+ assert.equal(chip('returned'),'<span class="chip chip-bad">Aanpassen gevraagd</span>');
+ assert.equal(chip('missing'),'<span class="chip chip-bad">Ontbreekt</span>');
+ assert.equal(chip('rejected'),'<span class="chip chip-off">Afgewezen</span>');
+ assert.equal(chip('pending','Wacht op akkoord'),'<span class="chip chip-wait">Wacht op akkoord</span>');
+});

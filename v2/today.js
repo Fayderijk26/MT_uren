@@ -1,7 +1,13 @@
 import {today,leads,ownTodo,toReview,offersFor} from './model.js';
-import {card,line,name,clock,dateLabel,button,labels,sortDate,requestName,requestStatus,h} from './view.js';
+import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,chip,h} from './view.js';
 import {reviewRow,teamMissing,missingRow} from './hours.js';
-export function ownRow(db,s){const e=db.hours[s.id];return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(e?.status==='returned'?'Aanpassen':labels[e?.status]||'Uren invullen','entry',s.id,!e||e.status==='returned'))}
+// Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken.
+export function ownRow(db,s){
+ const e=db.hours[s.id],todo=!e||e.status==='returned';
+ const label=!e?'Uren invullen':e.status==='returned'?'Aanpassen':'Bekijken';
+ return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(label,'entry',s.id,todo),
+  e?chip(e.status):'');
+}
 export function requestRow(db,r){return line(name(db,r.user),requestName(r)+' · '+Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000)+' dagen van tevoren aangevraagd'+(r.kind==='leave'&&Date.parse(r.date)-Date.parse(r.created)<21*86400000?' · Te laat aangevraagd':''),button('Beoordelen','decision',r.id))}
 const shiftLine=s=>line(dateLabel(s.date),clock(s)+' · '+s.area);
 function absentCard(db,actor){
@@ -44,7 +50,7 @@ function todoCards(db,actor,mine,day){
  const pendingRow=s=>line(dateLabel(s.date),clock(db.hours[s.id]));
  if(pending.length)html+=card('Wacht op beoordeling',pending.map(pendingRow).join(''));
  const own=db.requests.filter(r=>r.user===actor.id&&r.kind==='leave'&&r.through>=day);
- const ownRequest=r=>line(requestName(r),requestStatus(r)+(r.response?' · '+r.response:''));
+ const ownRequest=r=>line(requestName(r),r.response||'','',requestChip(r));
  if(own.length)html+=card('Mijn vrijaanvragen',own.map(ownRequest).join(''));
  return html;
 }

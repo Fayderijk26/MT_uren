@@ -4,7 +4,7 @@ import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
  mayReopen,warnings,closed,minutes,badges} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText,duration}
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -116,7 +116,7 @@ function show(action,id){
  if(action==='entry'||action==='inspect'){
   const editable=action==='entry'&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
   let info='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p><p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
-  if(entry)info+='<p>'+h(labels[entry.status])+' · '+clock(entry)+' · '+entry.pause+' min pauze</p>';
+  if(entry)info+='<p>'+chip(entry.status)+' '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
   if(closed(db,shift.date))info+='<p class="notice">Deze maand is afgesloten.</p>';
   if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
