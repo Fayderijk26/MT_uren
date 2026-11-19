@@ -41,3 +41,11 @@ test('Extra beschikbaar op een gepubliceerde dag: Eva ziet het bij Beoordelen, I
  db=apply(db,'eva','declineExtra',{user:'isis',date:'2026-11-20'});
  assert.match(isis(),/chip-off">Niet ingepland/);
 });
+
+test('Onder Mijn aanvragen ziet de bedrijfsleider alleen haar eigen aanvragen, geen extra beschikbaarheid van anderen',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const db=apply(pilotRoster(),'isis','extra',{date:'2026-12-10'});
+ const mine=availabilityPage(db,person(db,'eva'),{page:'availability'});
+ assert.doesNotMatch(mine,/Extra beschikbaar voor het rooster/);
+ assert.doesNotMatch(mine,/Isis/);
+});
