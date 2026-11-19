@@ -44,7 +44,8 @@ function dayView(db,v,readonly,pending){
  const nav=toolbar(plan(db,v,readonly),add(day,-1),add(day,1),'dag');
  const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
   +'</div></div>').join('');
- const publish=!readonly&&pending(day)?button('Dag publiceren','pubDay',day,true):'';
+ const week=Array.from({length:7},(_,i)=>add(monday(day),i));
+ const publish=!readonly&&week.some(pending)?button('Week publiceren','pubWeek',monday(day),true):'';
  return '<div class="dayview">'+nav+'<h3 class="daytitle">'+h(dateLabel(day))+'</h3>'+rows+publish+'</div>';
 }
 // Weekraster voor een groot scherm.
@@ -58,8 +59,8 @@ function weekView(db,v,readonly,pending){
  html+=shown(db,days).map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
   +days.map(d=>'<td class="'+current(d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
   +'</tbody></table></div>';
- if(!readonly&&days.some(pending))html+=button(v.single?'Dag publiceren':'Week publiceren',v.single?'pubDay':'pubWeek',
-  v.single?v.day:first,true);
+ const week=Array.from({length:7},(_,i)=>add(first,i));
+ if(!readonly&&week.some(pending))html+=button('Week publiceren','pubWeek',first,true);
  return '<div class="weekview">'+html+'</div>';
 }
 export function weekPage(db,v,readonly=false){

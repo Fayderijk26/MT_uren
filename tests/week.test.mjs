@@ -62,3 +62,13 @@ test('Concept uit vaste beschikbaarheid alleen bij een week die nog niet begonne
  const published=apply(db,'eva','publish',{date:'2026-12-05',through:'2026-12-05',confirm:true});
  assert.doesNotMatch(weekPage(published,{day:'2026-12-03'}),/planFromRules/,'één dag gepubliceerd');
 });
+
+test('Ook op de telefoon alleen Week publiceren, geen Dag publiceren',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const db=apply(pilotRoster(),'eva','draft',{user:'eva',date:'2026-12-03',start:'08:30',end:'18:00'});
+ const html=weekPage(db,{day:'2026-12-02'});
+ const day=html.split('<div class="dayview">')[1].split('<div class="weekview">')[0];
+ assert.match(day,/data-act="pubWeek" data-id="2026-11-30">Week publiceren</);
+ assert.doesNotMatch(html,/pubDay|Dag publiceren/);
+ assert.doesNotMatch(weekPage(db,{day:'2026-12-02',single:true}),/pubDay/);
+});
