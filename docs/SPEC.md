@@ -45,11 +45,10 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 10. Tijden blijven **per kwartier**.
 11. Uren heropenen mag **alleen de bedrijfsleider**, met een reden, en **nooit na het afsluiten van de maand**.
 12. De knop **"Herinner via WhatsApp"** komt er, voor de bedrijfsleider én voor de dagleiding. Hij opent WhatsApp met een ingevulde tekst. Telefoonnummers worden bewaard, zijn alleen zichtbaar voor leiding en bedrijfsleider, staan alleen in de echte database en **nooit in de repository**.
-13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers beginnen vaak om 08:30 (openen) en eindigen soms om 18:00 (opruimen en schoonmaak). De **standaard eindtijd** van een dienst en van ingevulde uren is **17:30**. Wie langer doorwerkt, past de eindtijd aan.
+13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan.
 14. Voor later: pushmeldingen (wens), collega's zien in het rooster, ziek en verlof, toeslagen.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
-- Wat is de standaard **begintijd** van een dienst (08:30 of 09:00)? En wat betekent "hele dag beschikbaar": 08:30–18:00 (zoals nu) of 08:30–17:30?
 - Als iemand om 13:00 uren tot 13:00 indient en daarna doorwerkt: mag hij de uren dan nog **aanpassen zolang ze niet zijn beoordeeld**? (Nu kan een ingediende regel pas worden aangepast nadat de leiding "Aanpassen vragen" heeft gedaan.) En krijgt de leiding een waarschuwing als uren eindigen vóór het geplande einde van de dienst?
 - Besluit 9 gaat ervan uit dat ontbrekende uren ingevuld mogen worden tot het afsluiten van de maand (dus ook in de eerste dagen van de volgende maand). Klopt dat?
 
@@ -58,9 +57,8 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 
 **Ronde 1: opruimen**
 - Oude code naar `legacy/` (`app.js`, `manager.js`, `demo.js`, `availability.js`, `contract.js` in de hoofdmap, `supabase/`, `integration/`, `tests/demo.test.mjs`). `excel/` blijft.
-- Nepnamen in `pilot.js` (geen echte voornamen).
-- De tijden als **één instelling** in plaats van losse tekst `'08:30'` en `'18:00'` in meerdere bestanden: openingstijden voor bezoekers 09:00–17:30, werktijd vanaf 08:30, standaard eindtijd 17:30, en 18:00 als laatste eindtijd. Een nieuwe dienst en de uren erbij krijgen standaard eindtijd 17:30.
-- Oude migratiecode (`read()` en `migratePilot` in de schil) eruit, zodra de eigenaar bevestigt dat oude browserdata niet nodig is.
+- De tijden als **één instelling** (`TIMES` in `model.js`) in plaats van losse tekst `'08:30'` en `'18:00'` in meerdere bestanden: openingstijden voor bezoekers 09:00–17:30, werkdag 08:30–18:00 (zie besluit 13). De namen in `pilot.js` blijven zoals ze zijn (besluit van de eigenaar).
+- Oude migratiecode (`read()` en `migratePilot` in de schil) eruit, zodra de eigenaar bevestigt dat oude browserdata niet nodig is. (Nog niet gedaan: blijft voorlopig staan.)
 - *Klaar als:* `npm test` groen, de site werkt, geen verwijzing meer naar `legacy/`.
 
 **Ronde 2: ontbrekende uren zichtbaar**
