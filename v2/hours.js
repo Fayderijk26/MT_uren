@@ -1,6 +1,5 @@
-import {mayRemind,missing,minutes,today,warnings,toReview} from './model.js';
-import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip} from './view.js';
-export const teamMissing=(db,actor)=>missing(db,actor).filter(m=>m.shift.user!==actor.id);
+import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended} from './model.js';
+import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs} from './view.js';
 export function remindLink(db,s,status='missing'){
  const person=db.people.find(p=>p.id===s.user),todo=status==='returned'?'nog aanpassen':'nog invullen';
  const text='Hoi '+person.name.split(' ')[0]+', wil je je uren van '+dateLabel(s.date)+' '+todo+'?';
@@ -8,7 +7,7 @@ export function remindLink(db,s,status='missing'){
  return link('Herinner','https://wa.me/'+phone+'?text='+encodeURIComponent(text));
 }
 export function missingRow(db,actor,{shift,late}){
- const when=late===1?'1 dag te laat':late+' dagen te laat';
+ const when=late===0?'vandaag':late===1?'1 dag te laat':late+' dagen te laat';
  const action=mayRemind(db,actor,shift)?remindLink(db,shift):'';
  const row=line(name(db,shift.user)+' · '+dateLabel(shift.date),clock(shift)+' · '+when,action);
  return '<div class="compact">'+row+'</div>';
@@ -22,23 +21,24 @@ export function reviewRow(db,s){
  const actions=button('Goedkeuren','approve',s.id,true)+button('Bekijken','inspect',s.id);
  return line(name(db,s.user)+' · '+dateLabel(s.date),parts.join(' · '),actions);
 }
-export function tabs(actor){
+export function tabs(db,actor,page){
  if(actor.role==='employee')return '';
- const month=actor.role==='admin'?button('Maandoverzicht','page','month'):'';
- const own=button('Mijn uren','page','hours'),review=button('Uren goedkeuren','page','reviews');
- return '<div class="weeknav">'+own+review+month+'</div>';
+ const count=badges(db,actor);
+ const items=[['Mijn uren','hours',count.mine],['Uren goedkeuren','reviews',count.review]];
+ if(actor.role==='admin')items.push(['Maandoverzicht','month',0]);
+ return subtabs(items,page);
 }
 function ownHoursRow(db,s){
- const status=db.hours[s.id]?.status||(s.date<today()?'missing':'');
+ const status=db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
  return line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
 }
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
   const absent=teamMissing(db,actor);
-  return tabs(actor)+card('Uren goedkeuren',toReview(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
+  return tabs(db,actor,'reviews')+card('Uren goedkeuren',toReview(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
    +card('Ontbreekt ('+absent.length+')',absent.map(m=>missingRow(db,actor,m)).join('')||'Er ontbreken geen uren.');
  }
  const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();
  const total=rows.reduce((sum,s)=>{const e=db.hours[s.id];return sum+(e?.status==='approved'?minutes(e.end)-minutes(e.start)-e.pause:0)},0);
- return tabs(actor)+card('Gewerkte uren',button('Ongeplande dienst invullen','unplanned')+field('Maand','month','month',view.month,'data-view="month"')+'<p>'+Math.floor(total/60)+'u '+total%60+'m goedgekeurd</p>'+rows.map(s=>ownHoursRow(db,s)).join(''));
+ return tabs(db,actor,'hours')+card('Gewerkte uren',button('Ongeplande dienst invullen','unplanned')+field('Maand','month','month',view.month,'data-view="month"')+'<p>'+Math.floor(total/60)+'u '+total%60+'m goedgekeurd</p>'+rows.map(s=>ownHoursRow(db,s)).join(''));
 }

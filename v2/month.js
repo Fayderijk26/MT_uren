@@ -56,7 +56,7 @@ export function closeMonthBody(db,month){
 export function monthPage(db,actor,view){
  const month=view.month,rows=monthSummary(db,month);
  const open=rows.flatMap(r=>r.open);
- let html=tabs(actor)+card('Maandoverzicht',field('Maand','month','month',month,'data-view="month"')
+ let html=tabs(db,actor,'month')+card('Maandoverzicht',field('Maand','month','month',month,'data-view="month"')
   +personTable(db,month,rows));
  const openRows=open.map(o=>openRow(db,actor,o));
  html+=card('Nog open ('+open.length+')',openRows.join('')||'<p>Alle uren van deze maand zijn goedgekeurd.</p>');

@@ -356,18 +356,33 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
 
-import {badges} from '../v2/model.js';
-test('Bolletjes: wat iemand nog moet doen bij Uren en Aanvragen',()=>{
+import {badges,busy,ownTodo,teamMissing} from '../v2/model.js';
+test('Bolletjes: wat iemand nog moet doen bij Mijn uren, Uren goedkeuren en Aanvragen',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=pilotRoster();
- const count=(id,day='2026-11-19')=>badges(db,db.people.find(p=>p.id===id),day);
- // Sylvia mist 17 en 18 nov; Eva mist 17 nov en moet de uren van Elise (16 nov) beoordelen.
- assert.deepEqual(count('sylvia'),{hours:2,requests:0});
- assert.deepEqual(count('eva'),{hours:2,requests:0});
- assert.deepEqual(count('elise'),{hours:0,requests:0});
+ const count=id=>badges(db,db.people.find(p=>p.id===id));
+ // Eva mist 17 nov zelf; ze moet Elise (16 nov) beoordelen en Sylvia mist 17 en 18 nov.
+ assert.deepEqual(count('eva'),{mine:1,review:3,hours:4,requests:0});
+ assert.deepEqual(count('elise'),{mine:0,review:0,hours:0,requests:0});
  db=apply(db,'eva','return',{id:'elise-2026-11-16',reason:'pauze klopt niet'});
- assert.deepEqual(count('elise'),{hours:1,requests:0});
- assert.deepEqual(count('eva'),{hours:1,requests:0});
+ assert.deepEqual(count('elise'),{mine:1,review:0,hours:1,requests:0});
+ assert.deepEqual(count('eva'),{mine:1,review:2,hours:3,requests:0});
  db=apply(db,'elise','leave',{date:'2026-12-24',reason:'Kerst'});
- assert.deepEqual(count('eva'),{hours:1,requests:1});
- assert.deepEqual(count('elise'),{hours:1,requests:0});
+ assert.deepEqual(count('eva'),{mine:1,review:2,hours:3,requests:1});
+ assert.equal(count('elise').requests,0);
+});
+
+test('Dienst van vandaag: tot de eindtijd bezig, daarna ontbreken de uren, ook voor de leiding',t=>{
+ const at=time=>t.mock.timers.setTime(Date.parse('2026-11-19T'+time+':00+01:00'));
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T08:00:00+01:00')});
+ const db=pilotRoster(),eva=db.people.find(p=>p.id==='eva');
+ const shift=db.shifts.find(s=>s.id==='eva-2026-11-19');
+ assert.equal(busy(shift),false,'nog niet begonnen');
+ at('12:00');
+ assert.equal(busy(shift),true);
+ assert.ok(!ownTodo(db,eva).includes(shift));
+ at('18:00');
+ assert.equal(busy(shift),false);
+ assert.ok(ownTodo(db,eva).includes(shift));
+ assert.ok(teamMissing(db,eva).some(m=>m.shift.id==='iris-2026-11-19'),'Iris werkte tot 18:00');
 });

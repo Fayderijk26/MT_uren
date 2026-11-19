@@ -46,15 +46,18 @@ export const mayReview = (db,actor,s) => !closed(db,s.date)
 export const mayReopen = (db,actor,s) => actor.role==='admin'&&!closed(db,s.date)&&db.hours[s.id]?.status==='approved';
 // Ontbrekende uren: een dienst vóór vandaag zonder ingevulde uren. Stand-by telt niet mee.
 // Bedrijfsleider ziet iedereen, leiding de eigen uren en de dagen waarop zij dagleiding was, medewerker de eigen uren.
+// Een dienst is voorbij na de eindtijd uit het rooster; daarvoor is hij (vanaf de begintijd) bezig.
+export const ended=(s,day=today())=>s.date<day||s.date===day&&day===today()&&s.end<=now();
+export const busy=s=>s.date===today()&&s.start<=now()&&!ended(s);
 export function missing(db,actor,day=today()){
  const sees=s=>actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
- return db.shifts.filter(s=>!s.deadline&&s.date<day&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
+ return db.shifts.filter(s=>!s.deadline&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
 }
 const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
-// Eigen uren die nog moeten: vóór vandaag, maand open, nog niet ingevuld of aanpassen gevraagd.
-export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date<day
+// Eigen uren die nog moeten: dienst voorbij, maand open, nog niet ingevuld of aanpassen gevraagd.
+export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&ended(s,day)
  &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
 export const toReview = (db,actor) => db.shifts
@@ -63,10 +66,13 @@ export const toReview = (db,actor) => db.shifts
 export const offersFor = (db,actor) =>
  db.offers.filter(o=>o.turn==='employee'?o.row.user===actor.id:actor.role==='admin');
 // Bolletjes in de tabbalk: hoeveel er bij Uren en Aanvragen nog te doen is.
+// Ontbrekende uren van anderen die deze leidinggevende ziet.
+export const teamMissing=(db,actor,day=today())=>missing(db,actor,day).filter(m=>m.shift.user!==actor.id);
 export function badges(db,actor,day=today()){
- const review=actor.role==='employee'?0:toReview(db,actor).length;
+ const mine=ownTodo(db,actor,day).length;
+ const review=actor.role==='employee'?0:toReview(db,actor).length+teamMissing(db,actor,day).length;
  const requests=actor.role==='admin'?db.requests.filter(r=>r.status==='pending').length:0;
- return {hours:ownTodo(db,actor,day).length+review,requests:offersFor(db,actor).length+requests};
+ return {mine,review,hours:mine+review,requests:offersFor(db,actor).length+requests};
 }
 // Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
 export const mayRemind = (db,actor,s) => actor.id!==s.user
@@ -128,7 +134,7 @@ export function monthSummary(db,month,day=today()){
  return db.people.map(person=>{
   const shifts=db.shifts.filter(s=>s.user===person.id&&!s.deadline&&s.date.startsWith(month+'-'))
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
-  const status=s=>db.hours[s.id]?.status||(s.date<day?'missing':'future');
+  const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));

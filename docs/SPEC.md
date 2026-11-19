@@ -107,6 +107,8 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - Kalender: blijft zoals hij is (besluit eigenaar: het huidige overzicht is duidelijk). Geen stippen.
 - Eén set statuschips met kleur en tekst. Tijdkeuze: Van en Tot blijven keuzelijsten per kwartier, met live "Netto" (al gebouwd). Geen −15/+15-knoppen (besluit eigenaar).
 - De keuzelijst "Demoprofiel" blijft tot ronde 8 en verdwijnt daar door het inloggen.
+- **5d (na proef eigenaar):** een dienst is *bezig* (oranje label "Dienst bezig") van de begintijd tot de eindtijd uit het rooster. Daarna is hij voorbij: zonder uren is het "Ontbreekt", voor de medewerker én direct voor de leiding. Subkopjes onder Uren krijgen bolletjes: **Mijn uren** = eigen uren in te vullen of aan te passen; **Uren goedkeuren** = te beoordelen + ontbrekende uren van het team. Het bolletje bij Uren is de som.
+- **5e (na proef eigenaar):** Aanvragen krijgt voor de bedrijfsleider de subkopjes **Mijn aanvragen** en **Beoordelen** (vrije dagen en roostervoorstellen). Medewerkers zien hun voorstellen ook bij Aanvragen. Beoordelen toont naam, datum, hoe lang vrij en de reden, met de knoppen Aanvraag goedkeuren en Aanvraag afwijzen; de reden verschijnt pas na Afwijzen. De medewerker ziet het besluit op Vandaag (goedgekeurd groen, afgewezen grijs met reden) tot hij op **Gezien** tikt. Nieuw veld bij een aanvraag: `seen` (de medewerker heeft het besluit gezien). Onder Mijn aanvragen staan alleen aanvragen die nog open zijn of waarvan de datum nog komt.
 
 **Ronde 6: rooster-gemak**
 - Kopieer vorige week als concept. Maak concept uit vaste beschikbaarheid. Excel-import (met `excel/`) als concept. "Alles goedkeuren" voor uren die exact met het rooster overeenkomen.
