@@ -21,8 +21,16 @@ export function field(label,name,type,value='',extra=''){
  }
  return '<label class="field"><span>'+h(label)+'</span><input name="'+name+'" type="'+type+'" value="'+h(value)+'" '+extra+'></label>';
 }
+// Pauze: knoppen 0–60 min en Anders. De gekozen knop is donkergroen; het minutenveld verschijnt alleen bij Anders.
+// De gekozen pauze staat in het verborgen veld 'pause'; daaronder de regel met netto uren (#net).
 export function pauseField(value=''){
- return '<div class="pausechoices" aria-label="Pauze">'+[0,15,30,45,60].map(n=>button(n+' min','pause',String(n))).join('')+button('Anders','pause','other')+'</div>'+field('Pauze in minuten','pause','number',value,'required min="0"');
+ const known=['0','15','30','45','60'],v=String(value),other=v!==''&&!known.includes(v);
+ const choices=known.map(n=>button(n+' min','pause',n,v===n)).join('')+button('Anders','pause','other',other);
+ return '<div class="field"><span>Pauze</span><div class="pausechoices">'+choices+'</div></div>'
+  +'<input type="hidden" name="pause" value="'+h(v)+'">'
+  +'<label class="field" id="pauseother"'+(other?'':' hidden')+'><span>Pauze in minuten</span>'
+  +'<input name="pauseOther" type="number" min="0" step="1" value="'+(other?h(v):'')+'"></label>'
+  +'<p class="net" id="net"></p>';
 }
 export const select=(label,name,opts)=>'<label class="field"><span>'+label+'</span><select name="'+name+'">'+opts.map(([k,v])=>'<option value="'+h(k)+'">'+h(v)+'</option>').join('')+'</select></label>';
 export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.start||'','required')+field('Tot','end','time',s.end||'','required')+'</div>';
