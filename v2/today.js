@@ -1,7 +1,7 @@
 import {today,leads} from './model.js';
 import {card,line,name,clock,dateLabel,button,labels,sortDate,requestName,requestStatus,h} from './view.js';
 import {reviews,reviewRow,teamMissing,missingRow} from './hours.js';
-export function ownRow(db,s){const e=db.hours[s.id];return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(e?.status==='returned'?'Uren controleren':labels[e?.status]||'Uren invullen','entry',s.id,!e||e.status==='returned'))}
+export function ownRow(db,s){const e=db.hours[s.id];return line(dateLabel(s.date)+' · '+s.area,clock(s)+(e?.reason?' · '+e.reason:''),button(e?.status==='returned'?'Aanpassen':labels[e?.status]||'Uren invullen','entry',s.id,!e||e.status==='returned'))}
 export function requestRow(db,r){return line(name(db,r.user),requestName(r)+' · '+Math.round((Date.parse(r.date)-Date.parse(r.created))/86400000)+' dagen van tevoren aangevraagd'+(r.kind==='leave'&&Date.parse(r.date)-Date.parse(r.created)<21*86400000?' · Te laat aangevraagd':''),button('Beoordelen','decision',r.id))}
 function todo(db,mine,day){
  const open=mine.filter(s=>s.date<day&&(!db.hours[s.id]||db.hours[s.id].status==='returned'));

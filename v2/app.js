@@ -2,8 +2,10 @@ import {pilotRoster,migratePilot} from './pilot.js';
 import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
-import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName} from './view.js';
+import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
+ mayReopen} from './model.js';
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText}
+ from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
 import {rosterPage} from './roster.js';
@@ -78,6 +80,7 @@ function show(action,id){
   const availabilityText=availability(db,row.user,row.date);
   let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p><p>Aangegeven beschikbaarheid: '+h(availabilityText==='Onbekend'?'Geen beschikbaarheid opgegeven':availabilityText)+'</p>';
   if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
+  if(canEdit&&entry)body+=button('Uren bekijken','inspect',id);
   if(row.date>=today()&&db.people.find(p=>p.id===actorId).role==='admin'){
    if(!entry)body+=button('Dienst wijzigen','draft',id,true);
    body+=button('Extra dienst toevoegen','planExtra',row.date+'|'+row.user);
@@ -95,8 +98,11 @@ function show(action,id){
   let info='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p><p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
   if(entry)info+='<p>'+h(labels[entry.status])+' · '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
+  if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
   if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
-  if(action==='inspect'&&entry?.status==='pending')info+=button('Goedkeuren','approve',id,true)+form('return',reason(true),'Terugsturen voor hercontrole',id)+(shift.unplanned?form('rejectHours',reason(true),'Ongeplande dienst afwijzen',id):'');
+  if(action==='inspect'&&entry?.status==='pending')info+=button('Goedkeuren','approve',id,true)+form('return',reason(true),'Aanpassen vragen',id)+(shift.unplanned?form('rejectHours',reason(true),'Ongeplande dienst afwijzen',id):'');
+  const actor=db.people.find(p=>p.id===actorId);
+  if(mayReopen(db,actor,shift))info+=form('reopen',reason(true),'Heropenen',id);
   open(editable?'Uren invullen':'Gewerkte uren',info);return;
  }
  if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));return}
