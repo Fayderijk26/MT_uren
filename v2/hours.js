@@ -2,9 +2,9 @@ import {mayReview,mayRemind,missing,minutes,today,warnings} from './model.js';
 import {button,card,line,link,clock,labels,name,dateLabel,field,sortDate,approvalText} from './view.js';
 export function reviews(db,actor){return db.shifts.filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(sortDate)}
 export const teamMissing=(db,actor)=>missing(db,actor).filter(m=>m.shift.user!==actor.id);
-function remindLink(db,s){
- const person=db.people.find(p=>p.id===s.user);
- const text='Hoi '+person.name.split(' ')[0]+', wil je je uren van '+dateLabel(s.date)+' nog invullen?';
+export function remindLink(db,s,status='missing'){
+ const person=db.people.find(p=>p.id===s.user),todo=status==='returned'?'nog aanpassen':'nog invullen';
+ const text='Hoi '+person.name.split(' ')[0]+', wil je je uren van '+dateLabel(s.date)+' '+todo+'?';
  const phone=(person.phone||'').replace(/\D/g,'');
  return link('Herinner','https://wa.me/'+phone+'?text='+encodeURIComponent(text));
 }

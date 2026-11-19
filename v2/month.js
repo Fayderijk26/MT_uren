@@ -1,16 +1,34 @@
-import {monthSummary,normMinutes,net,closed,mayCloseMonth} from './model.js';
-import {button,card,line,field,name,dateLabel,duration,moment,h} from './view.js';
-import {tabs} from './hours.js';
+import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview} from './model.js';
+import {button,card,line,field,name,dateLabel,moment,h} from './view.js';
+import {tabs,remindLink} from './hours.js';
 
 const openLabels={missing:'Ontbreekt',pending:'Wacht op beoordeling',returned:'Aanpassen gevraagd'};
 
+// Korte duur voor in de tabel: 104u, 138u40, −95u.
+const short=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u'+(Math.abs(m)%60?String(Math.abs(m)%60).padStart(2,'0'):'');
+// Eén rij per medewerker. De norm is een knop waarmee de bedrijfsleider hem aanpast (niet in een afgesloten maand).
 function personRow(db,month,r){
  const changed=db.normOverrides.some(n=>n.user===r.user&&n.month===month);
- const parts=['Goedgekeurd '+duration(r.approved),'Norm '+duration(r.norm)+(changed?' (aangepast)':''),
-  'Verschil '+duration(r.diff)];
- if(r.open.length)parts.push('Nog open '+r.open.length);
- const action=closed(db,month+'-01')?'':button('Norm aanpassen','norm',r.user);
- return line(name(db,r.user),parts.join(' · '),action);
+ const norm=closed(db,month+'-01')?h(short(r.norm)):button(short(r.norm),'norm',r.user);
+ const cells=[h(name(db,r.user)),short(r.approved),norm+(changed?'<small>aangepast</small>':''),short(r.diff),
+  r.open.length||'–'];
+ return '<tr class="person">'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
+}
+function personTable(db,month,rows){
+ const head=['Medewerker','Goedgekeurd','Norm','Verschil','Open'].map(x=>'<th>'+x+'</th>').join('');
+ return '<div class="monthscroll"><table class="monthgrid"><thead><tr>'+head+'</tr></thead><tbody>'
+  +rows.map(r=>personRow(db,month,r)).join('')+'</tbody></table></div>';
+}
+// De juiste knop bij een open dienst: zelf invullen of aanpassen, beoordelen, of de medewerker herinneren.
+function openAction(db,actor,{shift,status}){
+ const own=shift.user===actor.id;
+ if(status==='pending')return mayReview(db,actor,shift)?button('Beoordelen','inspect',shift.id,true):'';
+ if(own)return button(status==='returned'?'Aanpassen':'Uren invullen','entry',shift.id,true);
+ return mayRemind(db,actor,shift)?remindLink(db,shift,status):'';
+}
+function openRow(db,actor,o){
+ const row=line(name(db,o.shift.user)+' · '+dateLabel(o.shift.date),openLabels[o.status],openAction(db,actor,o));
+ return '<div class="compact">'+row+'</div>';
 }
 
 const next=month=>new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'long',timeZone:'UTC'})
@@ -39,8 +57,8 @@ export function monthPage(db,actor,view){
  const month=view.month,rows=monthSummary(db,month);
  const open=rows.flatMap(r=>r.open);
  let html=tabs(actor)+card('Maandoverzicht',field('Maand','month','month',month,'data-view="month"')
-  +rows.map(r=>personRow(db,month,r)).join(''));
- const openRows=open.map(o=>line(name(db,o.shift.user)+' · '+dateLabel(o.shift.date),openLabels[o.status]));
+  +personTable(db,month,rows));
+ const openRows=open.map(o=>openRow(db,actor,o));
  html+=card('Nog open ('+open.length+')',openRows.join('')||'<p>Alle uren van deze maand zijn goedgekeurd.</p>');
  html+=statusCard(db,actor,month);
  html+=card('Loonadministratie','<p>De export bevat alleen goedgekeurde uren.</p>'
