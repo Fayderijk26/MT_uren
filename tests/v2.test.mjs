@@ -30,7 +30,8 @@ test('Vrij midden in de dienst splitst pas bij akkoord en beschermt tegen een ve
  const result=apply(db,'noor','decide',{id,accept:true,choices});
  assert.deepEqual(result.shifts.filter(x=>x.date===s.date).map(x=>[x.start,x.end]),remaining(s,db.requests[0]).map(x=>[x.start,x.end]));
 });
-test('Aansluitende diensten mogen, overlappende diensten niet',()=>{
+test('Aansluitende diensten mogen, overlappende diensten niet',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T20:00:00+01:00')});
  const p={date:today(),start:'10:00',end:'11:00',pause:0,area:'Keuken'};
  assert.throws(()=>apply(seed(),'mila','unplanned',p),/overlap/);
  const db=apply(seed(),'mila','unplanned',{...p,start:'17:30',end:'18:00'});
@@ -229,4 +230,41 @@ test('Eva heropent goedgekeurde uren van Elise: Elise past aan, leiding ziet wie
  assert.equal(db.hours[id].pause,45);
  assert.equal(db.hours[id].approvedBy,'iris');
  assert.throws(()=>apply(db,'eva','reopen',{id,reason:'nog eens'}),/goedgekeurde/);
+});
+
+import {warnings} from '../v2/model.js';
+// Zet de klok vast op donderdag 19 november 2026, Nederlandse tijd (UTC+1).
+const clockAt=(t,time)=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T'+time+':00+01:00')});
+
+test('Het is 13:00 en Elise werkt tot 18:00: 08:30–13:00 lukt, 08:30–16:00 niet',t=>{
+ clockAt(t,'13:00');
+ const id='elise-2026-11-19';
+ assert.equal(apply(pilotRoster(),'elise','hours',{id,start:'08:30',end:'13:00',pause:30}).hours[id].end,'13:00');
+ assert.throws(()=>apply(pilotRoster(),'elise','hours',{id,start:'08:30',end:'16:00',pause:30}),/niet later .* dan nu/);
+});
+
+test('Om 12:50 mag 13:00 al (15 minuten speling), 13:15 nog niet',t=>{
+ clockAt(t,'12:50');
+ const id='elise-2026-11-19';
+ assert.ok(apply(pilotRoster(),'elise','hours',{id,start:'08:30',end:'13:00',pause:30}));
+ assert.throws(()=>apply(pilotRoster(),'elise','hours',{id,start:'08:30',end:'13:15',pause:30}),/dan nu/);
+});
+
+test('Ongeplande dienst van vandaag mag niet in de toekomst eindigen; een eerdere dag wel tot elke tijd',t=>{
+ clockAt(t,'13:00');
+ const shift={area:'Speelvloer',pause:0};
+ assert.throws(()=>apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-19',start:'09:00',end:'16:00'}),/dan nu/);
+ assert.ok(apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-19',start:'09:00',end:'13:00'}));
+ assert.ok(apply(pilotRoster(),'isis','unplanned',{...shift,date:'2026-11-18',start:'09:00',end:'22:00'}));
+});
+
+test('Leiding krijgt een waarschuwing bij uren die eerder eindigen dan het rooster of zonder pauze op een lange dag',()=>{
+ const db=pilotRoster(),s=db.shifts.find(x=>x.id==='elise-2026-11-16');
+ const check=(start,end,pause)=>warnings({...db,hours:{[s.id]:{start,end,pause,status:'pending'}}},s);
+ assert.deepEqual(check('08:30','18:00',30),[]);
+ assert.deepEqual(check('08:30','13:00',30),['Eindigt vóór het rooster (gepland tot 18:00)']);
+ assert.deepEqual(check('08:30','18:00',0),['Geen pauze bij een lange dag']);
+ assert.deepEqual(check('12:30','18:00',0),[]);
+ assert.deepEqual(check('12:15','18:00',0),['Geen pauze bij een lange dag']);
+ assert.deepEqual(check('08:30','14:15',0),['Eindigt vóór het rooster (gepland tot 18:00)','Geen pauze bij een lange dag']);
 });
