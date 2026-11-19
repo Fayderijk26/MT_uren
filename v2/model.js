@@ -49,8 +49,15 @@ export const mayReopen = (db,actor,s) => actor.role==='admin'&&!closed(db,s.date
 // Een dienst is voorbij na de eindtijd uit het rooster; daarvoor is hij (vanaf de begintijd) bezig.
 export const ended=(s,day=today())=>s.date<day||s.date===day&&day===today()&&s.end<=now();
 export const busy=s=>s.date===today()&&s.start<=now()&&!ended(s);
+// Wie inactief is, staat niet meer in het rooster en krijgt geen herinneringen; oude uren blijven bewaard.
+export const activePeople=db=>db.people.filter(p=>p.active!==false);
+const isActive=(db,user)=>db.people.find(p=>p.id===user)?.active!==false;
+// Diensten, concepten en open vragen van iemand vanaf vandaag.
+export const futureShifts=(db,user)=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
+ .filter(s=>s.user===user&&s.date>=today()).sort((a,b)=>a.date.localeCompare(b.date));
 export function missing(db,actor,day=today()){
- const sees=s=>actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
+ const sees=s=>isActive(db,s.user)
+  &&(actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
  return db.shifts.filter(s=>!s.deadline&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
@@ -131,7 +138,8 @@ export function normMinutes(db,user,month){
 }
 // Per persoon: goedgekeurde minuten, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
- return db.people.map(person=>{
+ const worked=p=>db.shifts.some(s=>s.user===p.id&&s.date.startsWith(month+'-'));
+ return db.people.filter(p=>p.active!==false||worked(p)).map(person=>{
   const shifts=db.shifts.filter(s=>s.user===person.id&&!s.deadline&&s.date.startsWith(month+'-'))
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
@@ -272,6 +280,7 @@ function resolveStandby({db,admin,s,p,op}){
 }
 function saveDraft({db,admin,p,s}){
  check(admin&&db.people.some(x=>x.id===p.user)&&p.date>=today(),'Controleer de medewerker en datum.');interval(p);
+  check(isActive(db,p.user),'Deze medewerker is inactief.');
   const id=p.id||crypto.randomUUID(), prior=db.drafts.find(d=>d.id===id);
   check(!s||(!db.hours[id]&&s.date===p.date&&s.user===p.user),'Deze dienst kan niet worden gewijzigd.');
   const other=db.shifts.filter(t=>!db.drafts.some(d=>d.id===t.id)).concat(db.drafts);
@@ -310,7 +319,7 @@ function addDrafts(db,admin,rows,empty){
 // (deels vrij: de rest van de dag blijft). Vrij dat nog wacht blijft staan; het concept toont dan een waarschuwing.
 function planFromRules({db,admin,p}){
  const week=monday(p.week),rows=[];
- for(const person of db.people)for(let i=0;i<7;i++){
+ for(const person of activePeople(db))for(let i=0;i<7;i++){
   const date=add(week,i),rule=ruleFor(db,{user:person.id,date});
   if(!rule||rule.off)continue;
   const row={user:person.id,date,start:rule.start,end:rule.end,area:'Speelvloer'};
@@ -400,6 +409,19 @@ function savePerson({db,admin,p}){
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
+// Op inactief zetten kan pas als iemand geen diensten meer in de toekomst heeft; weer actief kan altijd.
+function setActive({db,actor,admin,p}){
+ check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
+ const person=db.people.find(x=>x.id===p.id);
+ check(person,'Deze medewerker bestaat niet.');
+ if(!p.active){
+  check(person!==actor,'Je kunt jezelf niet op inactief zetten.');
+  check(!futureShifts(db,person.id).length,
+   'Deze medewerker heeft nog diensten in de toekomst. Haal die eerst weg of geef ze aan iemand anders.');
+ }
+ person.active=Boolean(p.active);
+}
+
 function answerOffer({db,actor,admin,p}){
  const o=db.offers.find(x=>x.id===p.id);
   check(o&&(o.turn==='employee'?o.row.user===actor.id:admin),'Dit voorstel wacht op iemand anders.');
@@ -441,6 +463,7 @@ const actions={
   approveAll,
   planFromRules,
   savePerson,
+  setActive,
   return: reviewHours,
   reopen: reopenHours,
   setNorm,

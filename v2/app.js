@@ -3,7 +3,7 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned} from './model.js';
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames}
  from './view.js';
 import {todayPage} from './today.js';
@@ -24,7 +24,10 @@ const read=()=>{
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
- for(const p of data.people)p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
+ for(const p of data.people){
+  p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
+  p.active??=true;p.phone??='';
+ }
  if(JSON.stringify(data)!==stored)localStorage.setItem(key,JSON.stringify(data));
  return data;
 };
@@ -55,7 +58,17 @@ function render(){
   :['hours','reviews'].includes(page)?hoursPage(db,actor,view)
   :page==='month'&&admin?monthPage(db,actor,view)
   :availabilityPage(db,actor,view);
- document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+roleNames[p.role]+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+tabBar(actor,nav,page)+'</nav><main id="main" class="shell vmain">'+body+'</main>';
+ document.querySelector('#app').innerHTML='<header class="vheader"><img src="./assets/logo.webp" alt="Monkey Town"><label>Demoprofiel <select id="profile">'+db.people.filter(p=>p.active!==false||p.id===actorId).map(p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+roleNames[p.role]+'</option>').join('')+'</select></label></header><nav class="vnav" aria-label="Hoofdmenu">'+tabBar(actor,nav,page)+'</nav><main id="main" class="shell vmain">'+body+'</main>';
+}
+// Op inactief zetten: eerst laten zien welke diensten nog in de toekomst staan.
+function inactiveBox(p){
+ if(p.id===actorId)return '';
+ const future=futureShifts(db,p.id);
+ if(future.length)return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' heeft nog '+future.length
+  +' dienst(en) in de toekomst. Haal die eerst weg of geef ze aan iemand anders:</p>'
+  +future.map(s=>'<p>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>').join('');
+ return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' verdwijnt uit het rooster. Oude uren blijven bewaard.</p>'
+  +form('setActive','<input type="hidden" name="active" value="">','Op inactief zetten',p.id,false);
 }
 function open(title,content){
  modal.innerHTML='<div class="modalhead"><h2>'+h(title)+'</h2>'+button('Sluiten','close')+'</div>'+content;
@@ -137,6 +150,7 @@ function show(action,id){
  }
  if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+field('Werkplek','area','text','','required'),'Uren indienen'));showNet();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='norm'){
   const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);
   open('Norm aanpassen · '+name(db,id),form('setNorm',body,'Norm opslaan',id));return;
@@ -188,7 +202,7 @@ function show(action,id){
    +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
    +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
    +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>';
-  open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id));
+  open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id)+(id?inactiveBox(p):''));
   modal.querySelector('[name=role]').value=p.role;return;
  }
  if(action==='planFromRules'){
@@ -219,7 +233,7 @@ function show(action,id){
  if(action==='planExtra'){const [date,user]=id.split('|');show('newDraft',date);modal.querySelector('[name=user]').value=user;suggestWindow(true);return}
  if(action==='draft'||action==='newDraft'){
   const s=draft||shift,d=s?.date||id;
-  open('Conceptdienst',form('draft',select('Medewerker','user',db.people.map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:TIMES.start,end:TIMES.end})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
+  open('Conceptdienst',form('draft',select('Medewerker','user',activePeople(db).map(p=>[p.id,p.name]))+field('Datum','date','date',d,'readonly')+'<p id="window"></p>'+times(s||{start:TIMES.start,end:TIMES.end})+field('Werkplek','area','text',s?.area||'Speelvloer','required')+field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||''),'Concept bewaren',s?.id||''));
   if(s)modal.querySelector('[name=user]').value=s.user;
   if(shift)modal.querySelector('[name=user]').disabled=true;
   suggestWindow(!s);return;
@@ -322,6 +336,7 @@ modal.addEventListener('submit',e=>{
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(op==='approveAll')p.ids=p.ids.split(',');
  if(op==='planFromRules')p.week=p.id;
+ if(op==='setActive')p.active=p.active==='true';
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}

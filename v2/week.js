@@ -34,11 +34,14 @@ const arrow=(day,text,sign)=>'<button class="secondary" data-act="week" data-id=
 const toolbar=(left,prev,next,unit)=>'<div class="calendar-toolbar"><div class="weektools">'+left+'</div>'
  +'<div class="calendar-navigation" role="group" aria-label="Periode kiezen">'+arrow(prev,'Vorige '+unit,'‹')
  +button('Vandaag','week',today())+arrow(next,'Volgende '+unit,'›')+'</div></div>';
+// Wie staat in het rooster: iedereen die actief is, en wie inactief is maar in deze dagen nog iets heeft.
+const shown=(db,days)=>db.people.filter(p=>p.active!==false
+ ||db.shifts.concat(db.drafts).some(s=>s.user===p.id&&days.includes(s.date)));
 // Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
 function dayView(db,v,readonly,pending){
  const day=v.day;
  const nav=toolbar(plan(v,readonly),add(day,-1),add(day,1),'dag');
- const rows=db.people.map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
+ const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
   +'</div></div>').join('');
  const publish=!readonly&&pending(day)?button('Dag publiceren','pubDay',day,true):'';
  return '<div class="dayview">'+nav+'<h3 class="daytitle">'+h(dateLabel(day))+'</h3>'+rows+publish+'</div>';
@@ -51,7 +54,7 @@ function weekView(db,v,readonly,pending){
  let html=toolbar(left,add(first,-7),add(first,7),'week');
  html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
   +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
- html+=db.people.map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
+ html+=shown(db,days).map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
   +days.map(d=>'<td class="'+current(d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
   +'</tbody></table></div>';
  if(!readonly&&days.some(pending))html+=button(v.single?'Dag publiceren':'Week publiceren',v.single?'pubDay':'pubWeek',

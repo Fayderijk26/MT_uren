@@ -1,3 +1,4 @@
+import {activePeople} from './model.js';
 import {card,line,button,subtabs,roleNames} from './view.js';
 
 // Subkopjes onder Rooster, alleen voor de bedrijfsleider.
@@ -10,5 +11,9 @@ const personRow=p=>'<div class="compact">'+line(p.name,
 
 export function peoplePage(db,actor){
  const add=button('Medewerker toevoegen','person','',true);
- return rosterTabs(actor,'people')+card('Medewerkers',add+db.people.map(personRow).join(''));
+ const inactive=db.people.filter(p=>p.active===false)
+  .map(p=>'<div class="compact">'+line(p.name,roleNames[p.role],button('Weer actief maken','reactivate',p.id))
+   +'</div>');
+ return rosterTabs(actor,'people')+card('Medewerkers',add+activePeople(db).map(personRow).join(''))
+  +(inactive.length?card('Inactief',inactive.join('')):'');
 }
