@@ -358,7 +358,7 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
 
-import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState} from '../v2/model.js';
+import {badges,busy,ownTodo,teamMissing,extraToDecide,extraState,asPlanned,toReview} from '../v2/model.js';
 test('Bolletjes: wat iemand nog moet doen bij Mijn uren, Uren goedkeuren en Aanvragen',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  let db=pilotRoster();
@@ -450,4 +450,22 @@ test('Isis geeft extra beschikbaarheid op voor een dag waarop ze al werkt: ze ho
  assert.ok(db.shifts.some(s=>s.user==='isis'&&s.date==='2026-11-21'));
  assert.throws(()=>apply(db,'isis','extra',{date:'2026-11-21',start:'12:00',end:'18:00'}),/Je bent op deze dag al ingepland/);
  assert.equal(apply(db,'isis','extra',{date:'2026-11-20'}).extra.at(-1).date,'2026-11-20');
+});
+
+test('Alles goedkeuren: Eva keurt in één keer alle uren goed die precies volgens rooster zijn',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T20:00:00+01:00')});
+ let db=pilotRoster();
+ const eva=db.people.find(p=>p.id==='eva'),ids=db=>asPlanned(db,eva).map(s=>s.id);
+ db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:0});
+ db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-18',start:'08:30',end:'17:00',pause:30});
+ db=apply(db,'iris','hours',{id:'iris-2026-11-19',start:'10:00',end:'18:00',pause:15});
+ // Elise volgens rooster; Sylvia 17 nov zonder pauze (waarschuwing); 18 nov eerder weg; Iris volgens rooster.
+ assert.deepEqual(ids(db),['elise-2026-11-16','iris-2026-11-19']);
+ assert.throws(()=>apply(db,'elise','approveAll',{ids:ids(db)}));
+ assert.throws(()=>apply(db,'eva','approveAll',{ids:['sylvia-2026-11-18']}),/niet volgens rooster/);
+ db=apply(db,'eva','approveAll',{ids:ids(db)});
+ assert.deepEqual(['elise-2026-11-16','iris-2026-11-19'].map(id=>db.hours[id].status),['approved','approved']);
+ assert.equal(db.hours['elise-2026-11-16'].approvedBy,'eva');
+ assert.deepEqual(toReview(db,eva).map(s=>s.id),['sylvia-2026-11-17','sylvia-2026-11-18']);
+ assert.deepEqual(ids(db),[]);
 });

@@ -1,4 +1,4 @@
-import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended} from './model.js';
+import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
 const dayList=shifts=>shifts.map(s=>dateLabel(s.date)).join(', ').replace(/, ([^,]*)$/,' en $1');
@@ -46,7 +46,10 @@ function ownHoursRow(db,s){
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
   const absent=teamMissing(db,actor);
-  return tabs(db,actor,'reviews')+card('Uren goedkeuren',toReview(db,actor).map(s=>reviewRow(db,s)).join('')||'Alle uren zijn beoordeeld.')
+  const same=asPlanned(db,actor).length;
+  const all=same?button('Alles goedkeuren ('+same+')','approveAll','',true):'';
+  return tabs(db,actor,'reviews')+card('Uren goedkeuren',all+(toReview(db,actor).map(s=>reviewRow(db,s)).join('')
+   ||'Alle uren zijn beoordeeld.'))
    +card('Ontbreekt ('+absent.length+')',missingByPerson(absent).map(g=>missingRow(db,actor,g)).join('')||'Er ontbreken geen uren.');
  }
  const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();

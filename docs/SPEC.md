@@ -114,7 +114,10 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **5g (na proef eigenaar):** ontbrekende uren staan per medewerker bij elkaar, met één herinnering voor alle dagen.
 
 **Ronde 6: rooster-gemak**
-- Kopieer vorige week als concept. Maak concept uit vaste beschikbaarheid. Excel-import (met `excel/`) als concept. "Alles goedkeuren" voor uren die exact met het rooster overeenkomen.
+- **6a Alles goedkeuren:** bovenaan Uren goedkeuren de knop "Alles goedkeuren (n)" voor uren die precies volgens rooster zijn: zelfde begin- en eindtijd en geen waarschuwing. De pauze telt niet mee (besluit eigenaar). Eerst een bevestiging met de lijst.
+- **6b Vorige week kopiëren als concept:** diensten van de vorige week worden concepten in de getoonde week. Botst een concept met de opgegeven beschikbaarheid (vrij gevraagd, niet beschikbaar, andere tijden), dan staat dat eronder.
+- **6c Concept uit vaste beschikbaarheid:** iedereen als concept op de vaste dagen en tijden; goedgekeurde vrije dagen worden overgeslagen.
+- Excel-import als concept: overgeslagen (besluit eigenaar). `excel/` blijft voor de export.
 
 **Ronde 7: medewerkers beheren**
 - Toevoegen, rol wijzigen, op inactief zetten, contracturen en telefoonnummer invullen (nummer alleen zichtbaar voor leiding en bedrijfsleider). Meerdere bedrijfsleiders netjes ondersteunen (meldingen niet alleen naar de eerste).

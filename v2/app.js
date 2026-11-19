@@ -3,8 +3,8 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges} from './model.js';
-import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength}
+ mayReopen,warnings,closed,minutes,badges,asPlanned} from './model.js';
+import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line}
  from './view.js';
 import {todayPage} from './today.js';
 import {availabilityPage} from './availability.js';
@@ -171,6 +171,15 @@ function show(action,id){
   body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')+(action==='extra'?'':reason());
   open({leave:'Vrij vragen',weekly:'Vaste beschikbaarheid wijzigen',extra:'Extra beschikbaar'}[action],form(action,body,'Versturen'));toggleTimes();lateNotice();return;
  }
+ if(action==='approveAll'){
+  // Eerst laten zien welke uren precies volgens rooster zijn, dan bevestigen.
+  const list=asPlanned(db,db.people.find(p=>p.id===actorId));
+  const rows=list.map(s=>line(name(db,s.user)+' · '+dateLabel(s.date),
+   clock(db.hours[s.id])+' · '+db.hours[s.id].pause+' min pauze'));
+  const ids='<input type="hidden" name="ids" value="'+h(list.map(s=>s.id).join(','))+'">';
+  open('Alles goedkeuren','<p>Deze uren zijn precies volgens rooster:</p>'+rows.join('')
+   +form('approveAll',ids,'Alles goedkeuren ('+list.length+')'));return;
+ }
  if(action==='extraDecision'){
   // Inplannen (hele opgegeven tijd of andere tijden daarbinnen) of niet inplannen.
   const [user,date]=id.split('|'),e=db.extra.find(x=>x.user===user&&x.date===date);
@@ -285,6 +294,7 @@ modal.addEventListener('submit',e=>{
  if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=Object.fromEntries(Object.entries(snapshots).map(([id,before])=>[id,{before,value:p['choice-'+id]}]));}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
+ if(op==='approveAll')p.ids=p.ids.split(',');
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
