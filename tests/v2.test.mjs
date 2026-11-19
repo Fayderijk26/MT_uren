@@ -96,7 +96,9 @@ test('Kwartieren gelden ook voor werkelijk gewerkte uren',()=>{
  assert.throws(()=>apply(seed(),'mila','hours',{id:'s1',start:'09:10',end:'17:30',pause:15}),/kwartier/);
 });
 test('Hele dag en expliciet behoud bestaande diensten',()=>{
- let db=apply(pilotRoster(),'elise','extra',{date:today()});
+ // Een dag (vanaf vandaag) waarop Elise nog niet is ingepland.
+ const free=[0,1,2,3,4,5,6,7].map(n=>add(today(),n)).find(d=>!pilotRoster().shifts.some(s=>s.user==='elise'&&s.date===d));
+ let db=apply(pilotRoster(),'elise','extra',{date:free});
  assert.equal(db.extra[0].start,'08:30');
  assert.equal(db.extra[0].end,'18:00');
  const thursday=add(today(),(4-weekday(today())+7)%7||7);
@@ -440,4 +442,12 @@ test('Extra beschikbaar op een dag zonder gepubliceerd rooster: geen melding, we
  db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'18:00',area:'Bar'});
  db=apply(db,'eva','publish',{date:'2026-12-10',through:'2026-12-10'});
  assert.match(db.updates.at(-1).text,/Extra ingepland: 08:30–18:00/);
+});
+
+test('Isis geeft extra beschikbaarheid op voor een dag waarop ze al werkt: ze hoort dat ze al ingepland is',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
+ const db=pilotRoster();
+ assert.ok(db.shifts.some(s=>s.user==='isis'&&s.date==='2026-11-21'));
+ assert.throws(()=>apply(db,'isis','extra',{date:'2026-11-21',start:'12:00',end:'18:00'}),/Je bent op deze dag al ingepland/);
+ assert.equal(apply(db,'isis','extra',{date:'2026-11-20'}).extra.at(-1).date,'2026-11-20');
 });
