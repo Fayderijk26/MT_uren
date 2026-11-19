@@ -1,6 +1,6 @@
 import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h} from './view.js';
-import {reviewRow,missingRow} from './hours.js';
+import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken.
 export function ownRow(db,s){
  const e=db.hours[s.id],todo=!e||e.status==='returned';
@@ -35,7 +35,7 @@ const shiftLine=s=>line(dateLabel(s.date),clock(s)+' · '+s.area);
 function absentCard(db,actor){
  const absent=teamMissing(db,actor);
  if(!absent.length)return '';
- const rows=absent.slice(0,3).map(m=>missingRow(db,actor,m)).join('');
+ const rows=missingByPerson(absent).slice(0,3).map(g=>missingRow(db,actor,g)).join('');
  return card('Uren ontbreken ('+absent.length+')',rows+button('Alle bekijken','page','reviews'));
 }
 // 1. Wanneer heb ik dienst: vandaag, of anders de eerstvolgende.
