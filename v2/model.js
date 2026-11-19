@@ -1,6 +1,8 @@
 // Vaste tijden. Bezoekers: open tot close. Werkdag medewerkers (ook "hele dag" en een nieuwe dienst): start tot end.
 export const TIMES = {open:'09:00',close:'17:30',start:'08:30',end:'18:00'};
 export const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date());
+export const now = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'})
+ .format(new Date());
 export function add(day,n){const d=new Date(day+'T12:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 export const weekday = day => new Date(day+'T12:00Z').getUTCDay()||7;
 export const monday = day => add(day,1-weekday(day));
@@ -76,10 +78,23 @@ function rejectUnplanned({db,actor,p,s}){
   Object.assign(db.hours[s.id],{status:'rejected',reason:p.reason});
 }
 
+// Uren van vandaag mogen niet later eindigen dan nu, met 15 minuten speling.
+function notLaterThanNow(date,end){
+ check(date<today()||minutes(end)<=minutes(now())+15,'De eindtijd kan niet later zijn dan nu.');
+}
+// Waarschuwingen voor de leiding; ze houden niets tegen.
+export function warnings(db,s){
+ const e=db.hours[s.id];
+ if(!e)return [];
+ const net=minutes(e.end)-minutes(e.start)-e.pause,list=[];
+ if(!s.unplanned&&e.end<s.end)list.push('Eindigt vóór het rooster (gepland tot '+s.end+')');
+ if(e.pause===0&&net>330)list.push('Geen pauze bij een lange dag');
+ return list;
+}
 function submitHours({db,actor,p,s}){
  check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
-  interval(p);const pause=Number(p.pause);
+  interval(p);notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
   check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),'Vul de werkelijke pauze in.');
   check(!db.shifts.some(t=>t.id!==s.id&&t.user===s.user&&t.date===s.date&&intersects(p,db.hours[t.id]||t)),'Deze uren overlappen een andere dienst.');
   const {approvedBy,approvedAt,reopenedBy}=db.hours[s.id]||{};

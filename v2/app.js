@@ -3,7 +3,7 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen} from './model.js';
+ mayReopen,warnings} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,labels,name,weekNames,requestName,approvalText}
  from './view.js';
 import {todayPage} from './today.js';
@@ -99,6 +99,7 @@ function show(action,id){
   if(entry)info+='<p>'+h(labels[entry.status])+' · '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
   if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
+  if(action==='inspect')info+=warnings(db,shift).map(w=>'<p class="notice">Let op: '+h(w)+'</p>').join('');
   if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
   if(action==='inspect'&&entry?.status==='pending')info+=button('Goedkeuren','approve',id,true)+form('return',reason(true),'Aanpassen vragen',id)+(shift.unplanned?form('rejectHours',reason(true),'Ongeplande dienst afwijzen',id):'');
   const actor=db.people.find(p=>p.id===actorId);
