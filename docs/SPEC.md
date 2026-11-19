@@ -97,16 +97,16 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **Nieuwe velden:** `contractHours` bij een persoon (uren per week); `db.normOverrides` (lijst van `{user, month, minutes, reason, by}`); `db.closedMonths` (lijst van `{month, by, at}`); `db.monthReopens` (lijst van `{month, by, at, reason}`, het logboek van de noodknop).
 - *Scenario:* de bedrijfsleider sluit november af. Er staan nog uren open: de app waarschuwt en toont wie.
 
-**Ronde 5: interface**
-- Tabbalk onderaan op een telefoon, met aantal-bolletjes (Uren, Aanvragen).
+**Ronde 5: interface** (in drie delen: 5a tabbalk en Vandaag, 5b teamrooster, 5c statuslabels)
+- Tabbalk onderaan op een telefoon (Vandaag, Rooster, Uren, Aanvragen), met aantal-bolletjes. **Uren:** eigen uren nog in te vullen of aan te passen, plus voor leiding en bedrijfsleider de uren die zij moeten beoordelen. **Aanvragen:** voor een medewerker de voorstellen om te beantwoorden; voor de bedrijfsleider de aanvragen en voorstellen om over te beslissen.
 - **Vandaag** is voor iedere rol op dezelfde manier opgebouwd, vanuit de vraag *wat wil je zien als je de app opent?*
   1. **Bovenaan: wanneer heb ik dienst.** Eerst "Mijn dienst vandaag" of, als er vandaag geen is, "Eerstvolgende dienst". Dit staat altijd als eerste.
   2. **Daaronder: wat moet ik nog doen en welke aanvragen lopen er.** Bijvoorbeeld uren invullen, een voorstel beantwoorden, een lopende vrij-aanvraag, en voor leiding en bedrijfsleider uren die ontbreken, uren die beoordeeld moeten worden en aanvragen waarop ze moeten reageren.
   3. **Daarna de rest**, zoals voor leiding wie er vandaag werkt en de roosterwijzigingen.
-- Teamrooster: dagweergave op een telefoon, weekraster op een groter scherm.
-- Kalender: in de maandweergave alleen een stip en het dagnummer. Tekst in het venster bij tikken.
-- Eén set statuschips met kleur en tekst. Tijdkeuze: begin en eind vooraf ingevuld met rooster, met −15 en +15 minuten, live "Netto 8u 30m".
-- De keuzelijst "Demoprofiel" alleen in de demo.
+- Teamrooster: dagweergave op een telefoon, weekraster op een groter scherm. Het weekraster mag onderaan de huidige dag niet afgekapt lijken.
+- Kalender: blijft zoals hij is (besluit eigenaar: het huidige overzicht is duidelijk). Geen stippen.
+- Eén set statuschips met kleur en tekst. Tijdkeuze: Van en Tot blijven keuzelijsten per kwartier, met live "Netto" (al gebouwd). Geen −15/+15-knoppen (besluit eigenaar).
+- De keuzelijst "Demoprofiel" blijft tot ronde 8 en verdwijnt daar door het inloggen.
 
 **Ronde 6: rooster-gemak**
 - Kopieer vorige week als concept. Maak concept uit vaste beschikbaarheid. Excel-import (met `excel/`) als concept. "Alles goedkeuren" voor uren die exact met het rooster overeenkomen.

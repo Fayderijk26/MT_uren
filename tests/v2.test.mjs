@@ -355,3 +355,19 @@ test('Noodknop: alleen de bedrijfsleider heropent een afgesloten maand, met rede
  assert.deepEqual(db.monthReopens.map(r=>[r.month,r.by,r.reason]),[['2026-11','eva','Uren Sylvia vergeten']]);
  assert.ok(apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30}));
 });
+
+import {badges} from '../v2/model.js';
+test('Bolletjes: wat iemand nog moet doen bij Uren en Aanvragen',()=>{
+ let db=pilotRoster();
+ const count=(id,day='2026-11-19')=>badges(db,db.people.find(p=>p.id===id),day);
+ // Sylvia mist 17 en 18 nov; Eva mist 17 nov en moet de uren van Elise (16 nov) beoordelen.
+ assert.deepEqual(count('sylvia'),{hours:2,requests:0});
+ assert.deepEqual(count('eva'),{hours:2,requests:0});
+ assert.deepEqual(count('elise'),{hours:0,requests:0});
+ db=apply(db,'eva','return',{id:'elise-2026-11-16',reason:'pauze klopt niet'});
+ assert.deepEqual(count('elise'),{hours:1,requests:0});
+ assert.deepEqual(count('eva'),{hours:1,requests:0});
+ db=apply(db,'elise','leave',{date:'2026-12-24',reason:'Kerst'});
+ assert.deepEqual(count('eva'),{hours:1,requests:1});
+ assert.deepEqual(count('elise'),{hours:1,requests:0});
+});
