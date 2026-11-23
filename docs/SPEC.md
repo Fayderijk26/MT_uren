@@ -175,6 +175,12 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - *Scenario:* Isis (contract Uren) kan geen betaald verlof kiezen, alleen onbetaald vrij.
 - *Scenario:* Elise krijgt verlof voor zaterdag 10:00–18:00. De dienst verdwijnt uit het rooster en telt 7u 30m verlof.
 
+**Mijn uren (bij Uren, voor iedereen)**
+- Bovenaan de kaart **Mijn uren** met de maandkeuze in de kop. Groot het **totaal** van de maand: goedgekeurd + ziek gemeld + verlof (betaald). Daaronder een balk en drie tegels met die drie soorten.
+- **Wacht op beoordeling** telt niet mee in het totaal en staat er apart onder ("telt mee zodra het is goedgekeurd"). Onbetaald vrij staat er niet bij.
+- Daaronder de kaart **Diensten**: gewerkte diensten tot vandaag, ziek gemelde diensten en verlofdagen (ook later in de maand), met hoeveel ze tellen. Nieuwste bovenaan.
+- De getallen komen uit `monthSummary` (nu ook met `pending`), dezelfde als in het maandoverzicht van de bedrijfsleider. Norm en verschil staan er nog niet; dat volgt na het besluit over de maandnorm (9c).
+
 **9c: maandoverzicht en export** (nog niet gebouwd)
 - Per persoon Gewerkt, Ziek, Verlof, Totaal, Norm en Verschil. Bij contract Uren staat de norm als informatie en is er geen verschil.
 - Export: aparte kolommen Ziek en Verlof in plaats van de lege kolom afwezigheid.

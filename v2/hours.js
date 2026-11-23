@@ -1,6 +1,7 @@
-import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned} from './model.js';
-import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton}
- from './view.js';
+import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
+ absentMinutes} from './model.js';
+import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
+ duration,h} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
 const dayList=shifts=>shifts.map(s=>dateLabel(s.date)).join(', ').replace(/, ([^,]*)$/,' en $1');
 // WhatsApp-herinnering voor één of meer diensten van dezelfde medewerker.
@@ -44,8 +45,38 @@ export function tabs(db,actor,page){
 }
 function ownHoursRow(db,s){
  const status=s.sick?'sick':db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
- const row=line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
+ const text=clock(db.hours[s.id]||s)+(s.sick?' · telt '+duration(absentMinutes(s)):'');
+ const row=line(dateLabel(s.date),text,button('Bekijken','entry',s.id),status?chip(status):'');
  return '<div class="compact">'+row+'</div>';
+}
+// Verlofdag: het deel van de dienst dat verviel, en hoeveel het telt.
+const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),clock(d)+' · telt '+duration(absentMinutes(d)),'',
+ chip('leave'))+'</div>';
+// Mijn uren: het totaal dat vastligt (goedgekeurd, ziek, verlof) met een balk; wat nog wacht staat eronder apart.
+// De getallen komen uit monthSummary, dezelfde als in het maandoverzicht van de bedrijfsleider.
+function summaryCard(db,actor,month){
+ const r=monthSummary(db,month).find(x=>x.user===actor.id)||{approved:0,sick:0,leave:0,pending:0};
+ const parts=[['ok','Goedgekeurd',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave]];
+ const total=r.approved+r.sick+r.leave;
+ const monthName=new Intl.DateTimeFormat('nl-NL',{month:'long'}).format(new Date(month+'-15T12:00Z'));
+ const bar=total?'<div class="hourbar" aria-hidden="true">'+parts.filter(p=>p[2])
+  .map(([tone,,m])=>'<span class="seg-'+tone+'" style="flex:'+m+'"></span>').join('')+'</div>':'';
+ const part=([tone,label,m])=>'<div class="'+(m?'':'zero')+'"><span><i class="dot dot-'+tone+'"></i>'+h(label)
+  +'</span><b>'+duration(m)+'</b></div>';
+ const wait=r.pending?'<p class="hourwait">'+duration(r.pending)+' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'';
+ const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
+  +field('Maand','month','month',month,'data-view="month"')+'</div>';
+ return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'
+  +'<b class="hourtotal">'+duration(total)+'</b></div>'+bar+'<div class="hourparts">'+parts.map(part).join('')+'</div></div>'
+  +wait+'</section>';
+}
+// Diensten van de maand: gewerkt tot vandaag, en ook ziek gemelde diensten en verlofdagen. Nieuwste bovenaan.
+function shiftsCard(db,actor,month){
+ const shifts=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(month)&&(s.date<=today()||s.sick))
+  .map(s=>({...s,html:ownHoursRow(db,s)}));
+ const leave=leaveItems(db,actor.id,month).map(d=>({...d,html:leaveRow(d)}));
+ const rows=shifts.concat(leave).sort(sortDate).reverse().map(x=>x.html).join('');
+ return card('Diensten',button('Ongeplande dienst invullen','unplanned')+(rows||'<p>Nog geen diensten deze maand.</p>'));
 }
 export function hoursPage(db,actor,view){
  if(view.page==='reviews'){
@@ -56,7 +87,5 @@ export function hoursPage(db,actor,view){
    ||'Alle uren zijn beoordeeld.'))
    +card('Ontbreekt ('+absent.length+')',missingByPerson(absent).map(g=>missingRow(db,actor,g)).join('')||'Er ontbreken geen uren.');
  }
- const rows=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(view.month)&&s.date<=today()).sort(sortDate).reverse();
- const total=rows.reduce((sum,s)=>{const e=db.hours[s.id];return sum+(e?.status==='approved'?minutes(e.end)-minutes(e.start)-e.pause:0)},0);
- return tabs(db,actor,'hours')+card('Gewerkte uren',button('Ongeplande dienst invullen','unplanned')+field('Maand','month','month',view.month,'data-view="month"')+'<p>'+Math.floor(total/60)+'u '+total%60+'m goedgekeurd</p>'+rows.map(s=>ownHoursRow(db,s)).join(''));
+ return tabs(db,actor,'hours')+summaryCard(db,actor,view.month)+shiftsCard(db,actor,view.month);
 }
