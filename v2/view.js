@@ -1,13 +1,13 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
 export const duration=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u '+Math.abs(m)%60+'m';
 export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',
- returned:'Aanpassen gevraagd',missing:'Ontbreekt',busy:'Dienst bezig'};
+ returned:'Aanpassen gevraagd',missing:'Ontbreekt',busy:'Dienst bezig',sick:'Ziek gemeld'};
 // Eén set statuslabels: dezelfde tekst en kleur overal in de app.
-const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy'};
+const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy',sick:'off'};
 export const chip=(status,text=labels[status])=>'<span class="chip chip-'+tones[status]+'">'+h(text)+'</span>';
 export const roleNames={employee:'Medewerker',lead:'Leidinggevende',admin:'Bedrijfsleider'};
 // Rood bolletje met een aantal; niets als er niets te doen is.
@@ -71,6 +71,11 @@ export const requestLength=r=>r.kind==='weekly'?'':r.start?duration(minutes(r.en
 export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.status];
 export const requestChip=r=>chip(r.status,requestStatus(r));
 
+// Ziek melden of de ziekmelding intrekken, als deze persoon dat mag (de regel staat in model.js).
+export function sickButton(db,actor,s){
+ if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
+ return maySick(db,actor,s)?button('Ziek melden','sickAsk',s.id):'';
+}
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
 export function areaChoice(db,user,current){
  const own=areasOf(db,user);

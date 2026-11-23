@@ -40,7 +40,7 @@ export function tabs(db,actor,page){
  return subtabs(items,page);
 }
 function ownHoursRow(db,s){
- const status=db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
+ const status=s.sick?'sick':db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
  const row=line(dateLabel(s.date),clock(db.hours[s.id]||s),button('Bekijken','entry',s.id),status?chip(status):'');
  return '<div class="compact">'+row+'</div>';
 }

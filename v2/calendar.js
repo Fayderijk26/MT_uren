@@ -5,7 +5,8 @@ export function dayContent(db,user,date){
  const shifts=db.shifts.filter(s=>s.user===user&&s.date===date);
  const requests=db.requests.filter(r=>r.user===user&&(r.kind==='weekly'?r.date<=date&&r.weekday===weekday(date):r.date<=date&&r.through>=date));
  const rule=ruleFor(db,{user,date});
- const items=shifts.map(s=>({text:s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+' · Ingepland',kind:'planned',shift:s}));
+ const state=s=>s.sick?' · Ziek gemeld':' · Ingepland';
+ const items=shifts.map(s=>({text:s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+state(s),kind:'planned',shift:s}));
  if(rule)items.push({text:rule.off?'Vrij':rule.start===TIMES.start&&rule.end===TIMES.end?'Hele dag beschikbaar': 'Beschikbaar '+clock(rule),kind:'available'});
  for(const r of requests)items.push({text:(r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r)):r.start?'Vrij '+clock(r):'Vrij gevraagd')+' · '+requestStatus(r)+(r.response?' · '+r.response:''),kind:r.status,request:r});
  for(const offer of db.offers.filter(o=>o.row.user===user&&o.row.date===date))items.push({text:clock(offer.row)+' · '+(offer.turn==='employee'?'Vraag om te werken':'Wacht op bedrijfsleider'),kind:'pending',offer});

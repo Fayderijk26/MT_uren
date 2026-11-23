@@ -21,7 +21,7 @@ function cell(db,person,date,readonly){
   const conflict=drafts.includes(s)?availabilityConflict(db,s):'';
   const warn=conflict?'<small class="conflict">Let op: '+h(conflict)+'</small>':'';
   return '<button class="slot" data-act="shiftDetails" data-id="'+h(s.id)+'">'+text+'<small>'
-   +(drafts.includes(s)?'Concept':'Ingepland')+'</small>'+warn+'</button>';
+   +(drafts.includes(s)?'Concept':s.sick?'Ziek gemeld':'Ingepland')+'</small>'+warn+'</button>';
  });
  for(const o of offers)blocks.push('<button class="asked" '+(o.turn==='admin'&&!readonly?'data-act="proposal" data-id="'+h(o.id)+'"':'disabled')+'>'+(o.fallback?'Gevraagd: '+clock(o.row):clock(o.row))+'<small>'+h(availability(db,person.id,date))+'</small><small>Wacht op '+(o.turn==='admin'?'bedrijfsleider':h(person.name.split(' ')[0]))+'</small></button>');
  if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
