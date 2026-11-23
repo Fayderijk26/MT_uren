@@ -215,10 +215,8 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
   - Ziek melden en vrij vragen in de app: niet nodig (voorlopig weg).
   - Wel alle rechten van de rol.
 - *Scenario:* de eigenaar staat zaterdag in het rooster. Zondag staat haar dienst niet bij Ontbreekt en ze krijgt geen herinnering. Ze keurt wel de uren van de rest goed.
-- *Te vragen aan het bedrijf:*
-  - Staat de eigenaar in het rooster (zodat het team ziet dat ze er is), of helemaal niet?
-  - Is zij die dag ook dagleiding? (Ze is bedrijfsleider, dus ze mag sowieso alles goedkeuren.)
-  - Zijn er nog meer mensen die niet per uur worden betaald?
+- *Besluit eigenaar app (23 november):* er zijn **meerdere mensen** van wie de uren niet tellen. Zij staan **wel in het rooster**, net als iedereen (dienst zichtbaar voor het team, publiceren zoals altijd).
+- *Nog te vragen:* is een leidinggevende met Uren bijhouden: nee op haar dagen ook dagleiding? (Voorstel: ja, de rechten horen bij de rol.)
 
 **Ronde 11: pushmeldingen en herinneringsmails** (nog niet gebouwd; pas na ronde 8, want er is een server en een login nodig)
 - **Pushmeldingen** op de telefoon. De app wordt installeerbaar: een eigen icoon op het beginscherm (manifest en service worker). Melding aan of uit per telefoon, met de knop "Meldingen aan".
