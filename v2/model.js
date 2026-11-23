@@ -153,7 +153,11 @@ export function absentMinutes(s){
 // Verlof (betaald) alleen bij een vast contract; onbetaald vrij kan iedereen vragen.
 export const LEAVE_TYPES=['verlof','onbetaald'];
 export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
-// Per persoon: goedgekeurde minuten, ziek, verlof, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
+// Verlof (betaald) in een maand: de vervallen (delen van) diensten van goedgekeurde verlofaanvragen.
+export const leaveItems=(db,user,month)=>db.requests
+ .filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.status==='approved'&&r.user===user)
+ .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'));
+// Per persoon: goedgekeurde minuten, ziek, verlof, wacht op beoordeling, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
  const worked=p=>db.shifts.some(s=>s.user===p.id&&s.date.startsWith(month+'-'));
  return db.people.filter(p=>p.active!==false||worked(p)).map(person=>{
@@ -162,12 +166,12 @@ export function monthSummary(db,month,day=today()){
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+absentMinutes(s),0);
-  const leave=db.requests.filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.status==='approved'&&r.user===person.id)
-   .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-')).reduce((sum,d)=>sum+absentMinutes(d),0);
+  const leave=leaveItems(db,person.id,month).reduce((sum,d)=>sum+absentMinutes(d),0);
+  const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,sick,leave,open,norm,diff:approved-norm};
+  return {user:person.id,approved,sick,leave,pending,open,norm,diff:approved-norm};
  });
 }
 function closeMonth({db,actor,p}){

@@ -5,9 +5,10 @@ export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
 export const duration=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u '+Math.abs(m)%60+'m';
 export const labels={pending:'Wacht op beoordeling',approved:'Goedgekeurd',rejected:'Afgewezen',
- returned:'Aanpassen gevraagd',missing:'Ontbreekt',busy:'Dienst bezig',sick:'Ziek gemeld'};
+ returned:'Aanpassen gevraagd',missing:'Ontbreekt',busy:'Dienst bezig',sick:'Ziek gemeld',leave:'Verlof (betaald)'};
 // Eén set statuslabels: dezelfde tekst en kleur overal in de app.
-const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy',sick:'off'};
+const tones={missing:'bad',pending:'wait',returned:'bad',approved:'ok',rejected:'off',busy:'busy',sick:'off',
+ leave:'leave'};
 export const chip=(status,text=labels[status])=>'<span class="chip chip-'+tones[status]+'">'+h(text)+'</span>';
 export const roleNames={employee:'Medewerker',lead:'Leidinggevende',admin:'Bedrijfsleider'};
 // Rood bolletje met een aantal; niets als er niets te doen is.
