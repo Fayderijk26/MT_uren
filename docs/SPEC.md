@@ -138,6 +138,14 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **Mail:** de ingebouwde mail van Supabase is alleen voor testen (een paar mails per uur). Voor echt gebruik koppelen we een gratis maildienst (bijvoorbeeld Resend of Brevo) via SMTP. Het bedrijf maakt dat account aan.
 - Delen: **8a** opslag en regels op de server (de demo blijft werken), **8b** inloggen met e-mail en wachtwoord, **8c** per rol alleen de juiste gegevens, **8d** proef met twee of drie collega's.
 - Daarna de mails en pushmeldingen: zie ronde 11.
+- **Privacy en beveiliging** (hoort bij 8a–8c, moet klaar zijn vóór de proef 8d):
+  - **Row level security op elke tabel.** De sleutel in de browser is openbaar. De browser leest en schrijft daarom niets rechtstreeks: alles gaat via de server, die met `model.js` controleert wie wat mag. *Scenario:* Isis is ingelogd en probeert de uren en het telefoonnummer van Elise op te halen: dat mislukt. Zo ook voor elke tabel en elke rol.
+  - Supabase-project in een **EU-regio**. Het bedrijf tekent de verwerkersovereenkomst (DPA) van Supabase en een verwerkersovereenkomst met de beheerder van de app.
+  - **Geen tracking:** geen statistieken, advertenties of bestanden van andere sites (nu laadt de app niets van buiten). De bewaarde login is noodzakelijk, dus geen cookiebanner.
+  - **Privacyverklaring** als link onder het inlogscherm. Concepttekst: `docs/privacy.md` (het bedrijf vult naam, contactpersoon en bewaartermijn in). Geen aparte gebruiksvoorwaarden: het is een werkinstrument.
+  - **Zo weinig mogelijk gegevens:** naam, e-mail, telefoon (niet verplicht), rol, contract, werkplek, rooster, uren, ziek, vrij. **Geen geboortedatum** en geen adres. Is later een waarschuwing voor werktijden van jongeren nodig, dan alleen een vinkje "jonger dan 18".
+  - **Ziekte:** alleen dát iemand ziek is, nooit waarom (ziek melden heeft bewust geen reden). Bij het tekstvak van vrij vragen komt: "Vermeld geen medische informatie."
+  - **Bewaartermijn:** gegevens ouder dan de afgesproken termijn worden verwijderd (voorstel: 2 jaar na het afsluiten van de maand). De maandexport is het archief van het bedrijf voor de loonadministratie (7 jaar). *Te vragen aan het bedrijf.*
 - **Tot dit klaar is, mogen er geen echte medewerkersgegevens in de app.**
 
 **Ronde 9: ziek en verlof (voorlopig gebouwd, nog te overleggen met het bedrijf)**
