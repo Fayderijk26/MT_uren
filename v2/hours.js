@@ -40,7 +40,8 @@ export function reviewRow(db,s){
 export function tabs(db,actor,page){
  if(actor.role==='employee')return '';
  const count=badges(db,actor);
- const items=[...tracksHours(db,actor.id)?[['Mijn uren','hours',count.mine]]:[],['Uren goedkeuren','reviews',count.review]];
+ const own=tracksHours(db,actor.id)?[['Mijn uren','hours',count.mine]]:[];
+ const items=[...own,['Uren goedkeuren','reviews',count.review]];
  if(actor.role==='admin')items.push(['Maandoverzicht','month',0]);
  return subtabs(items,page);
 }
@@ -64,17 +65,20 @@ function summaryCard(db,actor,month){
   .map(([tone,,m])=>'<span class="seg-'+tone+'" style="flex:'+m+'"></span>').join('')+'</div>':'';
  const part=([tone,label,m])=>'<div class="'+(m?'':'zero')+'"><span><i class="dot dot-'+tone+'"></i>'+h(label)
   +'</span><b>'+duration(m)+'</b></div>';
- // Nog te doen: diensten zonder uren en uren waarvoor aanpassen is gevraagd. Een aantal, geen uren: die zijn nog onbekend.
+ // Nog te doen: diensten zonder uren en uren waarvoor aanpassen is gevraagd.
+ // Een aantal diensten, geen uren: die zijn nog onbekend.
  const count=(n,one,more)=>n===1?'1 dienst '+one:n+' diensten '+more;
  const missing=r.open.filter(o=>o.status==='missing').length,returned=r.open.filter(o=>o.status==='returned').length;
  const todo=[missing&&count(missing,'ontbreekt nog','ontbreken nog'),returned&&count(returned,'aanpassen','aanpassen')]
   .filter(Boolean);
  const open=todo.length?'<p class="hourmissing">'+todo.join(' · ')+' · vul ze in bij Diensten</p>':'';
- const wait=r.pending?'<p class="hourwait">'+duration(r.pending)+' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'';
+ const wait=r.pending?'<p class="hourwait">'+duration(r.pending)
+  +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'';
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
   +field('Maand','month','month',month,'data-view="month"')+'</div>';
  return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'
-  +'<b class="hourtotal">'+duration(total)+'</b></div>'+bar+'<div class="hourparts">'+parts.map(part).join('')+'</div></div>'
+  +'<b class="hourtotal">'+duration(total)+'</b></div>'+bar
+  +'<div class="hourparts">'+parts.map(part).join('')+'</div></div>'
   +open+wait+'</section>';
 }
 // Diensten van de maand: gewerkt tot vandaag, en ook ziek gemelde diensten en verlofdagen. Nieuwste bovenaan.
@@ -95,7 +99,8 @@ export function hoursPage(db,actor,view){
   const all=same?button('Alles goedkeuren ('+same+')','approveAll','',true):'';
   return tabs(db,actor,'reviews')+card('Uren goedkeuren',all+(toReview(db,actor).map(s=>reviewRow(db,s)).join('')
    ||'Alle uren zijn beoordeeld.'))
-   +card('Ontbreekt ('+absent.length+')',missingByPerson(absent).map(g=>missingRow(db,actor,g)).join('')||'Er ontbreken geen uren.');
+   +card('Ontbreekt ('+absent.length+')',missingByPerson(absent).map(g=>missingRow(db,actor,g)).join('')
+    ||'Er ontbreken geen uren.');
  }
  return tabs(db,actor,'hours')+summaryCard(db,actor,view.month)+shiftsCard(db,actor,view.month);
 }

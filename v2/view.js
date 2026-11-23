@@ -17,7 +17,8 @@ export const badge=n=>n?'<span class="badge" aria-label="'+n+' te doen">'+n+'</s
 const subtab=([label,page,n],current)=>'<button type="button" class="'+(page===current?'primary':'secondary')
  +'" data-act="page" data-id="'+page+'"><span class="tabicon">'+h(label)+badge(n)+'</span></button>';
 export const subtabs=(items,current)=>'<div class="weeknav">'+items.map(i=>subtab(i,current)).join('')+'</div>';
-export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')+'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
+export const button=(label,act,id='',primary=false)=>'<button type="button" class="'+(primary?'primary':'secondary')
+ +'" data-act="'+h(act)+'" data-id="'+h(id)+'">'+h(label)+'</button>';
 export const link=(label,href)=>
  '<a class="secondary" href="'+h(href)+'" target="_blank" rel="noopener">'+h(label)+'</a>';
 export const card=(title,body)=>'<section class="card"><h2>'+title+'</h2>'+body+'</section>';
@@ -31,10 +32,14 @@ export function field(label,name,type,value='',extra=''){
    const time=String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0');
    options.push('<option '+(time===value?'selected ':'')+'value="'+time+'">'+time+'</option>');
   }
-  if(value&&!options.some(o=>o.includes('value="'+value+'"')))options.push('<option selected value="'+h(value)+'">'+h(value)+' (bestaand)</option>');
-  return '<label class="field"><span>'+h(label)+'</span><select name="'+name+'" '+extra+'>'+options.join('')+'</select></label>';
+  // Een oude tijd die niet op een kwartier valt, blijft zichtbaar.
+  if(value&&!options.some(o=>o.includes('value="'+value+'"')))
+   options.push('<option selected value="'+h(value)+'">'+h(value)+' (bestaand)</option>');
+  return '<label class="field"><span>'+h(label)+'</span><select name="'+name+'" '+extra+'>'+options.join('')
+   +'</select></label>';
  }
- return '<label class="field"><span>'+h(label)+'</span><input name="'+name+'" type="'+type+'" value="'+h(value)+'" '+extra+'></label>';
+ return '<label class="field"><span>'+h(label)+'</span><input name="'+name+'" type="'+type+'" value="'+h(value)+'" '
+  +extra+'></label>';
 }
 // Pauze: knoppen 0–60 min en Anders. De gekozen knop is donkergroen; het minutenveld verschijnt alleen bij Anders.
 // De gekozen pauze staat in het verborgen veld 'pause'; daaronder de regel met netto uren (#net).
@@ -48,8 +53,12 @@ export function pauseField(value=30){
   +'<input name="pauseOther" type="number" min="0" step="1" value="'+(other?h(v):'')+'"></label>'
   +'<p class="net" id="net"></p>';
 }
-export const select=(label,name,opts)=>'<label class="field"><span>'+label+'</span><select name="'+name+'">'+opts.map(([k,v])=>'<option value="'+h(k)+'">'+h(v)+'</option>').join('')+'</select></label>';
-export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.start||'','required')+field('Tot','end','time',s.end||'','required')+'</div>';
+// Keuzelijst; met 'value' staat die keuze vooraf geselecteerd.
+export const select=(label,name,opts,value)=>'<label class="field"><span>'+label+'</span><select name="'+name+'">'
+ +opts.map(([k,v])=>'<option value="'+h(k)+'"'+(value!==undefined&&String(k)===String(value)?' selected':'')+'>'
+ +h(v)+'</option>').join('')+'</select></label>';
+export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.start||'','required')
+ +field('Tot','end','time',s.end||'','required')+'</div>';
 export const form=(action,body,label,id='',primary=true)=>'<form data-op="'+action+'" data-id="'+h(id)+'">'+body
  +'<p role="alert" class="err"></p><button class="'+(primary?'primary':'secondary')+'">'+label+'</button></form>';
 export const name=(db,id)=>db.people.find(p=>p.id===id)?.name||'';
@@ -79,7 +88,8 @@ export function leaveTypeField(db,user,current){
 }
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
 export const leaveShort=r=>r.type==='verlof'?'Verlof':'Vrij';
-export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
+export const requestName=r=>r.kind==='weekly'
+ ?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
  :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')
  +' · '+leaveName(r);
 // Hoe lang iemand vrij vraagt: een aantal dagen of de duur van een deel van de dag.

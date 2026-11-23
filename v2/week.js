@@ -13,7 +13,8 @@ export function availability(db,user,date){
 function cell(db,person,date,readonly){
  const matches=s=>s.user===person.id&&s.date===date;
  const drafts=readonly?[]:db.drafts.filter(matches);
- const shifts=db.shifts.filter(matches).filter(s=>!drafts.some(d=>d.id===s.id)).concat(drafts).sort((a,b)=>a.start.localeCompare(b.start));
+ const shifts=db.shifts.filter(matches).filter(s=>!drafts.some(d=>d.id===s.id)).concat(drafts)
+  .sort((a,b)=>a.start.localeCompare(b.start));
  const offers=db.offers.filter(o=>matches(o.row));
  const blocks=shifts.map(s=>{
   const text=(s.deadline?'<b class="sb">SB</b><small>Bericht vóór '+h(s.deadline)+'</small>':'<b>'+clock(s)+'</b>')
@@ -23,15 +24,24 @@ function cell(db,person,date,readonly){
   return '<button class="slot" data-act="shiftDetails" data-id="'+h(s.id)+'">'+text+'<small>'
    +(drafts.includes(s)?'Concept':s.sick?'Ziek gemeld':'Ingepland')+'</small>'+warn+'</button>';
  });
- for(const o of offers)blocks.push('<button class="asked" '+(o.turn==='admin'&&!readonly?'data-act="proposal" data-id="'+h(o.id)+'"':'disabled')+'>'+(o.fallback?'Gevraagd: '+clock(o.row):clock(o.row))+'<small>'+h(availability(db,person.id,date))+'</small><small>Wacht op '+(o.turn==='admin'?'bedrijfsleider':h(person.name.split(' ')[0]))+'</small></button>');
- if(!blocks.length)blocks.push(button(availability(db,person.id,date),!readonly&&date>=today()?'planExtra':'past',date+'|'+person.id));
+ // Een open voorstel: de bedrijfsleider kan het openen als het op haar wacht.
+ for(const o of offers){
+  const act=o.turn==='admin'&&!readonly?'data-act="proposal" data-id="'+h(o.id)+'"':'disabled';
+  const who=o.turn==='admin'?'bedrijfsleider':h(person.name.split(' ')[0]);
+  blocks.push('<button class="asked" '+act+'>'+(o.fallback?'Gevraagd: '+clock(o.row):clock(o.row))
+   +'<small>'+h(availability(db,person.id,date))+'</small><small>Wacht op '+who+'</small></button>');
+ }
+ // Lege dag: de beschikbaarheid, en vanaf vandaag een knop om iemand in te plannen.
+ const act=!readonly&&date>=today()?'planExtra':'past';
+ if(!blocks.length)blocks.push(button(availability(db,person.id,date),act,date+'|'+person.id));
  return blocks.join('');
 }
 // Concept maken uit vaste beschikbaarheid, voor een week die nog niet voorbij is.
 const plan=(db,v,readonly)=>readonly||!mayPlanWeek(db,v.day)?''
  :button('Concept uit vaste beschikbaarheid','planFromRules',monday(v.day));
 // Bovenbalk zoals bij Mijn rooster: links de knoppen, rechts ‹ Vandaag ›.
-const arrow=(day,text,sign)=>'<button class="secondary" data-act="week" data-id="'+day+'" aria-label="'+text+'">'+sign+'</button>';
+const arrow=(day,text,sign)=>'<button class="secondary" data-act="week" data-id="'+day+'" aria-label="'+text+'">'
+ +sign+'</button>';
 const toolbar=(left,prev,next,unit)=>'<div class="calendar-toolbar"><div class="weektools">'+left+'</div>'
  +'<div class="calendar-navigation" role="group" aria-label="Periode kiezen">'+arrow(prev,'Vorige '+unit,'‹')
  +button('Vandaag','week',today())+arrow(next,'Volgende '+unit,'›')+'</div></div>';
@@ -42,8 +52,8 @@ const shown=(db,days)=>db.people.filter(p=>p.active!==false
 function dayView(db,v,readonly,pending){
  const day=v.day;
  const nav=toolbar(plan(db,v,readonly),add(day,-1),add(day,1),'dag');
- const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'+cell(db,p,day,readonly)
-  +'</div></div>').join('');
+ const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'
+  +cell(db,p,day,readonly)+'</div></div>').join('');
  const week=Array.from({length:7},(_,i)=>add(monday(day),i));
  const publish=!readonly&&week.some(pending)?button('Week publiceren','pubWeek',monday(day),true):'';
  return '<div class="dayview">'+nav+'<h3 class="daytitle">'+h(dateLabel(day))+'</h3>'+rows+publish+'</div>';
