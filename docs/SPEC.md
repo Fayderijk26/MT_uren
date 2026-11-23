@@ -18,6 +18,8 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 | **Leidinggevende** | Als Medewerker. Is **dagleiding** op de dagen dat hij of zij zelf dienst heeft: beoordeelt dan de uren van iedereen die dag. Kan niet plannen of publiceren. Mag ook de eigen uren goedkeuren. |
 | **Bedrijfsleider** (meerdere mogelijk) | Alles. Maakt het rooster, publiceert, beoordeelt altijd (op elke dag), beslist over aanvragen. Mag de eigen uren goedkeuren. |
 
+Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eigenaar van Monkey Town: bedrijfsleider met alle rechten, maar niet op uurbasis betaald.
+
 **Dagleiding** wordt uitgerekend: wie leidinggevende is en die dag een dienst heeft. Er wordt niets handmatig aangewezen. Er mogen op één dag **meerdere dagleidingen** zijn. Zij kunnen allemaal de uren van iedereen van die dag goedkeuren, ook de eigen uren.
 
 ## 3. Wat de app nu doet (gebouwd)
@@ -47,7 +49,7 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 12. De knop **"Herinner via WhatsApp"** komt er, voor de bedrijfsleider én voor de dagleiding. Hij opent WhatsApp met een ingevulde tekst. Telefoonnummers worden bewaard, zijn alleen zichtbaar voor leiding en bedrijfsleider, staan alleen in de echte database en **nooit in de repository**.
 13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan.
 14. **Ingediend is ingediend.** De medewerker kan ingediende uren niet zelf aanpassen. Dat kan alleen nadat de leiding "Aanpassen vragen" heeft gedaan (zo werkt het nu al). Eindigen de uren vóór het geplande einde van de dienst, dan krijgt de leiding een **waarschuwing** (niet blokkeren).
-15. Voor later: pushmeldingen (wens), collega's zien in het rooster, toeslagen. Ziek en verlof: zie ronde 9 (voorstel).
+15. Voor later: pushmeldingen (zie ronde 11), collega's zien in het rooster, toeslagen. Ziek en verlof: zie ronde 9 (voorstel).
 16. **Inloggen met e-mail en wachtwoord** (niet met telefoonnummer en sms: dat kost geld). De bedrijfsleider zet een medewerker erin met e-mailadres. Die krijgt een uitnodigingsmail en kiest daarmee een wachtwoord. Daarna blijft de medewerker ingelogd op die telefoon tot hij of zij uitlogt. Wachtwoord vergeten gaat via een mail met een link. Wie niet door een bedrijfsleider is toegevoegd of op inactief staat, komt er niet in. Advies aan medewerkers: zet de app op het beginscherm (Safari › Delen › Zet op beginscherm), dan blijft de login bewaard. Uitwerking in ronde 8.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
@@ -135,7 +137,7 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **Inloggen** (besluit 16): Supabase Auth met e-mail en wachtwoord. Openbaar aanmelden staat uit; alleen een uitnodiging door een bedrijfsleider. Nieuw veld bij een persoon: `email` (verplicht voor inloggen, alleen zichtbaar voor de bedrijfsleider, alleen in de echte database en nooit in de repository). Op inactief zetten blokkeert het inloggen.
 - **Mail:** de ingebouwde mail van Supabase is alleen voor testen (een paar mails per uur). Voor echt gebruik koppelen we een gratis maildienst (bijvoorbeeld Resend of Brevo) via SMTP. Het bedrijf maakt dat account aan.
 - Delen: **8a** opslag en regels op de server (de demo blijft werken), **8b** inloggen met e-mail en wachtwoord, **8c** per rol alleen de juiste gegevens, **8d** proef met twee of drie collega's.
-- Daarna de mails (dagoverzicht en 09:00-herinnering) en eventueel pushmeldingen.
+- Daarna de mails en pushmeldingen: zie ronde 11.
 - **Tot dit klaar is, mogen er geen echte medewerkersgegevens in de app.**
 
 **Ronde 9: ziek en verlof (voorlopig gebouwd, nog te overleggen met het bedrijf)**
@@ -202,6 +204,31 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 | Verlofdag zonder dienst | Telt niet mee; waarschuwing bij 0 uur | Contracturen ÷ 5 per verlofdag; of de bedrijfsleider vult de uren in bij goedkeuren |
 | Verlofsaldo | Niet in de app, bij de loonadministratie | Saldo in de app (opbouw, vervallen, overuren: foutgevoelig met twee administraties) |
 | Feestdagen en sluitingsdagen | Geen invloed op de norm | Gaan af van de norm als het park dicht is |
+
+**Ronde 10: account zonder urenregistratie** (nog niet gebouwd; kan vóór ronde 8, het zijn regels in `model.js`)
+- *Waarom:* de eigenaar van Monkey Town doet nu het werk van de bedrijfsleider. Komt er een bedrijfsleider, dan krijgt de eigenaar een eigen account met alle rechten van de bedrijfsleider: uren goedkeuren, vrije dagen beoordelen, roosters maken, publiceren, maand afsluiten. Haar uren hoeven niet geregistreerd te worden: ze wordt niet per uur betaald.
+- Nieuw veld bij een persoon: `tracksHours` (Uren bijhouden: ja of nee; standaard ja). In te stellen onder Medewerkers, bij elke rol. Het is een eigen instelling naast de rol, zodat het ook kan voor bijvoorbeeld een bedrijfsleider in loondienst met een vast salaris.
+- Bij **nee**:
+  - Geen uren invullen, geen Nog in te vullen, niet bij Ontbreekt, geen Herinner.
+  - Niet in het maandoverzicht en niet in de export. Geen maandnorm.
+  - Geen kaart Mijn uren; bij Uren staat alleen Uren goedkeuren.
+  - Ziek melden en vrij vragen in de app: niet nodig (voorlopig weg).
+  - Wel alle rechten van de rol.
+- *Scenario:* de eigenaar staat zaterdag in het rooster. Zondag staat haar dienst niet bij Ontbreekt en ze krijgt geen herinnering. Ze keurt wel de uren van de rest goed.
+- *Besluit eigenaar app (23 november):* er zijn **meerdere mensen** van wie de uren niet tellen. Zij staan **wel in het rooster**, net als iedereen (dienst zichtbaar voor het team, publiceren zoals altijd).
+- *Nog te vragen:* is een leidinggevende met Uren bijhouden: nee op haar dagen ook dagleiding? (Voorstel: ja, de rechten horen bij de rol.)
+
+**Ronde 11: pushmeldingen en herinneringsmails** (nog niet gebouwd; pas na ronde 8, want er is een server en een login nodig)
+- **Pushmeldingen** op de telefoon. De app wordt installeerbaar: een eigen icoon op het beginscherm (manifest en service worker). Melding aan of uit per telefoon, met de knop "Meldingen aan".
+  - iPhone: alleen als de app op het beginscherm staat (iOS 16.4 of nieuwer). Android: ook vanuit de browser.
+  - Versturen gaat via een functie bij Supabase (gratis plan).
+- Een melding is een extra seintje. De melding op Vandaag blijft de hoofdplek, want niet iedereen zet push aan en een melding komt niet altijd aan.
+- Voorstel welke meldingen (per stuk kiezen met het bedrijf, liever weinig dan veel):
+  - Medewerker: uren van gisteren ontbreken nog; aanpassen gevraagd; vrij-aanvraag goedgekeurd of afgewezen; ziek gemeld door de leiding; nieuw voorstel; rooster voor volgende week gepubliceerd.
+  - Bedrijfsleider: nieuwe aanvraag om te beoordelen.
+  - **Bedrijfsleider: maand afronden.** Vanaf de 1e van de volgende maand: mail én pushmelding "November kan worden afgesloten. Nog X uren te beoordelen en Y ontbreken. Sluit de maand af en download het maandoverzicht." Elke paar dagen opnieuw tot de maand is afgesloten. Na afsluiten opent meteen het downloaden van het maandoverzicht.
+- **Mails** (besluit 8): dagoverzicht aan wie dienst had en de herinnering de volgende dag om 09:00, via de maildienst uit ronde 8.
+- *Te vragen aan het bedrijf:* welke meldingen wel en niet; hoe vaak de maandherinnering terugkomt; tot welke dag de maand afgerond moet zijn (hangt samen met de loonperiode).
 
 ## 7. Woordenlijst
 - **Concept:** diensten die nog niet zichtbaar zijn voor medewerkers. **Publiceren** maakt ze zichtbaar.
