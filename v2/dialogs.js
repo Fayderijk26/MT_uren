@@ -1,7 +1,7 @@
 // De vensters (dialogen) van de app. Elk venster is een functie (db, wie, id) die {title, body} teruggeeft,
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
- asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift} from './model.js';
+ asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
 import {dayContent} from './calendar.js';
@@ -109,6 +109,15 @@ function sickUndoAsk(db,actor,id){
  const shift=shiftOf(db,id);
  const what='<p><b>'+h(name(db,shift.user))+'</b><br>'+h(dateLabel(shift.date)+' · '+clock(shift))+'</p>';
  return {title:'Ziekmelding intrekken',body:what+form('sickUndo','','Ziekmelding intrekken',id)};
+}
+
+// Meerdere ontbrekende dagen van één persoon ziek melden: per dag een vinkje, niets vooraf aangevinkt.
+function sickPick(db,actor,user){
+ const day=s=>'<label><input type="checkbox" name="ids" value="'+h(s.id)+'"> '
+  +h(dateLabel(s.date)+' · '+clock(s)+' · telt '+duration(absentMinutes(s)))+'</label>';
+ const days='<fieldset class="field areas picklist"><span>Welke dagen was '+h(name(db,user))+' ziek?</span>'
+  +sickable(db,actor,user).map(day).join('')+'</fieldset>';
+ return {title:'Ziek melden',body:form('sickMany',days,'Ziek melden')};
 }
 
 // Maandoverzicht: norm aanpassen, maand afsluiten en de noodknop maand heropenen.
@@ -291,7 +300,7 @@ function proposal(db,actor,id){
 
 // Welke knop (data-act) welk venster opent.
 export const dialogs={
- calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,norm,closeMonth,reopenMonth,decision,
+ calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,norm,closeMonth,reopenMonth,decision,
  person,planFromRules,approveAll,extraDecision,pubWeek,proposal,
  entry:(db,actor,id)=>hoursDialog(db,actor,id,'entry'),
  inspect:(db,actor,id)=>hoursDialog(db,actor,id,'inspect'),

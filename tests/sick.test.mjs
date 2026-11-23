@@ -121,24 +121,52 @@ test('In een afgesloten maand kan niemand ziek melden of een ziekmelding intrekk
 });
 
 const {hoursPage}=await import('../v2/hours.js');
+const {dialogs}=await import('../v2/dialogs.js');
 // Maandag 23 november: de uren van donderdag 19 november ontbreken nog.
 const monday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
 const absent=(db,id)=>hoursPage(db,person(db,id),{page:'reviews',month:'2026-11'}).split('<h2>Ontbreekt')[1];
 
-test('Elise belde ziek maar vergat de app: Eva meldt haar achteraf ziek bij Ontbreekt, naast Herinner',t=>{
+const rowOf=(html,who)=>html.split('<b>'+who+'</b>')[1].split('</article>')[0];
+
+test('Elise belde ziek maar vergat de app: bij meerdere ontbrekende dagen staat één knop Ziek melden',t=>{
  monday(t);
  let db=pilotRoster();
- const row=absent(db,'eva').split('<b>Elise B</b>')[1].split('</article>')[0];
+ const row=rowOf(absent(db,'eva'),'Elise B');
  assert.match(row,/Herinner/);
- assert.match(row,/data-act="sickAsk" data-id="elise-2026-11-19">Ziek melden do 19 nov</);
- assert.match(todayPage(db,person(db,'eva')).split('<h2>Uren ontbreken')[1],/data-act="sickAsk"/);
- db=apply(db,'eva','sick',{id:'elise-2026-11-19'});
- assert.doesNotMatch(absent(db,'eva'),/elise-2026-11-19/);
+ assert.equal(row.match(/Ziek melden/g).length,1,'één knop, niet een per dag');
+ assert.match(row,/data-act="sickPick" data-id="elise">Ziek melden</);
+ assert.match(todayPage(db,person(db,'eva')).split('<h2>Uren ontbreken')[1],/data-act="sickPick"/);
 });
 
-test('Bij Ontbreekt ziet de dagleiding Ziek melden alleen voor de dagen waarop zij dagleiding was',t=>{
+test('Eén ontbrekende dag: de knop noemt de dag, zoals Ziek melden ma 16 nov',t=>{
  monday(t);
- const db=pilotRoster(),list=absent(db,'iris');
- assert.match(list,/data-act="sickAsk" data-id="elise-2026-11-19"/);
- assert.doesNotMatch(list,/data-act="sickAsk" data-id="sylvia-2026-11-18"/,'Iris werkte woensdag niet');
+ const db=pilotRoster();
+ db.shifts=db.shifts.filter(s=>s.user!=='isis'||s.date==='2026-11-21');
+ assert.match(rowOf(absent(db,'eva'),'Isis N'),/data-act="sickAsk" data-id="isis-2026-11-21">Ziek melden za 21 nov</);
+});
+
+test('Eva tikt op Ziek melden bij Elise: ze kiest dagen met vinkjes en meldt ze in één keer ziek',t=>{
+ monday(t);
+ let db=pilotRoster();
+ const {title,body}=dialogs.sickPick(db,person(db,'eva'),'elise');
+ assert.equal(title,'Ziek melden');
+ for(const day of ['19','21'])assert.match(body,new RegExp('name="ids" value="elise-2026-11-'+day+'"'));
+ assert.doesNotMatch(body,/checked/,'niets vooraf aangevinkt');
+ assert.throws(()=>apply(db,'eva','sickMany',{ids:[]}),/Kies minstens één dag/);
+ db=apply(db,'eva','sickMany',{ids:['elise-2026-11-19','elise-2026-11-21']});
+ assert.ok(db.shifts.find(s=>s.id==='elise-2026-11-19').sick&&db.shifts.find(s=>s.id==='elise-2026-11-21').sick);
+ assert.doesNotMatch(absent(db,'eva'),/elise-2026-11-19|elise-2026-11-21/);
+});
+
+test('Ziek melden van meerdere dagen gaat helemaal of niet: één dag die niet mag, dan wordt niets gemeld',t=>{
+ monday(t);
+ const db=pilotRoster();
+ assert.throws(()=>apply(db,'iris','sickMany',{ids:['elise-2026-11-19','sylvia-2026-11-18']}),/niet ziek melden/);
+});
+
+test('Bij Ontbreekt ziet de dagleiding alleen de dagen waarop zij dagleiding was',t=>{
+ monday(t);
+ const db=pilotRoster(),body=dialogs.sickPick(db,person(db,'iris'),'sylvia').body;
+ assert.match(body,/value="sylvia-2026-11-20"/);
+ assert.doesNotMatch(body,/sylvia-2026-11-18/,'Iris werkte woensdag niet');
 });

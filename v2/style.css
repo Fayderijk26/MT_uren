@@ -41,6 +41,7 @@ a.secondary{text-decoration:none}
 #dialog h3{margin-top:22px;padding-top:14px;border-top:1px solid var(--line)}
 .areas{border:0;padding:0;margin:0 0 12px;display:flex;flex-wrap:wrap;gap:8px}.areas>span{width:100%}
 .areas label{flex:1;display:flex;gap:6px;align-items:center;justify-content:center;padding:10px;border:1px solid #c9d8c7;border-radius:10px;cursor:pointer}
+.picklist label{flex-basis:100%;justify-content:flex-start}
 .areas label:has(input:checked){background:#e4efe2;border-color:#2f6b45;font-weight:600}
 .area-k{display:inline-block;margin-left:6px;padding:0 6px;border-radius:6px;background:#fff0cd;color:#654919;font-size:12px}
 /* Uren › Mijn uren: totaal, balk en de drie soorten. Kleuren gelijk aan de statuslabels. */
