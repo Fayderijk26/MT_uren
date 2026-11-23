@@ -72,3 +72,19 @@ test('Onder Diensten staan ook ziek gemelde diensten en verlofdagen, met hoeveel
  assert.match(between(mine(db),'<h2>Mijn uren','</section>'),/Verlof<\/span><b>9u 0m<\/b>/);
  assert.match(list,/data-act="unplanned"/);
 });
+
+test('De knop Ongeplande dienst invullen staat rechts naast de kop Diensten',t=>{
+ assert.match(mine(sylviaMonth(t)),/<div class="cardhead"><h2>Diensten<\/h2><button[^>]*data-act="unplanned"/);
+});
+
+test('Elise mist twee diensten: Mijn uren toont dat apart, ze tellen niet mee in het totaal',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
+ const db=pilotRoster(),elise=db.people.find(p=>p.id==='elise');
+ const summary=between(hoursPage(db,elise,{page:'hours',month:'2026-11'}),'<h2>Mijn uren','</section>');
+ assert.match(summary,/<p class="hourmissing">2 diensten ontbreken nog · vul ze in bij Diensten<\/p>/);
+ assert.match(summary,/<b class="hourtotal">0u 0m<\/b>/);
+ const one=apply(db,'elise','hours',{id:'elise-2026-11-19',start:'08:30',end:'18:00',pause:30});
+ const returned=apply(one,'eva','return',{id:'elise-2026-11-16',reason:'pauze'});
+ assert.match(between(hoursPage(returned,elise,{page:'hours',month:'2026-11'}),'<h2>Mijn uren','</section>'),
+  /1 dienst ontbreekt nog · 1 dienst aanpassen · vul ze in bij Diensten/);
+});

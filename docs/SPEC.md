@@ -177,8 +177,9 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 
 **Mijn uren (bij Uren, voor iedereen)**
 - Bovenaan de kaart **Mijn uren** met de maandkeuze in de kop. Groot het **totaal** van de maand: goedgekeurd + ziek gemeld + verlof (betaald). Daaronder een balk en drie tegels met die drie soorten.
+- **Nog te doen** staat in een rode regel: het aantal diensten dat ontbreekt en waarvoor aanpassen is gevraagd (een aantal diensten, geen uren: die zijn nog onbekend). Ze tellen niet mee in het totaal.
 - **Wacht op beoordeling** telt niet mee in het totaal en staat er apart onder ("telt mee zodra het is goedgekeurd"). Onbetaald vrij staat er niet bij.
-- Daaronder de kaart **Diensten**: gewerkte diensten tot vandaag, ziek gemelde diensten en verlofdagen (ook later in de maand), met hoeveel ze tellen. Nieuwste bovenaan.
+- Daaronder de kaart **Diensten**, met de knop Ongeplande dienst invullen rechts naast de kop: gewerkte diensten tot vandaag, ziek gemelde diensten en verlofdagen (ook later in de maand), met hoeveel ze tellen. Nieuwste bovenaan.
 - De getallen komen uit `monthSummary` (nu ook met `pending`), dezelfde als in het maandoverzicht van de bedrijfsleider. Norm en verschil staan er nog niet; dat volgt na het besluit over de maandnorm (9c).
 
 **9c: maandoverzicht en export** (nog niet gebouwd)

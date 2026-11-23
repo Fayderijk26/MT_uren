@@ -59,3 +59,5 @@ a.secondary{text-decoration:none}
 .hourwait{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fff6dd;color:#6b4d12;font-size:13px}
 @media(max-width:600px){.hourparts{gap:6px}.hourparts>div{padding:8px}.hourparts span{font-size:11px;align-items:flex-start}
 .hourparts span .dot{margin-top:3px}.hourparts b{font-size:15px}.hourtotal{font-size:30px}}
+.hourmissing{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fbe1dd;color:#8f2a1f;font-size:13px;font-weight:600}
+.hourmissing+.hourwait{margin-top:8px}.cardhead h2{margin:0}.cardhead{margin-bottom:14px}
