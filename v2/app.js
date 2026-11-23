@@ -3,7 +3,7 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes}
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours}
  from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
  areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
@@ -29,6 +29,12 @@ const read=()=>{
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
   p.active??=true;p.phone??='';p.areas??=pilotRoster().people.find(x=>x.id===p.id)?.areas||['Vloer'];
+ }
+ // Ronde 10: Mieke (leiding zonder urenregistratie) ontbreekt in oudere demogegevens; zet haar erbij met haar diensten.
+ if(!data.people.some(p=>p.id==='mieke')){
+  const fresh=pilotRoster(),own=x=>x.user==='mieke';
+  data.people.push(fresh.people.find(p=>p.id==='mieke'));
+  data.rules.push(...fresh.rules.filter(own));data.shifts.push(...fresh.shifts.filter(own));
  }
  // Oude werkplekken (Speelvloer, Dagleiding, ...): de werkplek van die medewerker, Keuken blijft Keuken als dat kan.
  for(const s of [...data.shifts,...data.drafts,...data.offers.map(o=>o.row)]){
@@ -111,11 +117,12 @@ function show(action,id){
  if(action==='calendarDay'){
   const items=dayContent(db,actorId,id);
   let body=items.map(i=>'<p>'+h(i.text)+'</p>'+(i.shift?button('Dienst bekijken','ownShift',i.shift.id):i.offer&&i.offer.turn==='employee'?button('Reageren','proposal',i.offer.id):'')).join('');
-  if(id>=today())body+=button('Vrij vragen','leave',id)+button('Beschikbaarheid opgeven','extra',id);
+  if(id>=today())body+=(tracksHours(db,actorId)?button('Vrij vragen','leave',id):'')+button('Beschikbaarheid opgeven','extra',id);
   open(dateLabel(id),body);return;
  }
  if(action==='ownShift'){
-  const me=db.people.find(p=>p.id===actorId),hours=shift.date<=today()&&!shift.deadline&&!shift.sick;
+  const me=db.people.find(p=>p.id===actorId),hours=shift.date<=today()&&!shift.deadline&&!shift.sick
+   &&tracksHours(db,actorId);
   open('Mijn dienst','<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p><p>Aangegeven beschikbaarheid: '+h(availability(db,actorId,shift.date))+'</p>'+(shift.sick?sickText(shift):'')+(hours?button('Gewerkte uren','entry',id):'')+sickButton(db,me,shift));return;
  }
  if(action==='requestShift'){
@@ -221,12 +228,15 @@ function show(action,id){
   const body=field('Naam','name','text',p.name,'required')
    +select('Rol','role',Object.entries(roleNames))
    +select('Contract','contract',[['vast','Vast (met maandnorm)'],['uren','Uren (betaald per gewerkt uur)']])
+   +select('Uren bijhouden','tracksHours',[['yes','Ja'],['no','Nee (niet per uur betaald)']])
+   +'<p class="hint">Bij nee: wel in het rooster en alle rechten van de rol, maar geen uren en niet in het maandoverzicht.</p>'
    +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
    +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
    +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
    +areaBoxes(p.areas||['Vloer']);
   open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id)+(id?inactiveBox(p):''));
-  modal.querySelector('[name=role]').value=p.role;modal.querySelector('[name=contract]').value=p.contract;return;
+  modal.querySelector('[name=role]').value=p.role;modal.querySelector('[name=contract]').value=p.contract;
+  modal.querySelector('[name=tracksHours]').value=p.tracksHours===false?'no':'yes';return;
  }
  if(action==='planFromRules'){
   open('Concept uit vaste beschikbaarheid','<p>Iedereen wordt als concept ingepland op de vaste dagen en tijden van '
@@ -367,7 +377,7 @@ modal.addEventListener('submit',e=>{
  if(op==='approveAll')p.ids=p.ids.split(',');
  if(op==='planFromRules')p.week=p.id;
  if(op==='setActive')p.active=p.active==='true';
- if(op==='savePerson')p.areas=new FormData(f).getAll('areas');
+ if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}

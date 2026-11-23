@@ -205,7 +205,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 | Verlofsaldo | Niet in de app, bij de loonadministratie | Saldo in de app (opbouw, vervallen, overuren: foutgevoelig met twee administraties) |
 | Feestdagen en sluitingsdagen | Geen invloed op de norm | Gaan af van de norm als het park dicht is |
 
-**Ronde 10: account zonder urenregistratie** (nog niet gebouwd; kan vóór ronde 8, het zijn regels in `model.js`)
+**Ronde 10: account zonder urenregistratie** (gebouwd 23 november; regels in `model.js`, `tracksHours`)
 - *Waarom:* de eigenaar van Monkey Town doet nu het werk van de bedrijfsleider. Komt er een bedrijfsleider, dan krijgt de eigenaar een eigen account met alle rechten van de bedrijfsleider: uren goedkeuren, vrije dagen beoordelen, roosters maken, publiceren, maand afsluiten. Haar uren hoeven niet geregistreerd te worden: ze wordt niet per uur betaald.
 - Nieuw veld bij een persoon: `tracksHours` (Uren bijhouden: ja of nee; standaard ja). In te stellen onder Medewerkers, bij elke rol. Het is een eigen instelling naast de rol, zodat het ook kan voor bijvoorbeeld een bedrijfsleider in loondienst met een vast salaris.
 - Bij **nee**:
@@ -216,7 +216,8 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
   - Wel alle rechten van de rol.
 - *Scenario:* de eigenaar staat zaterdag in het rooster. Zondag staat haar dienst niet bij Ontbreekt en ze krijgt geen herinnering. Ze keurt wel de uren van de rest goed.
 - *Besluit eigenaar app (23 november):* er zijn **meerdere mensen** van wie de uren niet tellen. Zij staan **wel in het rooster**, net als iedereen (dienst zichtbaar voor het team, publiceren zoals altijd).
-- *Nog te vragen:* is een leidinggevende met Uren bijhouden: nee op haar dagen ook dagleiding? (Voorstel: ja, de rechten horen bij de rol.)
+- Een leidinggevende met Uren bijhouden: nee is op haar dagen gewoon **dagleiding** (de rechten horen bij de rol). *Nog bevestigen met het bedrijf.*
+- Demo: **Mieke**, leidinggevende, Uren bijhouden: nee. Woensdag 11:00–17:00 en zondag 11:00–16:00. Oudere demogegevens in de browser krijgen haar er vanzelf bij.
 
 **Ronde 11: pushmeldingen en herinneringsmails** (nog niet gebouwd; pas na ronde 8, want er is een server en een login nodig)
 - **Pushmeldingen** op de telefoon. De app wordt installeerbaar: een eigen icoon op het beginscherm (manifest en service worker). Melding aan of uit per telefoon, met de knop "Meldingen aan".

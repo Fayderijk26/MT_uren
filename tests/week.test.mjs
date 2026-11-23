@@ -17,7 +17,7 @@ test('Teamrooster: op een telefoon een dagweergave met vorige en volgende dag, o
  assert.match(html,/data-act="week" data-id="2026-11-09" aria-label="Vorige week">‹</);
  assert.match(html,/<div class="calendar-navigation"[^>]*>[\s\S]*?>Vandaag</);
  assert.match(day,/do 19 nov/);
- assert.equal(day.split('<div class="dayrow">').length-1,5,'een regel per medewerker');
+ assert.equal(day.split('<div class="dayrow">').length-1,6,'een regel per medewerker');
  assert.match(day,/Iris Z[\s\S]*10:00–18:00/);
  assert.match(html,/<div class="weekview">[\s\S]*<table class="weekgrid">/);
 });

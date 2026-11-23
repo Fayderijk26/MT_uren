@@ -60,6 +60,10 @@ function areaFor(db,user,area){
  return pick;
 }
 const isActive=(db,user)=>db.people.find(p=>p.id===user)?.active!==false;
+// Uren bijhouden (SPEC ronde 10): standaard ja. Bij nee wel in het rooster en alle rechten van de rol,
+// maar geen uren, geen herinneringen, geen ziek melden of vrij vragen en niet in het maandoverzicht.
+export const tracksHours=(db,user)=>db.people.find(p=>p.id===user)?.tracksHours!==false;
+const NO_HOURS='Voor jou worden geen uren bijgehouden.';
 // Diensten, concepten en open vragen van iemand vanaf vandaag.
 export const futureShifts=(db,user)=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
  .filter(s=>s.user===user&&s.date>=today()).sort((a,b)=>a.date.localeCompare(b.date));
@@ -67,12 +71,14 @@ export function missing(db,actor,day=today()){
  const sees=s=>isActive(db,s.user)
   &&(actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
- return db.shifts.filter(s=>!s.deadline&&!s.sick&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
+ return db.shifts.filter(s=>!s.deadline&&!s.sick&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s)
+  &&tracksHours(db,s.user))
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
 }
 const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 // Eigen uren die nog moeten: dienst voorbij, maand open, nog niet ingevuld of aanpassen gevraagd.
-export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)
+export const ownTodo = (db,actor,day=today()) => !tracksHours(db,actor.id)?[]:db.shifts
+ .filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)
  &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
 export const toReview = (db,actor) => db.shifts
@@ -110,6 +116,7 @@ function validate(db){
 }
 function announce(db,s,text){db.updates.push({id:crypto.randomUUID(),user:s.user,date:s.date,text})}
 function submitUnplanned({db,actor,p}){
+ check(tracksHours(db,actor.id),NO_HOURS);
  interval(p);check(p.date<=today()&&/^\d{4}-\d{2}-\d{2}$/.test(p.date),'Kies een gewerkte dag.');notClosed(db,p.date);
   const id=crypto.randomUUID();
   check(!db.shifts.some(t=>t.user===actor.id&&t.date===p.date&&intersects(t,p)),'Deze uren overlappen een andere dienst.');
@@ -160,7 +167,7 @@ export const leaveItems=(db,user,month)=>db.requests
 // Per persoon: goedgekeurde minuten, ziek, verlof, wacht op beoordeling, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
  const worked=p=>db.shifts.some(s=>s.user===p.id&&s.date.startsWith(month+'-'));
- return db.people.filter(p=>p.active!==false||worked(p)).map(person=>{
+ return db.people.filter(p=>(p.active!==false||worked(p))&&tracksHours(db,p.id)).map(person=>{
   const shifts=db.shifts.filter(s=>s.user===person.id&&!s.deadline&&s.date.startsWith(month+'-'))
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
@@ -201,6 +208,7 @@ function setNorm({db,actor,p}){
  db.normOverrides.push({user:p.user,month:p.month,minutes:p.minutes,reason:p.reason.trim(),by:actor.id});
 }
 function submitHours({db,actor,p,s}){
+ check(tracksHours(db,actor.id),NO_HOURS);
  check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
  notClosed(db,s.date);
  check(!s.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
@@ -245,6 +253,7 @@ function recordAvailability({db,actor,op,p}){
  check(p.date>=today(),'Kies vandaag of later.');
   const start=p.start||'',end=p.end||'';
   if(start||end)interval(p);
+  if(op==='leave')check(tracksHours(db,actor.id),NO_HOURS+' Overleg vrije dagen met de bedrijfsleider.');
   if(op==='weekly')check(Number.isInteger(+p.weekday)&&+p.weekday>=1&&+p.weekday<=7,'Kies een weekdag.');
   if(op==='extra'){
    check(!db.shifts.some(s=>s.user===actor.id&&s.date===p.date),'Je bent op deze dag al ingepland.');
@@ -463,7 +472,7 @@ function savePerson({db,admin,p}){
  check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
- const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas};
+ const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
@@ -474,6 +483,7 @@ const mayReportFor=(db,actor,s)=>actor.role==='admin'||actor.role==='lead'&&lead
 export function sickProblem(db,actor,s){
  if(!s)return 'Deze dienst bestaat niet.';
  if(closed(db,s.date))return 'Deze maand is afgesloten.';
+ if(!tracksHours(db,s.user))return 'Voor '+(s.user===actor.id?'jou':'deze persoon')+' worden geen uren bijgehouden.';
  if(s.sick)return 'Deze dienst is al ziek gemeld.';
  if(s.deadline)return 'Een stand-bydienst kun je niet ziek melden.';
  if(s.unplanned)return 'Een ongeplande dienst kun je niet ziek melden.';

@@ -1,10 +1,11 @@
-import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,absentMinutes}
- from './model.js';
+import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,absentMinutes,
+ tracksHours} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,duration,
  leaveNames} from './view.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
+ if(!tracksHours(db,actor.id))return '<div class="compact">'+shiftLine(db,actor,s)+'</div>';
  if(s.sick)return '<div class="compact">'+line(dateLabel(s.date)+' · '+s.area,clock(s),sickButton(db,actor,s),
   chip('sick'))+'</div>';
  const e=db.hours[s.id],todo=!e||e.status==='returned';
