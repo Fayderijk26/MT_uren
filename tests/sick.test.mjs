@@ -119,3 +119,26 @@ test('In een afgesloten maand kan niemand ziek melden of een ziekmelding intrekk
  assert.throws(()=>apply(db,'eva','sick',{id:'iris-2026-11-19'}),/afgesloten/);
  assert.throws(()=>apply(db,'eva','sickUndo',{id:'elise-2026-11-19'}),/afgesloten/);
 });
+
+const {hoursPage}=await import('../v2/hours.js');
+// Maandag 23 november: de uren van donderdag 19 november ontbreken nog.
+const monday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
+const absent=(db,id)=>hoursPage(db,person(db,id),{page:'reviews',month:'2026-11'}).split('<h2>Ontbreekt')[1];
+
+test('Elise belde ziek maar vergat de app: Eva meldt haar achteraf ziek bij Ontbreekt, naast Herinner',t=>{
+ monday(t);
+ let db=pilotRoster();
+ const row=absent(db,'eva').split('<b>Elise B</b>')[1].split('</article>')[0];
+ assert.match(row,/Herinner/);
+ assert.match(row,/data-act="sickAsk" data-id="elise-2026-11-19">Ziek melden do 19 nov</);
+ assert.match(todayPage(db,person(db,'eva')).split('<h2>Uren ontbreken')[1],/data-act="sickAsk"/);
+ db=apply(db,'eva','sick',{id:'elise-2026-11-19'});
+ assert.doesNotMatch(absent(db,'eva'),/elise-2026-11-19/);
+});
+
+test('Bij Ontbreekt ziet de dagleiding Ziek melden alleen voor de dagen waarop zij dagleiding was',t=>{
+ monday(t);
+ const db=pilotRoster(),list=absent(db,'iris');
+ assert.match(list,/data-act="sickAsk" data-id="elise-2026-11-19"/);
+ assert.doesNotMatch(list,/data-act="sickAsk" data-id="sylvia-2026-11-18"/,'Iris werkte woensdag niet');
+});

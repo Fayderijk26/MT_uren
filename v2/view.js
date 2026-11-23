@@ -1,5 +1,5 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick,absentMinutes} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -66,6 +66,15 @@ export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Za
 // Soort vrij: oude aanvragen zonder soort zijn onbetaald vrij.
 export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij'};
 export const leaveName=r=>leaveNames[r.type]||leaveNames.onbetaald;
+// Keuze Soort bij vrij vragen en beoordelen. Vast contract: Verlof (betaald) vooraf gekozen. Uren: alleen onbetaald.
+export function leaveTypeField(db,user,current){
+ const paid=mayPaidLeave(db,user),types=paid?['verlof','onbetaald']:['onbetaald'];
+ const pick=types.includes(current)?current:types[0];
+ const option=t=>'<option value="'+t+'"'+(t===pick?' selected':'')+'>'+h(leaveNames[t])+'</option>';
+ const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
+ return '<label class="field"><span>Soort</span><select name="type" required>'+types.map(option).join('')
+  +'</select></label>'+hint;
+}
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
 export const leaveShort=r=>r.type==='verlof'?'Verlof':'Vrij';
 export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
@@ -79,9 +88,9 @@ export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.s
 export const requestChip=r=>chip(r.status,requestStatus(r));
 
 // Ziek melden of de ziekmelding intrekken, als deze persoon dat mag (de regel staat in model.js).
-export function sickButton(db,actor,s){
+export function sickButton(db,actor,s,label='Ziek melden'){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
- return maySick(db,actor,s)?button('Ziek melden','sickAsk',s.id):'';
+ return maySick(db,actor,s)?button(label,'sickAsk',s.id):'';
 }
 // Venster Ziek melden. Meld je jezelf ziek, dan staat erbij dat je ook moet bellen.
 export const SICK_CALL='Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. '

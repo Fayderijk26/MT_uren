@@ -272,7 +272,12 @@ function decideRequest({db,admin,p,r}){
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
    db.rules.push({...r,start:r.start||TIMES.start,end:r.end||TIMES.end});
   }else if(p.accept){
-   check(r.type!=='verlof'||mayPaidLeave(db,r.user),'Betaald verlof kan alleen bij een vast contract. Wijs af of vraag onbetaald vrij.');
+   // De bedrijfsleider kan de soort aanpassen (voorlopig, zie SPEC ronde 9b). De gevraagde soort blijft in askedType.
+   if(r.kind==='leave'&&p.type&&p.type!==r.type){
+    check(LEAVE_TYPES.includes(p.type),'Kies verlof of onbetaald vrij.');
+    r.askedType=r.type||'onbetaald';r.type=p.type;
+   }
+   check(r.type!=='verlof'||mayPaidLeave(db,r.user),'Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.');
    check(!closed(db,r.date)&&!closed(db,r.through),'Deze maand is afgesloten.');
    r.dropped=[];
    for(const old of affected(db,r)){

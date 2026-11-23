@@ -7,6 +7,7 @@ globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(u
 const {pilotRoster}=await import('../v2/pilot.js');
 const {apply,monthSummary,mayPaidLeave,absentMinutes}=await import('../v2/model.js');
 const {requestName}=await import('../v2/view.js');
+const {todayPage}=await import('../v2/today.js');
 
 // Donderdag 19 november, 12:00. Elise (vast) werkt zaterdag 21 november 10:00–18:00. Isis heeft contract Uren.
 const thursday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
@@ -89,4 +90,35 @@ test('Bij een aanvraag staat de soort: Verlof (betaald) of Onbetaald vrij',t=>{
  thursday(t);
  const db=apply(pilotRoster(),'elise','leave',{date:'2026-12-24',type:'verlof'});
  assert.equal(requestName(db.requests.at(-1)),'do 24 dec · Hele dag · Verlof (betaald)');
+});
+
+const {leaveTypeField}=await import('../v2/view.js');
+
+test('Vrij vragen: bij een vast contract staat Verlof (betaald) vooraf gekozen, bij Uren alleen Onbetaald vrij',()=>{
+ const db=pilotRoster();
+ assert.match(leaveTypeField(db,'elise'),/<option value="verlof" selected>Verlof \(betaald\)<\/option><option value="onbetaald">/);
+ assert.doesNotMatch(leaveTypeField(db,'isis'),/value="verlof"/);
+ assert.match(leaveTypeField(db,'isis'),/alleen bij een vast contract/);
+});
+
+test('Elise vraagt verlof, Eva keurt goed als onbetaald vrij: telt geen verlof en Elise ziet dat de soort is aangepast',t=>{
+ thursday(t);
+ let db=apply(pilotRoster(),'elise','leave',{date:'2026-11-21',type:'verlof'});
+ const r=db.requests.at(-1),shift=db.shifts.find(s=>s.id===saturday);
+ assert.match(leaveTypeField(db,'elise','verlof'),/value="verlof" selected/,'bij beoordelen staat de gevraagde soort');
+ db=apply(db,'eva','decide',{id:r.id,accept:true,type:'onbetaald',choices:{[saturday]:{before:JSON.stringify(shift),value:'none'}}});
+ const done=db.requests.at(-1);
+ assert.deepEqual([done.type,done.askedType],['onbetaald','verlof']);
+ assert.equal(monthSummary(db,'2026-11').find(x=>x.user==='elise').leave,0);
+ assert.match(requestName(done),/Onbetaald vrij/);
+ assert.match(todayPage(db,person(db,'elise')),/Soort aangepast: je vroeg Verlof \(betaald\)/);
+});
+
+test('Eva kan een aanvraag van Isis (contract Uren) niet als betaald verlof goedkeuren',t=>{
+ thursday(t);
+ const db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',type:'onbetaald'});
+ const id=db.requests.at(-1).id;
+ assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'verlof'}),/vast contract/);
+ assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'vakantie'}),/Kies verlof of onbetaald/);
+ assert.equal(apply(db,'eva','decide',{id,accept:true,type:'onbetaald'}).requests.at(-1).askedType,undefined);
 });

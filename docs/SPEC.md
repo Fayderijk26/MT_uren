@@ -156,6 +156,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - **Hoeveel uur:** de geplande tijd van de dienst. Is de dienst langer dan 3 uur, dan gaat er 30 minuten pauze af. Voorbeeld: 08:30–15:00 is 6u 30m gepland en telt 6u 00m ziek. Dit wordt uitgerekend, niet opgeslagen.
 - **Gevolgen:** een ziek gemelde dienst hoeft niet ingevuld te worden, telt niet als ontbrekend en staat niet bij Nog open in het maandoverzicht. Uren indienen kan niet. Een leidinggevende die ziek is gemeld, is die dag geen dagleiding. In het rooster staat bij de dienst "Ziek gemeld". De dienst kan niet meer gewijzigd worden; eerst de ziekmelding intrekken.
 - **Zichtbaar:** de medewerker ziet "Ziek gemeld" bij de dienst. Meldt iemand anders het, dan krijgt de medewerker een melding op Vandaag. De bedrijfsleider en de dagleiding zien op Vandaag het kaartje **Ziek gemeld** (vandaag en later).
+- **Achteraf ziek melden** (iemand belde ziek maar vergat de app): bij **Ontbreekt** (Uren goedkeuren en Vandaag) staat naast Herinner per dag de knop **Ziek melden**, voor de bedrijfsleider en de dagleiding van die dag. Een medewerker kan een voorbije dienst niet zelf ziek melden.
 - **Intrekken** (bij een vergissing): door wie het meldde of een bedrijfsleider, zolang de maand open is. Een voorbije dienst staat daarna weer bij de ontbrekende uren.
 - Het maandoverzicht rekent de ziekte-uren al uit (`monthSummary` geeft `sick`). De kolommen in het overzicht en de export komen in 9c.
 - *Scenario:* Elise meldt zich ziek voor zaterdag 10:00–18:00. Die dienst telt 7u 30m ziek, staat niet bij Nog in te vullen en niet bij de ontbrekende uren.
@@ -166,6 +167,8 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - **Vrij vragen krijgt een soort.** Nieuw veld bij een aanvraag: `type` (`verlof` of `onbetaald`).
   - **Verlof (betaald):** alleen bij een vast contract. De medewerker vraagt aan, de bedrijfsleider keurt goed. Telt mee als uren.
   - **Onbetaald vrij:** voor iedereen. Telt niet mee. Dit is wat Vrij vragen nu doet; bestaande aanvragen worden Onbetaald vrij.
+  - Bij een vast contract staat Verlof (betaald) vooraf gekozen. De medewerker kan ook Onbetaald vrij kiezen.
+- **Soort aanpassen bij goedkeuren** (voorlopig, besluit eigenaar 23 november): de bedrijfsleider ziet de gevraagde soort en kan die bij het goedkeuren veranderen. De gevraagde soort blijft bewaard (nieuw veld `askedType`, alleen als de soort is aangepast) en de medewerker ziet op Vandaag "Soort aangepast: je vroeg ...".
 - Bij goedkeuren bewaart de aanvraag welk deel van de diensten binnen de vrije tijd viel (nieuw veld `dropped`, lijst van `{date, start, end}`; ook bij onbetaald vrij). Kiest de bedrijfsleider dat een hele dienst vervalt terwijl maar een deel vrij was gevraagd, dan telt alleen het gevraagde deel. Verlof telt de geplande tijd daarvan, met dezelfde pauzeregel als ziek (`absentMinutes`). Betaald verlof goedkeuren kan alleen als de medewerker dan nog een vast contract heeft, en niet in een afgesloten maand. Een verlofdag zonder dienst telt niet mee. Staan er nog geen diensten in die periode, dan waarschuwt de app de bedrijfsleider: "dit verlof telt nu 0 uur".
 - Geen verlofsaldo in de app: dat houdt de loonadministratie bij (advies, zie overleg). De app legt alleen de opgenomen verlofuren vast.
 - Het maandoverzicht rekent de verlofuren al uit (`monthSummary` geeft `leave`). De kolommen komen in 9c.
@@ -187,6 +190,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 | Ziek bij contract Uren | Iedereen kan ziek melden; de app registreert de uren, de loonadministratie beslist over uitbetalen | Ziek alleen bij vast contract (let op: ook uurkrachten hebben meestal recht op doorbetaling voor ingeroosterde diensten) |
 | Wachtdag | Geen | Eerste ziektedag niet doorbetaald, als cao of contract dat zegt |
 | Verlof-uren | Geplande tijd van de vervallen diensten, min 30 minuten pauze bij meer dan 3 uur (zelfde regel als ziek) | Zonder pauzeaftrek; of contracturen ÷ 5 per verlofdag |
+| Wie kiest betaald of onbetaald | De medewerker kiest (bij vast contract staat Verlof vooraf gekozen); de bedrijfsleider kan het aanpassen bij goedkeuren | Alleen de bedrijfsleider kiest bij goedkeuren; de medewerker vraagt alleen "vrij" |
 | Verlof bij contract Uren | Niet mogelijk, alleen onbetaald vrij | Ook betaald verlof voor uurkrachten (zij bouwen wettelijk ook verlof op, vaak uitbetaald per uur) |
 | Verlofdag zonder dienst | Telt niet mee; waarschuwing bij 0 uur | Contracturen ÷ 5 per verlofdag; of de bedrijfsleider vult de uren in bij goedkeuren |
 | Verlofsaldo | Niet in de app, bij de loonadministratie | Saldo in de app (opbouw, vervallen, overuren: foutgevoelig met twee administraties) |
