@@ -3,10 +3,10 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes,mayPaidLeave}
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes}
  from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
- areaChoice,sickButton,leaveNames,sickAskBody} from './view.js';
+ areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -199,7 +199,8 @@ function show(action,id){
   const zero=r.kind==='leave'&&r.type==='verlof'&&!affected(db,r).length
    ?'<p class="notice">Er staan nog geen diensten in deze periode: dit verlof telt nu 0 uur.</p>':'';
   const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero;
-  const choices='<div class="decide">'+form('accept',effects,'Aanvraag goedkeuren',id)
+  const type=r.kind==='leave'?leaveTypeField(db,r.user,r.type):'';
+  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
    +button('Aanvraag afwijzen','askReject',id)+'</div>';
   const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
   open('Aanvraag beoordelen',info+choices+no);return;
@@ -207,7 +208,7 @@ function show(action,id){
  if(['leave','weekly','extra'].includes(action)){
   let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',id||today(),'required min="'+today()+'"');
   if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
-  if(action==='leave')body+=leaveType()+field('Tot en met (bij meerdere dagen)','through','date');
+  if(action==='leave')body+=leaveTypeField(db,actorId)+field('Tot en met (bij meerdere dagen)','through','date');
   const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
   if(action==='weekly')modes.push(['off','Niet beschikbaar']);
   if(action==='leave')body+='<p id="late" role="status"></p>';
@@ -277,14 +278,6 @@ function show(action,id){
   }
   open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+(o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:''))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;
  }
-}
-// Soort vrij: verlof (betaald) alleen bij een vast contract; de regel staat in model.js.
-function leaveType(){
- const paid=mayPaidLeave(db,actorId);
- const types=(paid?['verlof','onbetaald']:['onbetaald']).map(t=>'<option value="'+t+'">'+h(leaveNames[t])+'</option>');
- const choose=paid?'<option value="">Kies verlof of onbetaald</option>':'';
- const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
- return '<label class="field"><span>Soort</span><select name="type" required>'+choose+types.join('')+'</select></label>'+hint;
 }
 function lateNotice(){
  const el=modal.querySelector('#late');

@@ -1,7 +1,7 @@
 import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,absentMinutes}
  from './model.js';
-import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,duration}
- from './view.js';
+import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,duration,
+ leaveNames} from './view.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
@@ -32,7 +32,7 @@ export const offerRow=(db,o)=>line(dateLabel(o.row.date)+' · '+name(db,o.row.us
 function ownRequestRow(r){
  if(r.status==='pending')return line(requestName(r),'','',requestChip(r));
  const text=(r.status==='approved'?'Je aanvraag is goedgekeurd':'Je aanvraag is afgewezen')
-  +(r.response?' · Reden: '+r.response:'');
+  +(r.askedType?' · Soort aangepast: je vroeg '+leaveNames[r.askedType]:'')+(r.response?' · Reden: '+r.response:'');
  return line(requestName(r),text,button('Gezien','seen',r.id),requestChip(r));
 }
 const shiftLine=(db,actor,s)=>line(dateLabel(s.date),clock(s)+' · '+s.area,sickButton(db,actor,s),

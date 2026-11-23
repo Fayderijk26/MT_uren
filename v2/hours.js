@@ -1,5 +1,6 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned} from './model.js';
-import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs} from './view.js';
+import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton}
+ from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
 const dayList=shifts=>shifts.map(s=>dateLabel(s.date)).join(', ').replace(/, ([^,]*)$/,' en $1');
 // WhatsApp-herinnering voor één of meer diensten van dezelfde medewerker.
@@ -20,7 +21,9 @@ export function missingRow(db,actor,group){
  const remind=group.map(m=>m.shift).filter(s=>mayRemind(db,actor,s));
  const text=group.length===1?dateLabel(shift.date)+' · '+clock(shift)+' · '+when
   :group.map(m=>dateLabel(m.shift.date)).join(', ');
- const row=line(name(db,shift.user),text,remind.length?remindLink(db,remind):'');
+ // Vergeten ziek te melden in de app: per dag een knop, als deze persoon dat mag (regel in model.js).
+ const sick=group.map(m=>sickButton(db,actor,m.shift,'Ziek melden '+dateLabel(m.shift.date))).join('');
+ const row=line(name(db,shift.user),text,(remind.length?remindLink(db,remind):'')+sick);
  return '<div class="compact">'+row+'</div>';
 }
 export function reviewRow(db,s){
