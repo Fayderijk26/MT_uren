@@ -18,6 +18,13 @@ test('Pauze: kopje en knoppen, het veld "Pauze in minuten" alleen na Anders',()=
  assert.deepEqual(chosen(html),[]);
 });
 
+test('Nieuwe uren of ongeplande dienst: pauze staat vooraf op 30 min; ingevulde uren houden hun pauze',()=>{
+ const html=pauseField();
+ assert.deepEqual(chosen(html),['30']);
+ assert.match(html,/name="pause" value="30"/);
+ assert.deepEqual(chosen(pauseField(0)),['0']);
+});
+
 test('Pauze: een bekende pauze kleurt die knop, een andere pauze kleurt Anders en toont het veld',()=>{
  assert.deepEqual(chosen(pauseField(30)),['30']);
  const other=pauseField(20);

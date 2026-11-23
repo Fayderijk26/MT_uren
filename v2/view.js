@@ -38,7 +38,8 @@ export function field(label,name,type,value='',extra=''){
 }
 // Pauze: knoppen 0–60 min en Anders. De gekozen knop is donkergroen; het minutenveld verschijnt alleen bij Anders.
 // De gekozen pauze staat in het verborgen veld 'pause'; daaronder de regel met netto uren (#net).
-export function pauseField(value=''){
+// Standaard 30 minuten pauze: dat scheelt de meeste mensen een tik. Ingevulde uren houden hun eigen pauze.
+export function pauseField(value=30){
  const known=['0','15','30','45','60'],v=String(value),other=v!==''&&!known.includes(v);
  const choices=known.map(n=>button(n+' min','pause',n,v===n)).join('')+button('Anders','pause','other',other);
  return '<div class="field"><span>Pauze</span><div class="pausechoices">'+choices+'</div></div>'

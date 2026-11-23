@@ -162,7 +162,7 @@ function show(action,id){
   if(closed(db,shift.date))info+='<p class="notice">Deze maand is afgesloten.</p>';
   if(approvalText(db,entry))info+='<p>'+h(approvalText(db,entry))+'</p>';
   if(action==='inspect')info+=warnings(db,shift).map(w=>'<p class="notice">Let op: '+h(w)+'</p>').join('');
-  if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause??''),'Uren indienen',id);
+  if(editable)info+=form('hours',times(entry||shift)+pauseField(entry?.pause),'Uren indienen',id);
   if(action==='inspect'&&entry?.status==='pending')info+=reviewChoices(shift);
   const actor=db.people.find(p=>p.id===actorId);
   if(mayReopen(db,actor,shift))info+=form('reopen',reason(true),'Heropenen',id);
