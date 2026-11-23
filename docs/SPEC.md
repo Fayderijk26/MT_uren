@@ -151,7 +151,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - Ziek melden gaat **per dienst**. Er is geen "beter melden": elke dienst wordt apart ziek gemeld.
 - **Wie:** de medewerker zelf, voor een eigen dienst die nog niet begonnen is (vandaag of later). De dagleiding van die dag en de bedrijfsleider kunnen het namens iemand doen, ook achteraf. Iedereen met een dienst kan zich ziek melden, ook met contract Uren.
 - **Niet mogelijk:** bij een stand-bydienst, een ongeplande dienst, een dienst waarvoor al uren zijn ingediend, of in een afgesloten maand.
-- Er is **geen goedkeuring** nodig. De medewerker belt de leiding ook nog, zoals nu.
+- Er is **geen goedkeuring** nodig. Ziek melden via de app is niet genoeg: wie zichzelf ziek meldt, ziet in het venster "Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. Dit mag niet alleen via deze app." (besluit eigenaar).
 - **Vastleggen:** de dienst blijft bestaan en krijgt het veld `sick` (`{by, at}`: wie het meldde en wanneer). Zo blijven de geplande tijden bewaard. Nieuw veld bij een dienst: `sick`.
 - **Hoeveel uur:** de geplande tijd van de dienst. Is de dienst langer dan 3 uur, dan gaat er 30 minuten pauze af. Voorbeeld: 08:30–15:00 is 6u 30m gepland en telt 6u 00m ziek. Dit wordt uitgerekend, niet opgeslagen.
 - **Gevolgen:** een ziek gemelde dienst hoeft niet ingevuld te worden, telt niet als ontbrekend en staat niet bij Nog open in het maandoverzicht. Uren indienen kan niet. Een leidinggevende die ziek is gemeld, is die dag geen dagleiding. In het rooster staat bij de dienst "Ziek gemeld". De dienst kan niet meer gewijzigd worden; eerst de ziekmelding intrekken.

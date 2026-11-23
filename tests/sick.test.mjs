@@ -8,6 +8,7 @@ const {pilotRoster}=await import('../v2/pilot.js');
 const {apply,absentMinutes,missing,ownTodo,monthSummary,leads,mayReview}=await import('../v2/model.js');
 const {todayPage}=await import('../v2/today.js');
 const {weekPage}=await import('../v2/week.js');
+const {sickAskBody}=await import('../v2/view.js');
 
 // Donderdag 19 november, 12:00. Elise werkt vandaag 08:30–18:00 en zaterdag 10:00–18:00. Iris is vandaag dagleiding.
 const thursday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
@@ -64,6 +65,14 @@ test('Eva en Iris zien op Vandaag wie zich ziek heeft gemeld, en het rooster too
   assert.match(todayPage(db,person(db,id)).split('<h2>Ziek gemeld')[1]||'',/Elise B · za 21 nov/,id);
  assert.doesNotMatch(todayPage(db,person(db,'isis')),/<h2>Ziek gemeld/);
  assert.match(weekPage(db,{day:'2026-11-21'}),/10:00–18:00<\/b>(?:(?!<\/button>).)*Ziek gemeld/s);
+});
+
+test('Elise tikt op Ziek melden: er staat dat ze ook moet bellen met de leidinggevende van de dag',()=>{
+ const db=pilotRoster(),s=db.shifts.find(x=>x.id===saturday);
+ const call=/Ziek melden doe je ook telefonisch bij de leidinggevende van de dag\. Dit mag niet alleen via deze app\./;
+ assert.match(sickAskBody(db,s,true),call);
+ assert.match(sickAskBody(db,s,true),/data-op="sick"/);
+ assert.doesNotMatch(sickAskBody(db,s,false),call,'meldt de leiding iemand ziek, dan hoeft dit er niet');
 });
 
 test('Voor een ziek gemelde dienst kun je geen uren indienen en het rooster niet wijzigen',t=>{

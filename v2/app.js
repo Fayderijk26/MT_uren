@@ -6,7 +6,7 @@ import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,
  mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes,mayPaidLeave}
  from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
- areaChoice,sickButton,leaveNames} from './view.js';
+ areaChoice,sickButton,leaveNames,sickAskBody} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -166,9 +166,7 @@ function show(action,id){
  if(action==='sickAsk'||action==='sickUndoAsk'){
   const what='<p><b>'+h(name(db,shift.user))+'</b><br>'+h(dateLabel(shift.date)+' · '+clock(shift))+'</p>';
   if(action==='sickUndoAsk'){open('Ziekmelding intrekken',what+form('sickUndo','','Ziekmelding intrekken',id));return}
-  const call=shift.user===actorId?'<p>Bel ook de leiding.</p>':'';
-  open('Ziek melden',what+'<p>Telt '+h(duration(absentMinutes(shift)))+' ziek.</p>'+call+form('sick','','Ziek melden',id));
-  return;
+  open('Ziek melden',sickAskBody(db,shift,shift.user===actorId));return;
  }
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='norm'){

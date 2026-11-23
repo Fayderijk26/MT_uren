@@ -1,5 +1,5 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -82,6 +82,14 @@ export const requestChip=r=>chip(r.status,requestStatus(r));
 export function sickButton(db,actor,s){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button('Ziek melden','sickAsk',s.id):'';
+}
+// Venster Ziek melden. Meld je jezelf ziek, dan staat erbij dat je ook moet bellen.
+export const SICK_CALL='Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. '
+ +'Dit mag niet alleen via deze app.';
+export function sickAskBody(db,s,self){
+ const what='<p><b>'+h(name(db,s.user))+'</b><br>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>';
+ const call=self?'<p class="notice">'+h(SICK_CALL)+'</p>':'';
+ return what+call+'<p>Telt '+h(duration(absentMinutes(s)))+' ziek.</p>'+form('sick','','Ziek melden',s.id);
 }
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
 export function areaChoice(db,user,current){
