@@ -510,10 +510,10 @@ test('Iris vraagt vrij en Eva wijst af: de waarschuwing bij het concept verdwijn
 });
 
 test('Eva voegt een nieuwe medewerker toe en past daarna de contracturen en het telefoonnummer aan',()=>{
- let db=apply(pilotRoster(),'eva','savePerson',{name:' Noor V ',role:'employee',contractHours:'24',phone:'0600000000',areas:['Vloer']});
+ let db=apply(pilotRoster(),'eva','savePerson',{contract:'vast',name:' Noor V ',role:'employee',contractHours:'24',phone:'0600000000',areas:['Vloer']});
  const noor=db.people.at(-1);
  assert.deepEqual([noor.name,noor.role,noor.contractHours,noor.phone,noor.active],['Noor V','employee',24,'0600000000',true]);
- db=apply(db,'eva','savePerson',{id:noor.id,name:'Noor V',role:'lead',contractHours:'32',phone:'',areas:['Vloer']});
+ db=apply(db,'eva','savePerson',{contract:'vast',id:noor.id,name:'Noor V',role:'lead',contractHours:'32',phone:'',areas:['Vloer']});
  assert.deepEqual(['role','contractHours','phone'].map(k=>db.people.find(p=>p.id===noor.id)[k]),['lead',32,'']);
  assert.equal(db.people.length,pilotRoster().people.length+1);
 });
@@ -521,12 +521,12 @@ test('Eva voegt een nieuwe medewerker toe en past daarna de contracturen en het 
 test('Medewerkers beheren: alleen de bedrijfsleider, met een geldige naam, uren en rol',()=>{
  const db=pilotRoster(),person={name:'Noor V',role:'employee',contractHours:'24',phone:'',areas:['Vloer']};
  assert.throws(()=>apply(db,'sylvia','savePerson',person),/bedrijfsleider/);
- assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'  '}),/naam/);
- assert.throws(()=>apply(db,'eva','savePerson',{...person,name:'iris z'}),/bestaat al/);
- assert.throws(()=>apply(db,'eva','savePerson',{...person,contractHours:'41'}),/contracturen/);
- assert.throws(()=>apply(db,'eva','savePerson',{...person,role:'boss'}),/rol/);
- assert.throws(()=>apply(db,'eva','savePerson',{...person,phone:'bel me'}),/telefoonnummer/);
- assert.throws(()=>apply(db,'eva','savePerson',{id:'eva',name:'Eva G.',role:'lead',contractHours:'36',phone:'',areas:['Vloer']}),
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',...person,name:'  '}),/naam/);
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',...person,name:'iris z'}),/bestaat al/);
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',...person,contractHours:'41'}),/contracturen/);
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',...person,role:'boss'}),/rol/);
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',...person,phone:'bel me'}),/telefoonnummer/);
+ assert.throws(()=>apply(db,'eva','savePerson',{contract:'vast',id:'eva',name:'Eva G.',role:'lead',contractHours:'36',phone:'',areas:['Vloer']}),
   /minstens één bedrijfsleider/);
 });
 
@@ -563,7 +563,7 @@ test('Sylvia is inactief: haar ontbrekende uren tellen niet meer mee bij herinne
 
 test('Twee bedrijfsleiders: als Isis een voorstel afwijst, krijgen Eva en Noor allebei een melding',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
- let db=apply(pilotRoster(),'eva','savePerson',{name:'Noor V',role:'admin',contractHours:'32',phone:'',areas:['Vloer']});
+ let db=apply(pilotRoster(),'eva','savePerson',{contract:'vast',name:'Noor V',role:'admin',contractHours:'32',phone:'',areas:['Vloer']});
  const noor=db.people.at(-1).id;
  db=apply(db,noor,'draft',{user:'isis',date:'2026-12-02',start:'12:00',end:'18:00'});
  const offer=db.offers.at(-1);
@@ -600,7 +600,7 @@ test('Elise werkt alleen in de keuken: concept uit vaste beschikbaarheid zet haa
 });
 
 test('Bij een medewerker vul je minstens één werkplek in: vloer, keuken of allebei',()=>{
- const person={name:'Noor V',role:'employee',contractHours:'24',phone:''};
+ const person={contract:'vast',name:'Noor V',role:'employee',contractHours:'24',phone:''};
  assert.throws(()=>apply(pilotRoster(),'eva','savePerson',{...person,areas:[]}),/werkplek/);
  assert.throws(()=>apply(pilotRoster(),'eva','savePerson',person),/werkplek/);
  const db=apply(pilotRoster(),'eva','savePerson',{...person,areas:['Keuken','Bar','Vloer']});

@@ -1,9 +1,9 @@
 import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanWeek} from './model.js';
-import {h,card,button,clock,dateLabel,areaMark} from './view.js';
+import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
 export function availability(db,user,date){
  const leave=db.requests.find(r=>r.kind==='leave'&&r.user===user&&r.status!=='rejected'&&freeWindows(r,date).length);
- if(leave)return (leave.status==='pending'?'Vrij gevraagd':'Vrij')+(leave.start?' '+clock(leave):'');
+ if(leave)return leaveShort(leave)+(leave.status==='pending'?' gevraagd':'')+(leave.start?' '+clock(leave):'');
  const rule=ruleFor(db,{user,date});
  if(!rule)return 'Onbekend';
  if(rule.off)return 'Vrij';

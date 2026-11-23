@@ -16,7 +16,7 @@ test('Bedrijfsleider ziet bij Aanvragen de subkopjes Mijn aanvragen en Beoordele
  const mine=availabilityPage(db,person(db,'eva'),{page:'availability'});
  assert.match(mine,/data-id="requests"><span class="tabicon">Beoordelen<span class="badge"[^>]*>1</);
  const review=availabilityPage(db,person(db,'eva'),{page:'requests'});
- assert.match(review,/Isis N[\s\S]*do 24 dec t\/m za 26 dec · Hele dag vrij · 3 dagen/);
+ assert.match(review,/Isis N[\s\S]*do 24 dec t\/m za 26 dec · Hele dag · Onbetaald vrij · 3 dagen/);
  assert.match(review,/data-act="decision"/);
  assert.doesNotMatch(availabilityPage(db,person(db,'isis'),{page:'availability'}),/Beoordelen/);
 });

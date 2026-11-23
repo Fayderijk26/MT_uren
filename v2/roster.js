@@ -1,5 +1,5 @@
 import {today,monday,add,freeWindows} from './model.js';
-import {button,card,line,name,dateLabel,clock,field,sortDate} from './view.js';
+import {button,card,line,name,dateLabel,clock,field,sortDate,leaveShort} from './view.js';
 export function rosterPage(db,actor,v){
  const personal=v.page==='mine',admin=!personal&&actor.role==='admin';
  const day=v.day,first=monday(day),last=add(first,6);
@@ -13,7 +13,7 @@ export function rosterPage(db,actor,v){
   const offers=db.offers.filter(o=>o.row.date===d&&(personal?o.row.user===actor.id:admin));
   if(!admin&&!list.length&&!leave.length&&!offers.length)continue;
   result+='<h3>'+dateLabel(d)+'</h3>'+list.map(s=>line(name(db,s.user),(s.deadline?'Stand-by · Bericht vóór '+s.deadline:clock(s))+(s.area==='Keuken'?' · Keuken':'')+(drafts.includes(s)?' · Concept':''),admin&&d>=today()&&!db.hours[s.id]?button('Wijzigen','draft',s.id):'')).join('');
-  result+=leave.map(r=>line(name(db,r.user), (r.start||r.exceptions?.length?freeWindows(r,d).map(clock).join(' en ')+' · ':'')+(r.status==='pending'?'Vrij gevraagd':'Vrij goedgekeurd'))).join('');
+  result+=leave.map(r=>line(name(db,r.user), (r.start||r.exceptions?.length?freeWindows(r,d).map(clock).join(' en ')+' · ':'')+leaveShort(r)+(r.status==='pending'?' gevraagd':' goedgekeurd'))).join('');
   result+=offers.map(o=>line(name(db,o.row.user),'Voorstel '+clock(o.row),(o.turn==='admin'?admin:o.row.user===actor.id)?button('Bekijken','proposal',o.id):'Wacht op reactie')).join('');
   if(admin&&d>=today())result+=button('Dienst toevoegen','newDraft',d);
  }

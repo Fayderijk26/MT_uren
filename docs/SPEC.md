@@ -161,14 +161,16 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - *Scenario:* Elise meldt zich ziek voor zaterdag 10:00–18:00. Die dienst telt 7u 30m ziek, staat niet bij Nog in te vullen en niet bij de ontbrekende uren.
 - *Scenario:* Elise is al aan het werk. Ze kan zich niet meer zelf ziek melden; Iris (dagleiding die dag) of Eva kan dat wel.
 
-**9b: soort bij vrij vragen** (nog niet gebouwd)
-- **Soort contract** per persoon, in te stellen onder Medewerkers: **Vast** (met maandnorm) of **Uren** (betaald per gewerkt uur, de norm is alleen informatie). Nieuw veld: `contract` (`vast` of `uren`).
+**9b: soort bij vrij vragen**
+- **Soort contract** per persoon, verplicht, in te stellen onder Medewerkers: **Vast** (met maandnorm) of **Uren** (betaald per gewerkt uur, de norm is alleen informatie). Nieuw veld: `contract` (`vast` of `uren`). In de demo heeft Isis contract Uren, de rest Vast.
 - **Vrij vragen krijgt een soort.** Nieuw veld bij een aanvraag: `type` (`verlof` of `onbetaald`).
   - **Verlof (betaald):** alleen bij een vast contract. De medewerker vraagt aan, de bedrijfsleider keurt goed. Telt mee als uren.
   - **Onbetaald vrij:** voor iedereen. Telt niet mee. Dit is wat Vrij vragen nu doet; bestaande aanvragen worden Onbetaald vrij.
-- Bij goedkeuren van verlof bewaart de aanvraag de diensten die vervielen (nieuw veld `dropped`). Verlof telt de geplande uren van die diensten. Een verlofdag zonder dienst telt niet mee. Staan er nog geen diensten in die periode, dan waarschuwt de app de bedrijfsleider: "dit verlof telt nu 0 uur".
+- Bij goedkeuren bewaart de aanvraag welk deel van de diensten binnen de vrije tijd viel (nieuw veld `dropped`, lijst van `{date, start, end}`; ook bij onbetaald vrij). Kiest de bedrijfsleider dat een hele dienst vervalt terwijl maar een deel vrij was gevraagd, dan telt alleen het gevraagde deel. Verlof telt de geplande tijd daarvan, met dezelfde pauzeregel als ziek (`absentMinutes`). Betaald verlof goedkeuren kan alleen als de medewerker dan nog een vast contract heeft, en niet in een afgesloten maand. Een verlofdag zonder dienst telt niet mee. Staan er nog geen diensten in die periode, dan waarschuwt de app de bedrijfsleider: "dit verlof telt nu 0 uur".
 - Geen verlofsaldo in de app: dat houdt de loonadministratie bij (advies, zie overleg). De app legt alleen de opgenomen verlofuren vast.
+- Het maandoverzicht rekent de verlofuren al uit (`monthSummary` geeft `leave`). De kolommen komen in 9c.
 - *Scenario:* Isis (contract Uren) kan geen betaald verlof kiezen, alleen onbetaald vrij.
+- *Scenario:* Elise krijgt verlof voor zaterdag 10:00–18:00. De dienst verdwijnt uit het rooster en telt 7u 30m verlof.
 
 **9c: maandoverzicht en export** (nog niet gebouwd)
 - Per persoon Gewerkt, Ziek, Verlof, Totaal, Norm en Verschil. Bij contract Uren staat de norm als informatie en is er geen verschil.
@@ -184,6 +186,8 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 | Ziek melden vooruit | Medewerker kan elke eigen dienst vanaf vandaag ziek melden | Alleen vandaag en morgen; verder vooruit via de leiding |
 | Ziek bij contract Uren | Iedereen kan ziek melden; de app registreert de uren, de loonadministratie beslist over uitbetalen | Ziek alleen bij vast contract (let op: ook uurkrachten hebben meestal recht op doorbetaling voor ingeroosterde diensten) |
 | Wachtdag | Geen | Eerste ziektedag niet doorbetaald, als cao of contract dat zegt |
+| Verlof-uren | Geplande tijd van de vervallen diensten, min 30 minuten pauze bij meer dan 3 uur (zelfde regel als ziek) | Zonder pauzeaftrek; of contracturen ÷ 5 per verlofdag |
+| Verlof bij contract Uren | Niet mogelijk, alleen onbetaald vrij | Ook betaald verlof voor uurkrachten (zij bouwen wettelijk ook verlof op, vaak uitbetaald per uur) |
 | Verlofdag zonder dienst | Telt niet mee; waarschuwing bij 0 uur | Contracturen ÷ 5 per verlofdag; of de bedrijfsleider vult de uren in bij goedkeuren |
 | Verlofsaldo | Niet in de app, bij de loonadministratie | Saldo in de app (opbouw, vervallen, overuren: foutgevoelig met twee administraties) |
 | Feestdagen en sluitingsdagen | Geen invloed op de norm | Gaan af van de norm als het park dicht is |

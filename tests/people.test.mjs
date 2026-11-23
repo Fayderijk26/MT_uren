@@ -11,13 +11,13 @@ const {weekPage}=await import('../v2/week.js');
 
 const person=(db,id)=>db.people.find(p=>p.id===id);
 
-test('Onder Medewerkers ziet de bedrijfsleider iedereen met rol, contracturen en telefoonnummer',()=>{
- const db=apply(pilotRoster(),'eva','savePerson',{name:'Noor V',role:'employee',contractHours:'24',phone:'0600000000',
+test('Onder Medewerkers ziet de bedrijfsleider iedereen met rol, soort contract, contracturen en telefoonnummer',()=>{
+ const db=apply(pilotRoster(),'eva','savePerson',{contract:'vast',name:'Noor V',role:'employee',contractHours:'24',phone:'0600000000',
   areas:['Vloer','Keuken']});
  const html=peoplePage(db,person(db,'eva'));
  assert.match(html,/data-act="person" data-id="">Medewerker toevoegen</);
  assert.equal(html.split('data-act="person" data-id="').length-2,db.people.length,'een knop Wijzigen per persoon');
- assert.match(html,/Noor V[\s\S]*Medewerker · 24 uur per week · Vloer en keuken · 0600000000/);
+ assert.match(html,/Noor V[\s\S]*Medewerker · Vast · 24 uur per week · Vloer en keuken · 0600000000/);
  assert.match(html,/Sylvia[\s\S]*Leidinggevende/);
 });
 

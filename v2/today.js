@@ -1,4 +1,4 @@
-import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,sickMinutes}
+import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,absentMinutes}
  from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,duration}
  from './view.js';
@@ -46,7 +46,7 @@ function absentCard(db,actor){
 // Ziek gemeld, vandaag en later: voor de bedrijfsleider en de dagleiding van die dag.
 function sickCard(db,actor,day){
  const list=sickList(db,actor,day);
- const row=s=>line(name(db,s.user)+' · '+dateLabel(s.date),clock(s)+' · telt '+duration(sickMinutes(s))
+ const row=s=>line(name(db,s.user)+' · '+dateLabel(s.date),clock(s)+' · telt '+duration(absentMinutes(s))
   +' · gemeld door '+name(db,s.sick.by),sickButton(db,actor,s));
  return list.length?card('Ziek gemeld ('+list.length+')',list.map(row).join('')):'';
 }

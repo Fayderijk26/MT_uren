@@ -5,7 +5,7 @@ import fs from 'node:fs';
 // ui.js laadt bij het starten de iconen met fetch; in Node lezen we het bestand zelf.
 globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(url),'utf8'))});
 const {pilotRoster}=await import('../v2/pilot.js');
-const {apply,sickMinutes,missing,ownTodo,monthSummary,leads,mayReview}=await import('../v2/model.js');
+const {apply,absentMinutes,missing,ownTodo,monthSummary,leads,mayReview}=await import('../v2/model.js');
 const {todayPage}=await import('../v2/today.js');
 const {weekPage}=await import('../v2/week.js');
 
@@ -15,10 +15,10 @@ const person=(db,id)=>db.people.find(p=>p.id===id);
 const saturday='elise-2026-11-21';
 
 test('Ziek telt de geplande tijd; langer dan 3 uur gaat er 30 minuten pauze af',()=>{
- assert.equal(sickMinutes({start:'08:30',end:'15:00'}),360);
- assert.equal(sickMinutes({start:'10:00',end:'18:00'}),450);
- assert.equal(sickMinutes({start:'14:00',end:'17:00'}),180);
- assert.equal(sickMinutes({start:'14:00',end:'17:15'}),165);
+ assert.equal(absentMinutes({start:'08:30',end:'15:00'}),360);
+ assert.equal(absentMinutes({start:'10:00',end:'18:00'}),450);
+ assert.equal(absentMinutes({start:'14:00',end:'17:00'}),180);
+ assert.equal(absentMinutes({start:'14:00',end:'17:15'}),165);
 });
 
 test('Elise meldt zich ziek voor zaterdag: niet bij Nog in te vullen of ontbrekend, wel 7u 30m ziek',t=>{
