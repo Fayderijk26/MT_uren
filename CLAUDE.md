@@ -7,7 +7,9 @@ Een kleine web-app waarmee medewerkers van Monkey Town Uithoorn hun uren invulle
 
 ## Waar staat wat
 - `v2/model.js`: **alle regels van de app** in één functie, `apply(db, actorId, actie, gegevens)`. Hier staat wie wat mag, wat geldig is en wat er gebeurt. Gebruik de hulpfuncties (`today`, `add`, `mayReview`, `leads`, `check`, enzovoort) die er al zijn.
-- `v2/app.js`: de schil (opslaan, laden, navigatie). `v2/today.js`, `hours.js`, `roster.js`, `week.js`, `calendar.js`, `availability.js`, `view.js`: de pagina's. Ze maken HTML uit de data en bevatten **geen regels**.
+- `v2/app.js`: de schil (opslaan, laden, navigatie).
+- `v2/dialogs.js`: de vensters. Elk venster is een functie `(db, wie, id)` die `{title, body}` teruggeeft; geen regels, geen browser.
+- `v2/today.js`, `hours.js`, `roster.js`, `week.js`, `calendar.js`, `availability.js`, `view.js`: de pagina's. Ze maken HTML uit de data en bevatten **geen regels**.
 - `v2/pilot.js`: demodata voor de proef.
 - `tests/v2.test.mjs`: de tests van het model.
 - `index.html`, `style.css`, `v2/style.css`, `ui.js`, `assets/`: de pagina en opmaak.

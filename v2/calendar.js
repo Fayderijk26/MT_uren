@@ -1,15 +1,25 @@
 import {today,add,monday,weekday,ruleFor,TIMES} from './model.js';
 import {h,button,card,clock,dateLabel,requestStatus,weekNames,leaveShort} from './view.js';
 
+// Wat er op een dag voor iemand staat: diensten, beschikbaarheid, aanvragen en voorstellen.
 export function dayContent(db,user,date){
  const shifts=db.shifts.filter(s=>s.user===user&&s.date===date);
- const requests=db.requests.filter(r=>r.user===user&&(r.kind==='weekly'?r.date<=date&&r.weekday===weekday(date):r.date<=date&&r.through>=date));
+ const onDay=r=>r.kind==='weekly'?r.date<=date&&r.weekday===weekday(date):r.date<=date&&r.through>=date;
+ const requests=db.requests.filter(r=>r.user===user&&onDay(r));
  const rule=ruleFor(db,{user,date});
  const state=s=>s.sick?' · Ziek gemeld':' · Ingepland';
- const items=shifts.map(s=>({text:s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+state(s),kind:'planned',shift:s}));
- if(rule)items.push({text:rule.off?'Vrij':rule.start===TIMES.start&&rule.end===TIMES.end?'Hele dag beschikbaar': 'Beschikbaar '+clock(rule),kind:'available'});
- for(const r of requests)items.push({text:(r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r)):leaveShort(r)+(r.start?' '+clock(r):''))+' · '+requestStatus(r)+(r.response?' · '+r.response:''),kind:r.status,request:r});
- for(const offer of db.offers.filter(o=>o.row.user===user&&o.row.date===date))items.push({text:clock(offer.row)+' · '+(offer.turn==='employee'?'Vraag om te werken':'Wacht op bedrijfsleider'),kind:'pending',offer});
+ const shiftText=s=>s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+state(s);
+ const items=shifts.map(s=>({text:shiftText(s),kind:'planned',shift:s}));
+ const wholeDay=rule&&rule.start===TIMES.start&&rule.end===TIMES.end;
+ if(rule)items.push({text:rule.off?'Vrij':wholeDay?'Hele dag beschikbaar':'Beschikbaar '+clock(rule),kind:'available'});
+ const what=r=>r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r))
+  :leaveShort(r)+(r.start?' '+clock(r):'');
+ for(const r of requests)items.push({text:what(r)+' · '+requestStatus(r)+(r.response?' · '+r.response:''),
+  kind:r.status,request:r});
+ for(const offer of db.offers.filter(o=>o.row.user===user&&o.row.date===date)){
+  const wait=offer.turn==='employee'?'Vraag om te werken':'Wacht op bedrijfsleider';
+  items.push({text:clock(offer.row)+' · '+wait,kind:'pending',offer});
+ }
  return items.length?items:[{text:'Onbekend',kind:'unknown'}];
 }
 export function calendarPage(db,actor,view){
@@ -22,10 +32,23 @@ export function calendarPage(db,actor,view){
  let grid='<div class="calendar-scroll"><div class="personal-calendar">';
  for(const day of weekNames)grid+='<div class="weekday">'+day.slice(0,2)+'</div>';
  for(let d=start;d<end;d=add(d,1)){
-  grid+='<button class="calendar-day '+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'')+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'+dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('')+'</button>';
+  const kind=(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'');
+  const items=dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('');
+  grid+='<button class="calendar-day '+kind+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'
+   +items+'</button>';
  }
  grid+='</div></div>';
- const title=week?dateLabel(start)+' – '+dateLabel(add(start,6)):new Intl.DateTimeFormat('nl-NL',{month:'long',year:'numeric'}).format(new Date(month+'T12:00Z'));
- const mode=(label,id,active)=>'<button data-act="calendarMode" data-id="'+id+'" aria-pressed="'+active+'" class="'+(active?'primary':'secondary')+'">'+label+'</button>';
- return card('Mijn rooster','<div class="calendar-toolbar"><div class="calendar-modes" role="group" aria-label="Weergave">'+mode('Week','week',week)+mode('Maand','month',!week)+'</div><div class="calendar-navigation" role="group" aria-label="Periode kiezen"><button class="secondary" data-act="calendarMove" data-id="-1" aria-label="Vorige '+(week?'week':'maand')+'">‹</button>'+button('Vandaag','calendarMove','0')+'<button class="secondary" data-act="calendarMove" data-id="1" aria-label="Volgende '+(week?'week':'maand')+'">›</button></div></div><h3 class="calendar-period">'+h(title)+'</h3>'+grid);
+ const monthName=new Intl.DateTimeFormat('nl-NL',{month:'long',year:'numeric'}).format(new Date(month+'T12:00Z'));
+ const title=week?dateLabel(start)+' – '+dateLabel(add(start,6)):monthName;
+ const mode=(label,id,active)=>'<button data-act="calendarMode" data-id="'+id+'" aria-pressed="'+active+'" class="'
+  +(active?'primary':'secondary')+'">'+label+'</button>';
+ const unit=week?'week':'maand';
+ const arrow=(step,text,sign)=>'<button class="secondary" data-act="calendarMove" data-id="'+step+'" aria-label="'
+  +text+' '+unit+'">'+sign+'</button>';
+ const modes='<div class="calendar-modes" role="group" aria-label="Weergave">'+mode('Week','week',week)
+  +mode('Maand','month',!week)+'</div>';
+ const nav='<div class="calendar-navigation" role="group" aria-label="Periode kiezen">'+arrow('-1','Vorige','‹')
+  +button('Vandaag','calendarMove','0')+arrow('1','Volgende','›')+'</div>';
+ return card('Mijn rooster','<div class="calendar-toolbar">'+modes+nav+'</div><h3 class="calendar-period">'+h(title)
+  +'</h3>'+grid);
 }

@@ -13,7 +13,8 @@ const team=[
 ];
 
 export function pilotRoster(){
- const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],normOverrides:[],closedMonths:[],monthReopens:[]};
+ const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],
+  normOverrides:[],closedMonths:[],monthReopens:[]};
  for(const {id,name,role,contract,hours,days,weekend=[],areas,tracksHours,times={}} of team){
   db.people.push({id,name,role,contract,contractHours:hours,areas,...(tracksHours===false?{tracksHours}:{})});
   const rule={user:id,date:firstMonday,start:'08:30',end:'18:00'};
@@ -23,7 +24,9 @@ export function pilotRoster(){
   }
   weekend.forEach((weekday,week)=>db.rules.push({...rule,weekday,date:add(firstMonday,week*7),fortnightly:true}));
  }
- for(const r of db.rules)if((r.user==='sylvia'&&r.weekday===5)||(r.user==='iris'&&r.weekday===4)||(r.user==='elise'&&r.weekday===6))r.start='10:00';
+ // Een paar vaste dagen beginnen om 10:00.
+ const late={sylvia:5,iris:4,elise:6};
+ for(const r of db.rules)if(late[r.user]===r.weekday)r.start='10:00';
  for(let offset=0;offset<14;offset++){
   const date=add(firstMonday,offset);
   db.published.push(date);
@@ -43,12 +46,14 @@ export function migratePilot(db){
  if(db.pilotTimesVersion===2)return;
  const fresh=pilotRoster();
  for(const rule of db.rules){
-  const target=fresh.rules.find(r=>r.user===rule.user&&r.date===rule.date&&r.weekday===rule.weekday&&!!r.fortnightly===!!rule.fortnightly);
+  const target=fresh.rules.find(r=>r.user===rule.user&&r.date===rule.date&&r.weekday===rule.weekday
+   &&!!r.fortnightly===!!rule.fortnightly);
   if(target&&rule.start==='10:00'&&rule.end==='18:00'&&!rule.off&&!rule.id)rule.start=target.start;
  }
  for(const s of db.shifts){
   const target=fresh.shifts.find(x=>x.id===s.id);
-  if(target&&s.start==='10:00'&&s.end==='18:00'&&!db.hours[s.id]&&!db.drafts.some(d=>d.id===s.id)&&!db.offers.some(o=>o.row.id===s.id))s.start=target.start;
+  const untouched=!db.hours[s.id]&&!db.drafts.some(d=>d.id===s.id)&&!db.offers.some(o=>o.row.id===s.id);
+  if(target&&s.start==='10:00'&&s.end==='18:00'&&untouched)s.start=target.start;
  }
  db.pilotTimesVersion=2;
 }
