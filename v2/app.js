@@ -234,6 +234,7 @@ modal.addEventListener('submit',e=>{
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=shiftChoices(p)}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(op==='approveAll')p.ids=p.ids.split(',');
+ if(op==='sickMany')p.ids=new FormData(f).getAll('ids');
  if(op==='planFromRules')p.week=p.id;
  if(op==='setActive')p.active=p.active==='true';
  if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}

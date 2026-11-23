@@ -537,6 +537,15 @@ function reportSick({db,actor,s}){
  s.sick={by:actor.id,at:new Date().toISOString()};
  if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+actor.name+' · '+s.start+'–'+s.end);
 }
+// Meerdere dagen tegelijk ziek melden (bij Ontbreekt). Alles of niets: mag één dag niet, dan wordt niets gemeld.
+function reportSickMany({db,actor,p}){
+ const ids=[].concat(p.ids||[]);
+ check(ids.length,'Kies minstens één dag.');
+ for(const id of ids)reportSick({db,actor,s:db.shifts.find(s=>s.id===id)});
+}
+// Ontbrekende diensten van één persoon die deze leidinggevende ziek mag melden.
+export const sickable=(db,actor,user)=>missing(db,actor).map(m=>m.shift)
+ .filter(s=>s.user===user&&maySick(db,actor,s));
 function undoSick({db,actor,s}){
  if(s)notClosed(db,s.date);
  check(s?.sick,'Deze dienst is niet ziek gemeld.');
@@ -613,6 +622,7 @@ const actions={
   planFromRules,
   savePerson,
   sick: reportSick,
+  sickMany: reportSickMany,
   sickUndo: undoSick,
   setActive,
   return: reviewHours,
