@@ -1,5 +1,5 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -63,7 +63,14 @@ export function approvalText(db,e){
 }
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
-export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar'):dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag vrij');
+// Soort vrij: oude aanvragen zonder soort zijn onbetaald vrij.
+export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij'};
+export const leaveName=r=>leaveNames[r.type]||leaveNames.onbetaald;
+// Kort, voor rooster en kalender: "Verlof" of "Vrij".
+export const leaveShort=r=>r.type==='verlof'?'Verlof':'Vrij';
+export const requestName=r=>r.kind==='weekly'?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
+ :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')
+ +' · '+leaveName(r);
 // Hoe lang iemand vrij vraagt: een aantal dagen of de duur van een deel van de dag.
 const days=r=>Math.round((Date.parse(r.through)-Date.parse(r.date))/86400000)+1;
 export const requestLength=r=>r.kind==='weekly'?'':r.start?duration(minutes(r.end)-minutes(r.start))
@@ -75,6 +82,14 @@ export const requestChip=r=>chip(r.status,requestStatus(r));
 export function sickButton(db,actor,s){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button('Ziek melden','sickAsk',s.id):'';
+}
+// Venster Ziek melden. Meld je jezelf ziek, dan staat erbij dat je ook moet bellen.
+export const SICK_CALL='Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. '
+ +'Dit mag niet alleen via deze app.';
+export function sickAskBody(db,s,self){
+ const what='<p><b>'+h(name(db,s.user))+'</b><br>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>';
+ const call=self?'<p class="notice">'+h(SICK_CALL)+'</p>':'';
+ return what+call+'<p>Telt '+h(duration(absentMinutes(s)))+' ziek.</p>'+form('sick','','Ziek melden',s.id);
 }
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
 export function areaChoice(db,user,current){

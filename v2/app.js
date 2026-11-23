@@ -3,9 +3,10 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,sickMinutes} from './model.js';
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,absentMinutes,mayPaidLeave}
+ from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
- areaChoice,sickButton} from './view.js';
+ areaChoice,sickButton,leaveNames,sickAskBody} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -26,6 +27,7 @@ const read=()=>{
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
+  p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
   p.active??=true;p.phone??='';p.areas??=pilotRoster().people.find(x=>x.id===p.id)?.areas||['Vloer'];
  }
  // Oude werkplekken (Speelvloer, Dagleiding, ...): de werkplek van die medewerker, Keuken blijft Keuken als dat kan.
@@ -81,7 +83,7 @@ function open(title,content){
  if(!modal.open)modal.showModal();
 }
 // Ziek gemeld: wie het meldde en hoeveel uur het telt.
-const sickText=s=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' · telt '+duration(sickMinutes(s))+'</p>';
+const sickText=s=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' · telt '+duration(absentMinutes(s))+'</p>';
 const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)','reason','text','',required?'required':'');
 function show(action,id){
  db=read();
@@ -164,9 +166,7 @@ function show(action,id){
  if(action==='sickAsk'||action==='sickUndoAsk'){
   const what='<p><b>'+h(name(db,shift.user))+'</b><br>'+h(dateLabel(shift.date)+' · '+clock(shift))+'</p>';
   if(action==='sickUndoAsk'){open('Ziekmelding intrekken',what+form('sickUndo','','Ziekmelding intrekken',id));return}
-  const call=shift.user===actorId?'<p>Bel ook de leiding.</p>':'';
-  open('Ziek melden',what+'<p>Telt '+h(duration(sickMinutes(shift)))+' ziek.</p>'+call+form('sick','','Ziek melden',id));
-  return;
+  open('Ziek melden',sickAskBody(db,shift,shift.user===actorId));return;
  }
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='norm'){
@@ -196,7 +196,9 @@ function show(action,id){
   }
   // Wie, wanneer en hoe lang; twee knoppen. De reden voor afwijzen verschijnt pas na Aanvraag afwijzen.
   const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
-  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'');
+  const zero=r.kind==='leave'&&r.type==='verlof'&&!affected(db,r).length
+   ?'<p class="notice">Er staan nog geen diensten in deze periode: dit verlof telt nu 0 uur.</p>':'';
+  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero;
   const choices='<div class="decide">'+form('accept',effects,'Aanvraag goedkeuren',id)
    +button('Aanvraag afwijzen','askReject',id)+'</div>';
   const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
@@ -205,7 +207,7 @@ function show(action,id){
  if(['leave','weekly','extra'].includes(action)){
   let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',id||today(),'required min="'+today()+'"');
   if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
-  if(action==='leave')body+=field('Tot en met (bij meerdere dagen)','through','date');
+  if(action==='leave')body+=leaveType()+field('Tot en met (bij meerdere dagen)','through','date');
   const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]:[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],['range','Tussen twee tijden']];
   if(action==='weekly')modes.push(['off','Niet beschikbaar']);
   if(action==='leave')body+='<p id="late" role="status"></p>';
@@ -214,15 +216,16 @@ function show(action,id){
  }
  if(action==='person'){
   // Medewerker toevoegen (zonder id) of wijzigen.
-  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contractHours:'',phone:''};
+  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contract:'vast',contractHours:'',phone:''};
   const body=field('Naam','name','text',p.name,'required')
    +select('Rol','role',Object.entries(roleNames))
+   +select('Contract','contract',[['vast','Vast (met maandnorm)'],['uren','Uren (betaald per gewerkt uur)']])
    +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
    +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
    +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
    +areaBoxes(p.areas||['Vloer']);
   open(id?'Medewerker wijzigen':'Medewerker toevoegen',form('savePerson',body,'Opslaan',id)+(id?inactiveBox(p):''));
-  modal.querySelector('[name=role]').value=p.role;return;
+  modal.querySelector('[name=role]').value=p.role;modal.querySelector('[name=contract]').value=p.contract;return;
  }
  if(action==='planFromRules'){
   open('Concept uit vaste beschikbaarheid','<p>Iedereen wordt als concept ingepland op de vaste dagen en tijden van '
@@ -274,6 +277,14 @@ function show(action,id){
   }
   open('Dienstvoorstel','<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+(o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:''))+'</p>'+form('yes','','Accepteren',id)+form('no','','Afwijzen',id)+(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):''));return;
  }
+}
+// Soort vrij: verlof (betaald) alleen bij een vast contract; de regel staat in model.js.
+function leaveType(){
+ const paid=mayPaidLeave(db,actorId);
+ const types=(paid?['verlof','onbetaald']:['onbetaald']).map(t=>'<option value="'+t+'">'+h(leaveNames[t])+'</option>');
+ const choose=paid?'<option value="">Kies verlof of onbetaald</option>':'';
+ const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
+ return '<label class="field"><span>Soort</span><select name="type" required>'+choose+types.join('')+'</select></label>'+hint;
 }
 function lateNotice(){
  const el=modal.querySelector('#late');

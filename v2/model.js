@@ -145,12 +145,15 @@ export function normMinutes(db,user,month){
  const person=db.people.find(p=>p.id===user);
  return Math.round((person?.contractHours||0)*60*52/12);
 }
-// Ziek: de geplande tijd van de dienst; langer dan 3 uur gaat er 30 minuten pauze af (voorlopig, zie SPEC ronde 9).
-export function sickMinutes(s){
+// Ziek of verlof: de geplande tijd; langer dan 3 uur gaat er 30 minuten pauze af (voorlopig, zie SPEC ronde 9).
+export function absentMinutes(s){
  const planned=minutes(s.end)-minutes(s.start);
  return planned>180?planned-30:planned;
 }
-// Per persoon: goedgekeurde minuten, ziek, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
+// Verlof (betaald) alleen bij een vast contract; onbetaald vrij kan iedereen vragen.
+export const LEAVE_TYPES=['verlof','onbetaald'];
+export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
+// Per persoon: goedgekeurde minuten, ziek, verlof, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
  const worked=p=>db.shifts.some(s=>s.user===p.id&&s.date.startsWith(month+'-'));
  return db.people.filter(p=>p.active!==false||worked(p)).map(person=>{
@@ -158,11 +161,13 @@ export function monthSummary(db,month,day=today()){
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
-  const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+sickMinutes(s),0);
+  const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const leave=db.requests.filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.status==='approved'&&r.user===person.id)
+   .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-')).reduce((sum,d)=>sum+absentMinutes(d),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,sick,open,norm,diff:approved-norm};
+  return {user:person.id,approved,sick,leave,open,norm,diff:approved-norm};
  });
 }
 function closeMonth({db,actor,p}){
@@ -242,8 +247,14 @@ function recordAvailability({db,actor,op,p}){
    db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);db.extra.push({user:actor.id,date:p.date,start:start||TIMES.start,end:end||TIMES.end});
   }else{
    const through=p.through||p.date;check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
+   const type=op==='leave'?p.type||'onbetaald':undefined;
+   if(op==='leave'){
+    check(LEAVE_TYPES.includes(type),'Kies verlof of onbetaald vrij.');
+    check(type!=='verlof'||mayPaidLeave(db,actor.id),'Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.');
+   }
    if(op==='leave')check(!db.requests.some(r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date&&(!start||!r.start||intersects(r,p))),'Er is al een aanvraag voor deze periode.');
    db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
+   if(type)db.requests.at(-1).type=type;
   };
 }
 
@@ -261,12 +272,20 @@ function decideRequest({db,admin,p,r}){
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
    db.rules.push({...r,start:r.start||TIMES.start,end:r.end||TIMES.end});
   }else if(p.accept){
+   check(r.type!=='verlof'||mayPaidLeave(db,r.user),'Betaald verlof kan alleen bij een vast contract. Wijs af of vraag onbetaald vrij.');
+   check(!closed(db,r.date)&&!closed(db,r.through),'Deze maand is afgesloten.');
+   r.dropped=[];
    for(const old of affected(db,r)){
     check(!db.hours[old.id],'Bij deze dienst zijn al uren ingediend.');
     const choice=p.choices?.[old.id];check(choice&&choice.before===JSON.stringify(old),'Controleer de gevolgen voor elke dienst.');
     const parts=remaining(old,r);
     check(['none','all',...parts.map((_,i)=>String(i))].includes(choice.value),'Kies wat er met de dienst gebeurt.');
     const keep=choice.value==='all'?parts:parts.filter((_,i)=>String(i)===choice.value);
+    // Wat er van de dienst binnen de vrije tijd viel: dat telt bij verlof (zie monthSummary).
+    for(const w of freeWindows(r,old.date)){
+     const start=old.start>w.start?old.start:w.start,end=old.end<w.end?old.end:w.end;
+     if(start<end)r.dropped.push({date:old.date,start,end});
+    }
     db.shifts=db.shifts.filter(x=>x.id!==old.id);
     keep.forEach((part,i)=>db.shifts.push({...part,id:i?crypto.randomUUID():old.id}));
     announce(db,old,keep.length?'Nieuwe werktijden: '+keep.map(t=>t.start+'–'+t.end).join(' en '):'Je dienst vervalt.');
@@ -428,13 +447,14 @@ function savePerson({db,admin,p}){
  check(name,'Vul een naam in.');
  check(!db.people.some(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase()),'Er bestaat al iemand met deze naam.');
  check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
+ check(['vast','uren'].includes(p.contract),'Kies het soort contract: vast of uren.');
  check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
  check(/^[+0-9 ()-]{0,20}$/.test(phone),'Vul een geldig telefoonnummer in (alleen cijfers).');
  const areas=AREAS.filter(a=>[].concat(p.areas||[]).includes(a));
  check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
- const fields={name,role:p.role,contractHours:hours,phone,areas};
+ const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 

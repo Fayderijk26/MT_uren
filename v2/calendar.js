@@ -1,5 +1,5 @@
 import {today,add,monday,weekday,ruleFor,TIMES} from './model.js';
-import {h,button,card,clock,dateLabel,requestStatus,weekNames} from './view.js';
+import {h,button,card,clock,dateLabel,requestStatus,weekNames,leaveShort} from './view.js';
 
 export function dayContent(db,user,date){
  const shifts=db.shifts.filter(s=>s.user===user&&s.date===date);
@@ -8,7 +8,7 @@ export function dayContent(db,user,date){
  const state=s=>s.sick?' · Ziek gemeld':' · Ingepland';
  const items=shifts.map(s=>({text:s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+state(s),kind:'planned',shift:s}));
  if(rule)items.push({text:rule.off?'Vrij':rule.start===TIMES.start&&rule.end===TIMES.end?'Hele dag beschikbaar': 'Beschikbaar '+clock(rule),kind:'available'});
- for(const r of requests)items.push({text:(r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r)):r.start?'Vrij '+clock(r):'Vrij gevraagd')+' · '+requestStatus(r)+(r.response?' · '+r.response:''),kind:r.status,request:r});
+ for(const r of requests)items.push({text:(r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r)):leaveShort(r)+(r.start?' '+clock(r):''))+' · '+requestStatus(r)+(r.response?' · '+r.response:''),kind:r.status,request:r});
  for(const offer of db.offers.filter(o=>o.row.user===user&&o.row.date===date))items.push({text:clock(offer.row)+' · '+(offer.turn==='employee'?'Vraag om te werken':'Wacht op bedrijfsleider'),kind:'pending',offer});
  return items.length?items:[{text:'Onbekend',kind:'unknown'}];
 }
