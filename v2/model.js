@@ -32,7 +32,7 @@ export function remaining(s,r){
   return [...(s.start<r.start?[{...s,end:r.start}]:[]),...(s.end>r.end?[{...s,start:r.end}]:[])];
 }
 export function affected(db,r){return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&s.date<=r.through&&freeWindows(r,s.date).some(w=>intersects(s,w)))}
-export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&s.date===day&&db.people.some(p=>p.id===s.user&&p.role==='lead')).map(s=>s.user);
+export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&!s.sick&&s.date===day&&db.people.some(p=>p.id===s.user&&p.role==='lead')).map(s=>s.user);
 // Beoordelen: bedrijfsleider altijd; leiding op een dag dat zij dagleiding is, ook de eigen uren.
 // Afgesloten maand: daarin kan niemand nog iets met uren.
 export const closed = (db,date) => db.closedMonths.some(c=>c.month===date.slice(0,7));
@@ -67,12 +67,12 @@ export function missing(db,actor,day=today()){
  const sees=s=>isActive(db,s.user)
   &&(actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
- return db.shifts.filter(s=>!s.deadline&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
+ return db.shifts.filter(s=>!s.deadline&&!s.sick&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s))
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(s=>({shift:s,late:late(s)}));
 }
 const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 // Eigen uren die nog moeten: dienst voorbij, maand open, nog niet ingevuld of aanpassen gevraagd.
-export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&ended(s,day)
+export const ownTodo = (db,actor,day=today()) => db.shifts.filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)
  &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
 export const toReview = (db,actor) => db.shifts
@@ -145,7 +145,12 @@ export function normMinutes(db,user,month){
  const person=db.people.find(p=>p.id===user);
  return Math.round((person?.contractHours||0)*60*52/12);
 }
-// Per persoon: goedgekeurde minuten, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
+// Ziek: de geplande tijd van de dienst; langer dan 3 uur gaat er 30 minuten pauze af (voorlopig, zie SPEC ronde 9).
+export function sickMinutes(s){
+ const planned=minutes(s.end)-minutes(s.start);
+ return planned>180?planned-30:planned;
+}
+// Per persoon: goedgekeurde minuten, ziek, open diensten (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
  const worked=p=>db.shifts.some(s=>s.user===p.id&&s.date.startsWith(month+'-'));
  return db.people.filter(p=>p.active!==false||worked(p)).map(person=>{
@@ -153,10 +158,11 @@ export function monthSummary(db,month,day=today()){
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
-  const open=shifts.filter(s=>['pending','returned','missing'].includes(status(s)))
+  const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+sickMinutes(s),0);
+  const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,open,norm,diff:approved-norm};
+  return {user:person.id,approved,sick,open,norm,diff:approved-norm};
  });
 }
 function closeMonth({db,actor,p}){
@@ -188,6 +194,7 @@ function setNorm({db,actor,p}){
 function submitHours({db,actor,p,s}){
  check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
  notClosed(db,s.date);
+ check(!s.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
   interval(p);notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
   check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),'Vul de werkelijke pauze in.');
@@ -290,6 +297,7 @@ function resolveStandby({db,admin,s,p,op}){
 function saveDraft({db,actor,admin,p,s}){
  check(admin&&db.people.some(x=>x.id===p.user)&&p.date>=today(),'Controleer de medewerker en datum.');interval(p);
   check(isActive(db,p.user),'Deze medewerker is inactief.');
+  check(!s?.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
   const id=p.id||crypto.randomUUID(), prior=db.drafts.find(d=>d.id===id);
   check(!s||(!db.hours[id]&&s.date===p.date&&s.user===p.user),'Deze dienst kan niet worden gewijzigd.');
   const other=db.shifts.filter(t=>!db.drafts.some(d=>d.id===t.id)).concat(db.drafts);
@@ -430,6 +438,40 @@ function savePerson({db,admin,p}){
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
+// Ziek melden per dienst (voorlopig, zie SPEC ronde 9a). Zelf: een eigen dienst die nog niet begonnen is.
+// Dagleiding van die dag en bedrijfsleider: ook namens iemand anders en achteraf. Geen goedkeuring nodig.
+const started=s=>s.date<today()||s.date===today()&&s.start<=now();
+const mayReportFor=(db,actor,s)=>actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
+export function sickProblem(db,actor,s){
+ if(!s)return 'Deze dienst bestaat niet.';
+ if(closed(db,s.date))return 'Deze maand is afgesloten.';
+ if(s.sick)return 'Deze dienst is al ziek gemeld.';
+ if(s.deadline)return 'Een stand-bydienst kun je niet ziek melden.';
+ if(s.unplanned)return 'Een ongeplande dienst kun je niet ziek melden.';
+ if(db.hours[s.id])return 'Voor deze dienst zijn al uren ingediend.';
+ if(mayReportFor(db,actor,s))return '';
+ if(s.user!==actor.id)return 'Je kunt deze dienst niet ziek melden.';
+ return started(s)?'Je dienst is al begonnen. Bel de leiding: die kan je ziek melden.':'';
+}
+export const maySick=(db,actor,s)=>!sickProblem(db,actor,s);
+export const mayUndoSick=(db,actor,s)=>!!s?.sick&&!closed(db,s.date)&&(actor.role==='admin'||s.sick.by===actor.id);
+function reportSick({db,actor,s}){
+ const problem=sickProblem(db,actor,s);
+ check(!problem,problem);
+ s.sick={by:actor.id,at:new Date().toISOString()};
+ if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+actor.name+' · '+s.start+'–'+s.end);
+}
+function undoSick({db,actor,s}){
+ if(s)notClosed(db,s.date);
+ check(s?.sick,'Deze dienst is niet ziek gemeld.');
+ check(mayUndoSick(db,actor,s),'Alleen wie de ziekmelding deed of een bedrijfsleider kan hem intrekken.');
+ delete s.sick;
+ if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+actor.name+' · '+s.start+'–'+s.end);
+}
+// Ziek gemelde diensten vanaf vandaag die deze persoon overziet: bedrijfsleider alles, dagleiding haar dagen.
+export const sickList=(db,actor,day=today())=>db.shifts.filter(s=>s.sick&&s.date>=day&&s.user!==actor.id
+ &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id))).sort(byDate);
+
 // Op inactief zetten kan pas als iemand geen diensten meer in de toekomst heeft; weer actief kan altijd.
 function setActive({db,actor,admin,p}){
  check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
@@ -489,6 +531,8 @@ const actions={
   approveAll,
   planFromRules,
   savePerson,
+  sick: reportSick,
+  sickUndo: undoSick,
   setActive,
   return: reviewHours,
   reopen: reopenHours,

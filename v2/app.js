@@ -3,9 +3,9 @@ import {calendarPage,dayContent} from './calendar.js';
 import {ic} from '../ui.js';
 import {availability,weekPage} from './week.js';
 import {fallbackShift,weeklyConflicts,needsQuestion,ruleFor,today,add,available,affected,remaining,apply,TIMES,
- mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS} from './model.js';
+ mayReopen,warnings,closed,minutes,badges,asPlanned,activePeople,futureShifts,AREAS,sickMinutes} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,duration,chip,badge,requestLength,line,roleNames,
- areaChoice} from './view.js';
+ areaChoice,sickButton} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -80,6 +80,8 @@ function open(title,content){
  modal.setAttribute('aria-label',title);
  if(!modal.open)modal.showModal();
 }
+// Ziek gemeld: wie het meldde en hoeveel uur het telt.
+const sickText=s=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' · telt '+duration(sickMinutes(s))+'</p>';
 const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)','reason','text','',required?'required':'');
 function show(action,id){
  db=read();
@@ -111,7 +113,8 @@ function show(action,id){
   open(dateLabel(id),body);return;
  }
  if(action==='ownShift'){
-  open('Mijn dienst','<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p><p>Aangegeven beschikbaarheid: '+h(availability(db,actorId,shift.date))+'</p>'+(shift.date<=today()&&!shift.deadline?button('Gewerkte uren','entry',id):''));return;
+  const me=db.people.find(p=>p.id===actorId),hours=shift.date<=today()&&!shift.deadline&&!shift.sick;
+  open('Mijn dienst','<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p><p>Aangegeven beschikbaarheid: '+h(availability(db,actorId,shift.date))+'</p>'+(shift.sick?sickText(shift):'')+(hours?button('Gewerkte uren','entry',id):'')+sickButton(db,me,shift));return;
  }
  if(action==='requestShift'){
   const [requestId,shiftId]=id.split('|');returnRequest=requestId;show('draft',shiftId);return;
@@ -122,13 +125,15 @@ function show(action,id){
   const canEdit=db.people.find(p=>p.id===actorId).role==='admin';
   const row=canEdit?(draft||shift):shift;
   if(!row)return;
-  const status=canEdit&&draft?'Conceptdienst':'Ingepland';
+  const status=canEdit&&draft?'Conceptdienst':row.sick?'Ziek gemeld':'Ingepland';
   const availabilityText=availability(db,row.user,row.date);
   let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p><p>Aangegeven beschikbaarheid: '+h(availabilityText==='Onbekend'?'Geen beschikbaarheid opgegeven':availabilityText)+'</p>';
   if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
+  if(row.sick)body+=sickText(row);
+  if(!draft)body+=sickButton(db,db.people.find(p=>p.id===actorId),row);
   if(canEdit&&entry)body+=button('Uren bekijken','inspect',id);
   if(row.date>=today()&&db.people.find(p=>p.id===actorId).role==='admin'){
-   if(!entry)body+=button('Dienst wijzigen','draft',id,true);
+   if(!entry&&!row.sick)body+=button('Dienst wijzigen','draft',id,true);
    body+=button('Extra dienst toevoegen','planExtra',row.date+'|'+row.user);
   }
   if(!draft&&row.deadline&&db.people.find(p=>p.id===actorId).role==='admin')body+=button('Stand-by afhandelen','standby',id);
@@ -140,8 +145,9 @@ function show(action,id){
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();if(returnRequest){const id=returnRequest;returnRequest=null;show('decision',id)}return}
  if(action==='entry'||action==='inspect'){
-  const editable=action==='entry'&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
+  const editable=action==='entry'&&!shift.sick&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
   let info='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p><p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
+  if(shift.sick)info+=sickText(shift);
   if(entry)info+='<p>'+chip(entry.status)+' '+clock(entry)+' · '+entry.pause+' min pauze</p>';
   if(entry?.reason)info+='<p>'+h(entry.reason)+'</p>';
   if(closed(db,shift.date))info+='<p class="notice">Deze maand is afgesloten.</p>';
@@ -155,6 +161,13 @@ function show(action,id){
  }
  if(action==='unplanned'){open('Ongeplande dienst',form(action,field('Datum','date','date',today(),'required max="'+today()+'"')+times()+pauseField()+areaChoice(db,actorId),'Uren indienen'));showNet();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='sickAsk'||action==='sickUndoAsk'){
+  const what='<p><b>'+h(name(db,shift.user))+'</b><br>'+h(dateLabel(shift.date)+' · '+clock(shift))+'</p>';
+  if(action==='sickUndoAsk'){open('Ziekmelding intrekken',what+form('sickUndo','','Ziekmelding intrekken',id));return}
+  const call=shift.user===actorId?'<p>Bel ook de leiding.</p>':'';
+  open('Ziek melden',what+'<p>Telt '+h(duration(sickMinutes(shift)))+' ziek.</p>'+call+form('sick','','Ziek melden',id));
+  return;
+ }
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='norm'){
   const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);

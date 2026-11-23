@@ -47,14 +47,15 @@ Medewerkers vullen hun gewerkte uren in. De leiding keurt ze goed. Niemand verge
 12. De knop **"Herinner via WhatsApp"** komt er, voor de bedrijfsleider én voor de dagleiding. Hij opent WhatsApp met een ingevulde tekst. Telefoonnummers worden bewaard, zijn alleen zichtbaar voor leiding en bedrijfsleider, staan alleen in de echte database en **nooit in de repository**.
 13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan.
 14. **Ingediend is ingediend.** De medewerker kan ingediende uren niet zelf aanpassen. Dat kan alleen nadat de leiding "Aanpassen vragen" heeft gedaan (zo werkt het nu al). Eindigen de uren vóór het geplande einde van de dienst, dan krijgt de leiding een **waarschuwing** (niet blokkeren).
-15. Voor later: pushmeldingen (wens), collega's zien in het rooster, ziek en verlof, toeslagen.
+15. Voor later: pushmeldingen (wens), collega's zien in het rooster, toeslagen. Ziek en verlof: zie ronde 9 (voorstel).
+16. **Inloggen met e-mail en wachtwoord** (niet met telefoonnummer en sms: dat kost geld). De bedrijfsleider zet een medewerker erin met e-mailadres. Die krijgt een uitnodigingsmail en kiest daarmee een wachtwoord. Daarna blijft de medewerker ingelogd op die telefoon tot hij of zij uitlogt. Wachtwoord vergeten gaat via een mail met een link. Wie niet door een bedrijfsleider is toegevoegd of op inactief staat, komt er niet in. Advies aan medewerkers: zet de app op het beginscherm (Safari › Delen › Zet op beginscherm), dan blijft de login bewaard. Uitwerking in ronde 8.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
 - Op dit moment geen open vragen voor de bouw.
 
 **Te bespreken met het bedrijf** (voorlopig gebouwd zoals hieronder; aanpassen zodra het bedrijf beslist):
 - **Maandnorm:** nu contracturen per week × 52 ÷ 12 (elke maand gelijk). Klopt dat met hoe het bedrijf rekent?
-- **Ziekte en verlof:** tellen nu niet mee voor de norm (vrij verandert de norm niet). Hoe wil het bedrijf dit?
+- **Ziekte en verlof:** voorlopig gebouwd in ronde 9 (9a ziek melden). Zie de tabel "Te overleggen met het bedrijf" in ronde 9.
 - **Loonperiode en afsluiten:** nu per kalendermaand; een maand kan dicht vanaf de 1e van de volgende maand. Mogelijk loopt de loonperiode van de 21e tot de 20e. Navragen.
 
 ## 6. Nog te bouwen, in rondes
@@ -131,8 +132,61 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 
 **Ronde 8: gedeelde opslag en inloggen (apart project)**
 - Nu staat alles in de browser. Voor echt gebruik: Supabase met inloggen en één plek voor de gegevens. Dezelfde `model.js` draait op de server (de gebruiker wordt bepaald uit het login-token, niet uit een keuzelijst) en de server stuurt alleen terug wat die rol mag zien. Versienummer tegen tegelijk schrijven. Een testproject met nepgegevens.
+- **Inloggen** (besluit 16): Supabase Auth met e-mail en wachtwoord. Openbaar aanmelden staat uit; alleen een uitnodiging door een bedrijfsleider. Nieuw veld bij een persoon: `email` (verplicht voor inloggen, alleen zichtbaar voor de bedrijfsleider, alleen in de echte database en nooit in de repository). Op inactief zetten blokkeert het inloggen.
+- **Mail:** de ingebouwde mail van Supabase is alleen voor testen (een paar mails per uur). Voor echt gebruik koppelen we een gratis maildienst (bijvoorbeeld Resend of Brevo) via SMTP. Het bedrijf maakt dat account aan.
+- Delen: **8a** opslag en regels op de server (de demo blijft werken), **8b** inloggen met e-mail en wachtwoord, **8c** per rol alleen de juiste gegevens, **8d** proef met twee of drie collega's.
 - Daarna de mails (dagoverzicht en 09:00-herinnering) en eventueel pushmeldingen.
 - **Tot dit klaar is, mogen er geen echte medewerkersgegevens in de app.**
+
+**Ronde 9: ziek en verlof (voorlopig gebouwd, nog te overleggen met het bedrijf)**
+Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt ook in de demo. De keuzes hieronder zijn **voorlopig** (besluit eigenaar 23 november: eerst de werking, daarna definitief na overleg). Zie de lijst "Te overleggen met het bedrijf" onderaan.
+
+*Wat er misging (gecontroleerd 23 november):*
+- Vrij vragen kent maar één soort. De app weet niet of het betaald verlof, onbetaald vrij of ziekte is.
+- Bij goedkeuren verdwijnt de dienst uit het rooster. Daarna staat nergens meer hoeveel uur iemand gepland stond.
+- Het maandoverzicht telt alleen gewerkte uren. Wie met een vast contract verlof had, lijkt uren tekort te komen. De export heeft een kolom afwezigheid (`absenceMinutes`), maar die staat altijd op 0.
+- Ziekmelden bestond niet.
+
+**9a: ziek melden per dienst**
+- Ziek melden gaat **per dienst**. Er is geen "beter melden": elke dienst wordt apart ziek gemeld.
+- **Wie:** de medewerker zelf, voor een eigen dienst die nog niet begonnen is (vandaag of later). De dagleiding van die dag en de bedrijfsleider kunnen het namens iemand doen, ook achteraf. Iedereen met een dienst kan zich ziek melden, ook met contract Uren.
+- **Niet mogelijk:** bij een stand-bydienst, een ongeplande dienst, een dienst waarvoor al uren zijn ingediend, of in een afgesloten maand.
+- Er is **geen goedkeuring** nodig. De medewerker belt de leiding ook nog, zoals nu.
+- **Vastleggen:** de dienst blijft bestaan en krijgt het veld `sick` (`{by, at}`: wie het meldde en wanneer). Zo blijven de geplande tijden bewaard. Nieuw veld bij een dienst: `sick`.
+- **Hoeveel uur:** de geplande tijd van de dienst. Is de dienst langer dan 3 uur, dan gaat er 30 minuten pauze af. Voorbeeld: 08:30–15:00 is 6u 30m gepland en telt 6u 00m ziek. Dit wordt uitgerekend, niet opgeslagen.
+- **Gevolgen:** een ziek gemelde dienst hoeft niet ingevuld te worden, telt niet als ontbrekend en staat niet bij Nog open in het maandoverzicht. Uren indienen kan niet. Een leidinggevende die ziek is gemeld, is die dag geen dagleiding. In het rooster staat bij de dienst "Ziek gemeld". De dienst kan niet meer gewijzigd worden; eerst de ziekmelding intrekken.
+- **Zichtbaar:** de medewerker ziet "Ziek gemeld" bij de dienst. Meldt iemand anders het, dan krijgt de medewerker een melding op Vandaag. De bedrijfsleider en de dagleiding zien op Vandaag het kaartje **Ziek gemeld** (vandaag en later).
+- **Intrekken** (bij een vergissing): door wie het meldde of een bedrijfsleider, zolang de maand open is. Een voorbije dienst staat daarna weer bij de ontbrekende uren.
+- Het maandoverzicht rekent de ziekte-uren al uit (`monthSummary` geeft `sick`). De kolommen in het overzicht en de export komen in 9c.
+- *Scenario:* Elise meldt zich ziek voor zaterdag 10:00–18:00. Die dienst telt 7u 30m ziek, staat niet bij Nog in te vullen en niet bij de ontbrekende uren.
+- *Scenario:* Elise is al aan het werk. Ze kan zich niet meer zelf ziek melden; Iris (dagleiding die dag) of Eva kan dat wel.
+
+**9b: soort bij vrij vragen** (nog niet gebouwd)
+- **Soort contract** per persoon, in te stellen onder Medewerkers: **Vast** (met maandnorm) of **Uren** (betaald per gewerkt uur, de norm is alleen informatie). Nieuw veld: `contract` (`vast` of `uren`).
+- **Vrij vragen krijgt een soort.** Nieuw veld bij een aanvraag: `type` (`verlof` of `onbetaald`).
+  - **Verlof (betaald):** alleen bij een vast contract. De medewerker vraagt aan, de bedrijfsleider keurt goed. Telt mee als uren.
+  - **Onbetaald vrij:** voor iedereen. Telt niet mee. Dit is wat Vrij vragen nu doet; bestaande aanvragen worden Onbetaald vrij.
+- Bij goedkeuren van verlof bewaart de aanvraag de diensten die vervielen (nieuw veld `dropped`). Verlof telt de geplande uren van die diensten. Een verlofdag zonder dienst telt niet mee. Staan er nog geen diensten in die periode, dan waarschuwt de app de bedrijfsleider: "dit verlof telt nu 0 uur".
+- Geen verlofsaldo in de app: dat houdt de loonadministratie bij (advies, zie overleg). De app legt alleen de opgenomen verlofuren vast.
+- *Scenario:* Isis (contract Uren) kan geen betaald verlof kiezen, alleen onbetaald vrij.
+
+**9c: maandoverzicht en export** (nog niet gebouwd)
+- Per persoon Gewerkt, Ziek, Verlof, Totaal, Norm en Verschil. Bij contract Uren staat de norm als informatie en is er geen verschil.
+- Export: aparte kolommen Ziek en Verlof in plaats van de lege kolom afwezigheid.
+
+*Te overleggen met het bedrijf (nu gebouwd zoals bij "Nu", daarna definitief maken):*
+| Onderwerp | Nu (voorlopig) | Of liever |
+|---|---|---|
+| Ziekte-uren | Geplande tijd van de dienst, min 30 minuten pauze bij meer dan 3 uur | Gemiddelde per dag uit het contract (bijv. contracturen ÷ 5); of de pauze volgens een andere regel |
+| Ziek op een dag zonder dienst | Telt niet mee | Bij een vast contract toch uren per dag uit het contract |
+| Beter melden | Niet: ziek per dienst | Ziekteperiode met een begin en "beter gemeld", die alle diensten daarin ziek maakt |
+| Halverwege ziek naar huis | Niet in de app: medewerker vult de gewerkte uren in | Rest van de dienst als ziek registreren |
+| Ziek melden vooruit | Medewerker kan elke eigen dienst vanaf vandaag ziek melden | Alleen vandaag en morgen; verder vooruit via de leiding |
+| Ziek bij contract Uren | Iedereen kan ziek melden; de app registreert de uren, de loonadministratie beslist over uitbetalen | Ziek alleen bij vast contract (let op: ook uurkrachten hebben meestal recht op doorbetaling voor ingeroosterde diensten) |
+| Wachtdag | Geen | Eerste ziektedag niet doorbetaald, als cao of contract dat zegt |
+| Verlofdag zonder dienst | Telt niet mee; waarschuwing bij 0 uur | Contracturen ÷ 5 per verlofdag; of de bedrijfsleider vult de uren in bij goedkeuren |
+| Verlofsaldo | Niet in de app, bij de loonadministratie | Saldo in de app (opbouw, vervallen, overuren: foutgevoelig met twee administraties) |
+| Feestdagen en sluitingsdagen | Geen invloed op de norm | Gaan af van de norm als het park dicht is |
 
 ## 7. Woordenlijst
 - **Concept:** diensten die nog niet zichtbaar zijn voor medewerkers. **Publiceren** maakt ze zichtbaar.
