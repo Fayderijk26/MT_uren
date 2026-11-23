@@ -79,8 +79,8 @@ import {pilotRoster} from '../v2/pilot.js';
 import {ruleFor} from '../v2/model.js';
 test('Proefrooster bevat twee volledige weken en wisselt de weekenddagen blijvend af',()=>{
  const db=pilotRoster();
- assert.equal(db.shifts.length,28);
- assert.equal(db.people.length,5);
+ assert.equal(db.shifts.length,32);
+ assert.equal(db.people.length,6);
  for(const [id,days] of Object.entries({eva:[2,4],iris:[1,4,5],sylvia:[2,3,5],isis:[6],elise:[1,4,6]})){
   for(let n=0;n<56;n++){
    const day=n%7+1,date=add('2026-11-16',n);
@@ -154,7 +154,7 @@ test('Voorbeeldmigratie behoudt aangepaste diensten, uren en aanvragen',()=>{
  assert.equal(db.shifts.find(s=>s.id==='eva-2026-11-19').start,'09:15');
  assert.equal(db.shifts.find(s=>s.id==='eva-2026-11-24').start,'08:30');
  assert.equal(JSON.stringify(db.hours),hours);
- assert.equal(db.rules.filter(r=>r.start==='10:00').length,3);
+ assert.equal(db.rules.filter(r=>r.start==='10:00'&&r.user!=='mieke').length,3);
  const snapshot=JSON.stringify(db);migratePilot(db);assert.equal(JSON.stringify(db),snapshot);
 
 });

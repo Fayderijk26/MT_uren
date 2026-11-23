@@ -1,5 +1,5 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
- absentMinutes} from './model.js';
+ absentMinutes,tracksHours} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -36,10 +36,11 @@ export function reviewRow(db,s){
  const actions=button('Goedkeuren','approve',s.id,true)+button('Bekijken','inspect',s.id);
  return line(name(db,s.user)+' · '+dateLabel(s.date),parts.join(' · '),actions);
 }
+// Wie geen uren bijhoudt (SPEC ronde 10), heeft geen Mijn uren; alleen Uren goedkeuren (en Maandoverzicht).
 export function tabs(db,actor,page){
  if(actor.role==='employee')return '';
  const count=badges(db,actor);
- const items=[['Mijn uren','hours',count.mine],['Uren goedkeuren','reviews',count.review]];
+ const items=[...tracksHours(db,actor.id)?[['Mijn uren','hours',count.mine]]:[],['Uren goedkeuren','reviews',count.review]];
  if(actor.role==='admin')items.push(['Maandoverzicht','month',0]);
  return subtabs(items,page);
 }
@@ -86,7 +87,9 @@ function shiftsCard(db,actor,month){
  return '<section class="card">'+head+(rows||'<p>Nog geen diensten deze maand.</p>')+'</section>';
 }
 export function hoursPage(db,actor,view){
- if(view.page==='reviews'){
+ const own=tracksHours(db,actor.id);
+ if(!own&&actor.role==='employee')return card('Uren','Voor jou worden geen uren bijgehouden.');
+ if(view.page==='reviews'||!own){
   const absent=teamMissing(db,actor);
   const same=asPlanned(db,actor).length;
   const all=same?button('Alles goedkeuren ('+same+')','approveAll','',true):'';
