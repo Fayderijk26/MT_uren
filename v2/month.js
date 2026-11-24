@@ -8,7 +8,7 @@ const short=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u'+(Math.abs(m)%60?Str
 // Eén rij per medewerker. De norm is een knop waarmee de bedrijfsleider hem aanpast (niet in een afgesloten maand).
 function personRow(db,month,r){
  const changed=db.normOverrides.some(n=>n.user===r.user&&n.month===month);
- const norm=closed(db,month+'-01')?h(short(r.norm)):button(short(r.norm),'norm',r.user);
+ const norm=r.norm===null?'–':closed(db,month+'-01')?h(short(r.norm)):button(short(r.norm),'norm',r.user);
  // Saldo (SPEC 9f): een knop waarmee de bedrijfsleider het bekijkt of op 0 zet. Geen saldo bij contract Uren.
  const own=saldo(db,r.user),balance=own===null?'–':button(short(own),'saldo',r.user);
  const cells=[h(name(db,r.user)),short(r.approved),norm+(changed?'<small>aangepast</small>':''),

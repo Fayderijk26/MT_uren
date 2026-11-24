@@ -285,7 +285,8 @@ export function monthSummary(db,month,day=today()){
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
-  const norm=normMinutes(db,person.id,month);
+  // Alleen een vast contract heeft een norm; een oproepkracht (contract Uren) niet.
+  const norm=person.contract==='vast'?normMinutes(db,person.id,month):null;
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave+special-norm:null;
   return {user:person.id,approved,sick,sickWaiting,sickUnpaid,waitShifts,leave,special,unpaid,overtime,days,
@@ -346,6 +347,7 @@ function setNorm({db,actor,p}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan de norm aanpassen.');
  check(db.people.some(x=>x.id===p.user)&&/^\d{4}-(0[1-9]|1[0-2])$/.test(p.month),'Kies een medewerker en een maand.');
  notClosed(db,p.month);
+ check(db.people.find(x=>x.id===p.user).contract==='vast','Een oproepkracht (contract Uren) heeft geen norm.');
  check(Number.isInteger(p.minutes)&&p.minutes>=0,'Vul een geldige norm in.');
  check(p.reason?.trim(),'Geef een reden voor de aangepaste norm.');
  db.normOverrides=db.normOverrides.filter(n=>!(n.user===p.user&&n.month===p.month));

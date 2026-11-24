@@ -89,3 +89,14 @@ test('Maandoverzicht: kolom Saldo; Eva opent het saldo en ziet Saldo op 0 zetten
  assert.match(d.title,/Saldo Elise B/);
  assert.match(d.body,/data-op="saldoReset"/);
 });
+
+test('Een oproepkracht (contract Uren) heeft geen norm: niet in het maandoverzicht en niet aan te passen',t=>{
+ const db=november(t);
+ assert.equal(row(db,'isis').norm,null);
+ const html=monthPage(db,person(db,'eva'),{month:'2026-11'});
+ const isis=html.split('<tr class="person">').find(r=>r.includes('Isis N'));
+ assert.doesNotMatch(isis,/data-act="norm"/);
+ assert.match(isis,/<td>Isis N<\/td><td>0u<\/td><td>–<\/td><td>–<\/td><td>–<\/td>/);
+ assert.throws(()=>apply(db,'eva','setNorm',{user:'isis',month:'2026-11',minutes:600,reason:'x'}),
+  /Een oproepkracht \(contract Uren\) heeft geen norm\./);
+});
