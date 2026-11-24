@@ -69,8 +69,8 @@ const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),'Verlofdag · t
 // De getallen komen uit monthSummary, dezelfde als in het maandoverzicht van de bedrijfsleider.
 function summaryCard(db,actor,month){
  const r=monthSummary(db,month).find(x=>x.user===actor.id)||{approved:0,sick:0,leave:0,pending:0,open:[]};
- const parts=[['ok','Goedgekeurd',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave]];
- const total=r.approved+r.sick+r.leave;
+ const parts=[['ok','Goedgekeurd',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave+(r.special||0)]];
+ const total=r.approved+r.sick+r.leave+(r.special||0);
  const monthName=new Intl.DateTimeFormat('nl-NL',{month:'long'}).format(new Date(month+'-15T12:00Z'));
  const bar=total?'<div class="hourbar" aria-hidden="true">'+parts.filter(p=>p[2])
   .map(([tone,,m])=>'<span class="seg-'+tone+'" style="flex:'+m+'"></span>').join('')+'</div>':'';

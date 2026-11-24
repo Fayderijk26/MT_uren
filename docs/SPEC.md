@@ -237,7 +237,16 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - **Nog te overleggen, te kiezen in de testfase met proefgebruikers:**
   - **Overuren inzetten** als vierde soort vrij (alleen vast contract). Telt niet als verlof: de uren van de vervallen diensten gaan van het saldo plus- en minuren af. De bedrijfsleider ziet bij beoordelen het saldo en keurt goed of af. Staat er nog geen dienst, dan telt het 0 uur.
   - Een deel van de dag vrij kan alleen als overuren inzetten of onbetaald vrij, niet als betaald verlof.
-- Bijzonder verlof keurt de bedrijfsleider goed of af, zoals elke aanvraag.
+- Bijzonder verlof keurt de bedrijfsleider goed of af. **Bij goedkeuren kiest de bedrijfsleider of het betaald wordt** (besluit eigenaar 24 november): betaald telt 8 uur per vaste werkdag en gaat niet van de vakantiedagen af; niet betaald telt 0 uur en gaat dus van het saldo plus- en minuren af. Nieuw veld bij een aanvraag: `paid`.
+- **Hoe het nu is gebouwd (voorlopig, nog definitief maken na navraag bij de loonadministratie).** Uitgangspunt van de eigenaar: iedereen met een vast contract krijgt elke maand hetzelfde loon; er wordt nooit minder uitbetaald; alles loopt via het saldo plus- en minuren.
+  | Soort | Vakantiedag eraf | Telt in de uren | Effect op saldo plus/min |
+  |---|---|---|---|
+  | Verlof (betaald) | ja, 1 per vaste werkdag | 8 uur per dag | geen |
+  | Bijzonder verlof, betaald | nee | 8 uur per dag | geen |
+  | Bijzonder verlof, niet betaald | nee | 0 | min-uren |
+  | Onbetaald vrij | nee | 0 | min-uren |
+  | Overuren inzetten | nee | 0 | min-uren |
+  Bij een vast contract doen onbetaald vrij en overuren inzetten nu hetzelfde. Klopt het uitgangspunt niet (wordt onbetaald verlof wel ingehouden op het loon), dan moet onbetaald vrij anders: geen min-uren, wel een eigen kolom in de export voor de loonadministratie.
 - Gekozen bij het bouwen (te bevestigen): bijzonder verlof kan iedereen vragen en telt niet mee in de uren van de maand; zonder ingevulde vakantiedagen controleert de app niets.
 - Medewerkers en leidinggevenden met een vast contract zien hun eigen saldo plus- en minuren en vakantiedagen bij Mijn uren.
 - Verlof telt in **dagen**: 1 verlofdag is 1 dag, ongeacht de uren. Bijvoorbeeld: 32 uur per week heeft 21 vakantiedagen per jaar.

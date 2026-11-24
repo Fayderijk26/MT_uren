@@ -97,7 +97,7 @@ test('Bijzonder verlof: kies een soort, bij Anders een reden; het gaat niet van 
  assert.throws(()=>ask(db,{...week,type:'bijzonder',special:'anders'}),/reden/);
  db=ask(db,{...week,type:'bijzonder',special:'rouwverlof'});
  assert.equal(last(db).special,'rouwverlof');
- db=apply(db,'eva','decide',{id:last(db).id,accept:true,choices:{}});
+ db=apply(db,'eva','decide',{id:last(db).id,accept:true,choices:{},paid:'ja'});
  assert.equal(vacationLeft(db,'elise'),16);
  assert.ok(apply(pilotRoster(),'isis','leave',{...week,type:'bijzonder',special:'kort verzuim'}),'ook bij contract Uren');
 });

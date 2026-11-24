@@ -82,10 +82,12 @@ export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Za
 export const leaveNames={verlof:'Verlof (betaald)',overuren:'Overuren inzetten',onbetaald:'Onbetaald vrij',
  bijzonder:'Bijzonder verlof'};
 const specialName=s=>s[0].toUpperCase()+s.slice(1);
-export const leaveName=r=>(leaveNames[r.type]||leaveNames.onbetaald)+(r.special?' ('+r.special+')':'');
+export const leaveName=r=>(leaveNames[r.type]||leaveNames.onbetaald)+(r.special?' ('+r.special+')':'')
+ +(r.type==='bijzonder'&&r.paid!==undefined?(r.paid?' · betaald':' · niet betaald'):'');
 // Keuze Soort bij vrij vragen en beoordelen. Vast contract: Verlof (betaald) vooraf gekozen. Uren: alleen onbetaald.
 // Bijzonder verlof: een keuzelijst die verschijnt zodra die soort is gekozen (SPEC 9g).
-export function leaveTypeField(db,user,current,special=''){
+// decide: bij beoordelen kiest de bedrijfsleider ook of bijzonder verlof betaald wordt.
+export function leaveTypeField(db,user,current,special='',decide=false){
  const paid=mayPaidLeave(db,user),types=paid?['verlof','overuren','onbetaald','bijzonder']:['onbetaald','bijzonder'];
  const pick=types.includes(current)?current:types[0];
  const option=t=>'<option value="'+t+'"'+(t===pick?' selected':'')+'>'+h(leaveNames[t])+'</option>';
@@ -94,7 +96,10 @@ export function leaveTypeField(db,user,current,special=''){
   +'</option>').join('');
  const box='<div id="special"'+(pick==='bijzonder'?'':' hidden')+'><label class="field"><span>Welk bijzonder verlof?'
   +'</span><select name="special"><option value="">Kies…</option>'+kinds+'</select></label>'
-  +'<p class="hint">Bij Anders: geef een reden. Vermeld geen medische informatie.</p></div>';
+  +'<p class="hint">Bij Anders: geef een reden. Vermeld geen medische informatie.</p>'
+  +(decide?'<label class="field"><span>Betaald?</span><select name="paid"><option value="">Kies…</option>'
+   +'<option value="ja">Betaald: telt 8 uur per werkdag, geen vakantiedag</option>'
+   +'<option value="nee">Niet betaald: gaat van het saldo plus- en minuren af</option></select></label>':'')+'</div>';
  return '<label class="field"><span>Soort</span><select name="type" required>'+types.map(option).join('')
   +'</select></label>'+hint+box;
 }
