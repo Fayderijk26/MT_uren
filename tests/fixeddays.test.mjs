@@ -48,11 +48,39 @@ test('Niet beschikbaar staat in het teamrooster en in Mijn rooster',t=>{
  assert.equal(dayContent(db,'elise','2026-12-15').at(-1).text,'Niet beschikbaar');
 });
 
-test('Later beginnen op een vaste dag: Elise geeft voor één dag Beschikbaar vanaf 10:00 op',t=>{
+test('Later beginnen op een vaste dag is een aanvraag: tot de bedrijfsleider akkoord geeft, geldt de vaste dag',t=>{
  monday(t);
- const db=apply(pilotRoster(),'elise','extra',{date:'2026-12-14',start:'10:00',end:'17:30'});
+ let db=apply(pilotRoster(),'elise','extra',{date:'2026-12-14',start:'10:00',end:'17:30'});
+ const r=db.requests.at(-1);
+ assert.deepEqual([r.kind,r.status,r.start,r.end],['day','pending','10:00','17:30']);
+ assert.ok(!db.extra.some(e=>e.user==='elise'),'nog geen beschikbaarheid');
+ assert.equal(availability(db,'elise','2026-12-14'),'Hele dag beschikbaar · 10:00–17:30 gevraagd');
+ const mine=dayContent(db,'elise','2026-12-14').find(i=>i.request);
+ assert.deepEqual([mine.text,mine.kind],['Beschikbaarheid 10:00–17:30 · Wacht op akkoord','pending']);
+ assert.match(dialogs.decision(db,person(db,'eva'),r.id).body,/ma 14 dec · Beschikbaar 10:00–17:30/);
+ db=apply(db,'eva','decide',{id:r.id,accept:true});
  assert.equal(availability(db,'elise','2026-12-14'),'Beschikbaar vanaf 10:00');
- assert.match(dialogs.extra(db,person(db,'elise')).body,/later te beginnen of eerder weg te gaan/);
+ assert.match(dialogs.extra(db,person(db,'elise')).body,
+  /Op een vaste werkdag is dit een aanvraag: de bedrijfsleider keurt hem goed\. Tot dan geldt je vaste beschikbaarheid\./);
+});
+
+test('Op een dag die geen vaste werkdag is, is extra beschikbaarheid geen aanvraag (zoals het was)',t=>{
+ monday(t);
+ const db=apply(pilotRoster(),'elise','extra',{date:'2026-12-15',start:'10:00',end:'17:30'});
+ assert.equal(db.requests.length,pilotRoster().requests.length);
+ assert.equal(availability(db,'elise','2026-12-15'),'Beschikbaar vanaf 10:00');
+});
+
+test('Eva wijzigt een vaste werkdag vanaf een datum; tot die datum geldt de oude',t=>{
+ monday(t);
+ const db=pilotRoster(),elise=person(db,'elise');
+ assert.match(dialogs.person(db,person(db,'eva'),'elise').body,/name="fixedFrom" type="date" value="2026-11-23"/);
+ const next=apply(db,'eva','savePerson',{...elise,contractHours:24,fixed:['1','4','6'],fixedFrom:'2026-12-07',
+  start1:'10:00',end1:'17:30',start4:'08:30',end4:'18:00',start6:'10:00',end6:'18:00'});
+ assert.equal(ruleFor(next,{user:'elise',date:'2026-11-30'}).start,'08:30','oude tot 7 december');
+ assert.equal(ruleFor(next,{user:'elise',date:'2026-12-07'}).start,'10:00');
+ assert.throws(()=>apply(db,'eva','savePerson',{...elise,contractHours:24,fixed:['1'],fixedFrom:'2026-11-01'}),
+  /Kies vandaag of later voor Geldig vanaf\./);
 });
 
 test('Bij beschikbaarheid staat dat het een wens is, geen garantie',t=>{

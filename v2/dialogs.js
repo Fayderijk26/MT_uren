@@ -234,7 +234,9 @@ function availabilityDialog(db,actor,day,action){
   +' beschikbaarheid.</p><p class="hint" id="wish" hidden>Let op: je wordt niet meteen op deze tijd ingepland.'
   +' We proberen rekening te houden met je wensen.</p>';
  const once=action==='extra'?'<p class="hint">Voor één dag: ook om later te beginnen of eerder weg te gaan op een'
-  +' vaste dag (kies Beschikbaar vanaf of tot), of Niet beschikbaar op een dag die geen vaste werkdag is.</p>':'';
+  +' vaste dag (kies Beschikbaar vanaf of tot), of Niet beschikbaar op een dag die geen vaste werkdag is.</p>'
+  +'<p class="hint">Op een vaste werkdag is dit een aanvraag: de bedrijfsleider keurt hem goed. Tot dan geldt je'
+  +' vaste beschikbaarheid.</p>':'';
  if(action==='leave')body+='<p id="late" role="status"></p>';
  body+=select('Beschikbaarheid','mode',modes)+field('Begintijd','start','time')+field('Eindtijd','end','time')
   +(action==='leave'?insteadBox(db,actor.id):wish+once)+(action==='extra'?'':reason());
@@ -250,8 +252,10 @@ function fixedBoxes(db,user){
    +weekNames[n-1]+'</label>'+field('Van','start'+n,'time',on?r.start:std.start)
    +field('Tot','end'+n,'time',on?r.end:std.end)+'</div>';
  };
- return '<fieldset class="field fixeddays"><span>Vaste werkdagen</span>'+[1,2,3,4,5,6,7].map(day).join('')
-  +'<p class="hint">Dit is de vaste beschikbaarheid. De medewerker kan een wijziging vragen.</p></fieldset>';
+ return '<fieldset class="field fixeddays"><span>Vaste werkdagen</span>'
+  +field('Geldig vanaf','fixedFrom','date',today(),'min="'+today()+'"')+[1,2,3,4,5,6,7].map(day).join('')
+  +'<p class="hint">Dit is de vaste beschikbaarheid. Een wijziging geldt vanaf de gekozen datum; tot dan blijven de'
+  +' oude dagen staan. De medewerker kan zelf een wijziging vragen.</p></fieldset>';
 }
 // Vinkjes voor de werkplekken van een medewerker.
 const areaBoxes=own=>'<fieldset class="field areas"><span>Werkplek</span>'+AREAS.map(a=>'<label><input type="checkbox"'

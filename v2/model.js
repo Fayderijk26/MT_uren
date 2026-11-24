@@ -464,8 +464,15 @@ function recordAvailability({db,actor,op,p}){
    check(!db.shifts.some(s=>s.user===actor.id&&s.date===p.date),'Je bent op deze dag al ingepland.');
    // Niet beschikbaar (ronde 13): alleen op een dag die geen vaste werkdag is; geen goedkeuring, geen melding.
    check(!p.off||!ruleDay(db,actor.id,p.date),'Dit is een vaste werkdag. Vraag vrij aan.');
-   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);
    const std=dayTimes(p.date);
+   // Andere tijden op een vaste werkdag (ronde 13): een aanvraag; tot het akkoord geldt de vaste beschikbaarheid.
+   if(!p.off&&ruleDay(db,actor.id,p.date)){
+    db.requests=db.requests.filter(r=>!(r.kind==='day'&&r.user===actor.id&&r.date===p.date&&r.status==='pending'));
+    db.requests.push({id:crypto.randomUUID(),kind:'day',user:actor.id,date:p.date,through:p.date,
+     start:start||std.start,end:end||std.end,reason:'',status:'pending',created:today()});
+    return;
+   }
+   db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);
    db.extra.push(p.off?{user:actor.id,date:p.date,off:true}
     :{user:actor.id,date:p.date,start:start||std.start,end:end||std.end});
   }else{
@@ -522,6 +529,10 @@ function decideRequest({db,admin,p,r}){
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
    const std=weekTimes(r.weekday);
    db.rules.push({...r,start:r.start||std.start,end:r.end||std.end});
+  }else if(p.accept&&r.kind==='day'){
+   check(!db.shifts.some(s=>s.user===r.user&&s.date===r.date),displayName(db,r.user)+' staat op deze dag al ingepland.');
+   db.extra=db.extra.filter(x=>x.user!==r.user||x.date!==r.date);
+   db.extra.push({user:r.user,date:r.date,start:r.start,end:r.end});
   }else if(p.accept){
    // De bedrijfsleider kan de soort aanpassen (voorlopig, zie SPEC ronde 9b). De gevraagde soort blijft in askedType.
    if(r.kind==='leave'&&p.type&&p.type!==r.type){
@@ -765,15 +776,16 @@ function savePerson({db,admin,p}){
 // Vaste werkdagen (ronde 13) = de vaste beschikbaarheid, vanaf vandaag. Alleen een weekdag die verandert krijgt een
 // nieuwe regel; een dag die geen vaste dag meer is wordt Niet beschikbaar.
 function setFixedDays(db,user,p){
- const days=[].concat(p.fixed).map(Number);
+ const days=[].concat(p.fixed).map(Number),from=p.fixedFrom||today();
+ check(/^\d{4}-\d{2}-\d{2}$/.test(from)&&from>=today(),'Kies vandaag of later voor Geldig vanaf.');
  for(let n=1;n<=7;n++){
-  const date=add(today(),(n-weekday(today())+7)%7),now=ruleFor({...db,extra:[]},{user,date});
+  const date=add(from,(n-weekday(from)+7)%7),now=ruleFor({...db,extra:[]},{user,date});
   const on=days.includes(n),start=p['start'+n]||weekTimes(n).start,end=p['end'+n]||weekTimes(n).end;
   if(on)interval({start,end});
   const same=on?now&&!now.off&&now.start===start&&now.end===end&&!now.fortnightly:!now||now.off;
   if(same)continue;
-  db.rules=db.rules.filter(r=>!(r.user===user&&r.weekday===n&&r.date===today()));
-  db.rules.push(on?{user,weekday:n,date:today(),start,end}:{user,weekday:n,date:today(),off:true});
+  db.rules=db.rules.filter(r=>!(r.user===user&&r.weekday===n&&r.date===from));
+  db.rules.push(on?{user,weekday:n,date:from,start,end}:{user,weekday:n,date:from,off:true});
  }
 }
 

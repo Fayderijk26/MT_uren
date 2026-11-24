@@ -17,7 +17,7 @@ export function dayContent(db,user,date){
  const free=rule?.off&&(rule.weekday?'Vrij':'Niet beschikbaar');
  const told=rule?.request&&'Aangegeven beschikbaarheid '+clock(rule);
  if(rule)items.push({text:free||told||(wholeDay?'Hele dag beschikbaar':'Beschikbaar '+clock(rule)),kind:'available'});
- const what=r=>r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r))
+ const what=r=>r.kind==='day'?'Beschikbaarheid '+clock(r):r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r))
   :leaveShort(r)+(r.start?' '+clock(r):'');
  for(const r of requests)items.push({text:what(r)+' · '+requestStatus(r)+(r.response?' · '+r.response:''),
   kind:r.status,request:r});

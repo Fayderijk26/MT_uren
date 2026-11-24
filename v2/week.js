@@ -2,7 +2,12 @@ import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanW
  displayName,dayInfo,dayTimes} from './model.js';
 import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
+// Gevraagde andere tijden op een vaste werkdag (ronde 13): achter de vaste beschikbaarheid.
 export function availability(db,user,date){
+ const ask=db.requests.find(r=>r.kind==='day'&&r.user===user&&r.date===date&&r.status==='pending');
+ return availabilityNow(db,user,date)+(ask?' · '+clock(ask)+' gevraagd':'');
+}
+function availabilityNow(db,user,date){
  const leave=db.requests.find(r=>r.kind==='leave'&&r.user===user&&r.status!=='rejected'&&freeWindows(r,date).length);
  if(leave)return leaveShort(leave)+(leave.status==='pending'?' gevraagd':'')+(leave.start?' '+clock(leave):'');
  const rule=ruleFor(db,{user,date});

@@ -109,7 +109,8 @@ export function leaveTypeField(db,user,current,special='',decide=false,why=''){
 }
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
 export const leaveShort=r=>({verlof:'Verlof',bijzonder:'Bijzonder verlof',overuren:'Overuren'})[r.type]||'Vrij';
-export const requestName=r=>r.kind==='weekly'
+export const requestName=r=>r.kind==='day'?dateLabel(r.date)+' · Beschikbaar '+clock(r)
+ :r.kind==='weekly'
  ?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
  :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')
  +' · '+leaveName(r);
