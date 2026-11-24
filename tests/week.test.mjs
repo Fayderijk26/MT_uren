@@ -59,7 +59,7 @@ test('Concept uit vaste beschikbaarheid alleen bij een week die nog niet begonne
  assert.doesNotMatch(weekPage(pilotRoster(),{day:'2026-11-19'}),/planFromRules/,'huidige week');
  assert.doesNotMatch(weekPage(pilotRoster(),{day:'2026-11-25'}),/planFromRules/,'volgende week, al gepubliceerd');
  const db=apply(pilotRoster(),'eva','draft',{user:'isis',date:'2026-12-05',start:'08:30',end:'18:00'});
- const published=apply(db,'eva','publish',{date:'2026-12-05',through:'2026-12-05',confirm:true});
+ const published=apply(db,'eva','publish',{weekly:'Fijne week.',date:'2026-12-05',through:'2026-12-05',confirm:true});
  assert.doesNotMatch(weekPage(published,{day:'2026-12-03'}),/planFromRules/,'één dag gepubliceerd');
 });
 

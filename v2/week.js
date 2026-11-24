@@ -1,5 +1,6 @@
 import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanWeek,
- displayName,dayInfo,dayTimes} from './model.js';
+ displayName,dayInfo,dayTimes,mustRead} from './model.js';
+import {weeklyCard} from './weekly.js';
 import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
 // Gevraagde andere tijden op een vaste werkdag (ronde 13): achter de vaste beschikbaarheid.
@@ -94,7 +95,11 @@ function weekView(db,v,readonly,pending){
  if(!readonly&&week.some(pending))html+=button('Week publiceren','pubWeek',first,true);
  return '<div class="weekview">'+html+'</div>';
 }
-export function weekPage(db,v,readonly=false){
+// actor: wie kijkt. Nog niet gelezen weekly (ronde 14): eerst de weekly, het rooster van die week blijft verborgen.
+export function weekPage(db,v,readonly=false,actor=null){
  const pending=d=>db.drafts.some(s=>s.date===d)||db.offers.some(o=>o.row.date===d);
- return card('Teamrooster',dayView(db,v,readonly,pending)+weekView(db,v,readonly,pending));
+ const first=monday(v.day),weekly=actor?weeklyCard(db,actor,first):'';
+ if(actor&&mustRead(db,actor.id,first))
+  return card('Teamrooster',toolbar('',add(first,-7),add(first,7),'week')+weekly);
+ return card('Teamrooster',dayView(db,v,readonly,pending)+weekView(db,v,readonly,pending)+weekly);
 }

@@ -1,7 +1,8 @@
 import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,sickToDecide,
- tracksHours} from './model.js';
+ tracksHours,mustRead,monday} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,
  leaveNames,sickStatus,sickDecision} from './view.js';
+import {unreadWeeks,weeklyTitle} from './weekly.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
@@ -59,16 +60,26 @@ function sickDecideCard(db,actor){
  return list.length?card('Ziek: besluit nodig ('+list.length+')',list.map(row).join('')):'';
 }
 // 1. Wanneer heb ik dienst: vandaag, of anders de eerstvolgende.
+// Weekly van die week nog niet gelezen (ronde 14): de dienst wazig, met een knop naar de weekly.
+function nextLine(db,actor,s){
+ if(!mustRead(db,actor.id,s.date))return shiftLine(db,actor,s);
+ return '<div class="blurbox"><div class="blurred" aria-hidden="true">'+shiftLine(db,actor,s)+'</div>'
+  +button('Lees eerst de weekly','weekly',monday(s.date),true)+'</div>';
+}
 function myShift(db,actor,mine,day){
  const current=mine.filter(s=>s.date===day),next=mine.find(s=>s.date>day);
  if(current.length)return card('Mijn dienst vandaag',current.map(s=>ownRow(db,actor,s)).join(''));
- return next?card('Eerstvolgende dienst',shiftLine(db,actor,next)):'';
+ return next?card('Eerstvolgende dienst',nextLine(db,actor,next)):'';
 }
 // 2. Wat moet ik nog doen en welke aanvragen lopen er.
 function todoCards(db,actor,mine,day){
  const admin=actor.role==='admin';
  const open=ownTodo(db,actor,day).filter(s=>s.date!==day); // vandaag staat al bovenaan
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,actor,s)).join('')):'';
+ // Weekly nog niet gelezen (ronde 14): bovenaan, met een knop om hem te lezen.
+ const weeklies=unreadWeeks(db,actor);
+ if(weeklies.length)html=card('Nieuwe weekly',weeklies.map(w=>line(weeklyTitle(w),
+  'Lees de weekly. Daarna zie je het rooster van deze week.',button('Lezen','weekly',w,true))).join(''))+html;
  const offers=offersFor(db,actor);
  if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>offerRow(db,o)).join(''));
  const standby=db.shifts.filter(s=>s.deadline&&(admin?s.date<=day:s.user===actor.id&&s.date>=day));
@@ -102,7 +113,7 @@ function restCards(db,actor,mine,day){
  let html=onDuty?card('Wie werkt er vandaag?',team.map(who).join('')
   ||'Er staan vandaag geen diensten gepland.'):'';
  const next=mine.find(s=>s.date>day);
- if(mine.some(s=>s.date===day)&&next)html+=card('Eerstvolgende dienst',shiftLine(db,actor,next));
+ if(mine.some(s=>s.date===day)&&next)html+=card('Eerstvolgende dienst',nextLine(db,actor,next));
  const notes=db.updates.filter(n=>n.user===actor.id);
  const note=n=>line(dateLabel(n.date),n.text,button('Gezien','seen',n.id));
  if(notes.length)html+=card('Roosterwijzigingen',notes.map(note).join(''));

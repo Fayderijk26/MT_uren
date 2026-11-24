@@ -21,7 +21,7 @@ const team=[
 export function pilotRoster(){
  const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],
   normOverrides:[],closedMonths:[],monthReopens:[],saldoCorrections:[],
-  leaveCorrections:[],days:[]};
+  leaveCorrections:[],days:[],weeklies:[]};
  for(const {id,name,role,contract,hours,days,weekend=[],areas,tracksHours,times={},pay,vacation} of team){
   const [staffNumber,firstName,lastName,initials]=pay;
   // Nepwaarden: vakantiedagen per jaar, startsaldo gelijk, verlofjaar 2026.

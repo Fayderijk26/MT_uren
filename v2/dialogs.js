@@ -3,7 +3,8 @@
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
  minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays,dayTimes,dayInfo,closedPeople,ruleFor,weekday,
- weekTimes} from './model.js';
+ weekTimes,weeklyFor} from './model.js';
+import {weeklyCard,weeklyTitle} from './weekly.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
  sickDecision} from './view.js';
@@ -359,6 +360,25 @@ function draft(db,actor,id){
  return {title:'Conceptdienst',body:form('draft',body,'Concept bewaren',s?.id||'')};
 }
 
+// Weekly (ronde 14): tekst en eventueel een afbeelding. De schil verkleint de foto en zet hem in het veld image.
+function weeklyFields(name,text,image=''){
+ return '<label class="field"><span>Weekly</span><textarea name="'+name+'" required rows="7" maxlength="4000"'
+  +' placeholder="Waar moet iedereen deze week op letten?">'+h(text)+'</textarea></label>'
+  +'<p class="hint">Begin een regel met - voor een opsomming. Iedereen leest de weekly voordat die het rooster'
+  +' ziet.</p><label class="field"><span>Afbeelding (niet verplicht)</span><input type="file" name="imagefile"'
+  +' accept="image/*"></label><input type="hidden" name="image">'
+  +(image?'<label class="check"><input type="checkbox" name="noImage"> Afbeelding weghalen</label>':'');
+}
+// Weekly aanpassen. Is de week al gepubliceerd, dan kiest de bedrijfsleider of iedereen hem opnieuw leest.
+function weeklyEdit(db,actor,week){
+ const w=weeklyFor(db,week),live=(db.published||[]).some(d=>d>=week&&d<=add(week,6));
+ const ask=live?select('Moet iedereen de weekly opnieuw lezen?','reread',[['','Kies…'],
+  ['ja','Ja, opnieuw laten lezen (het rooster is tot dan niet zichtbaar)'],
+  ['nee','Nee, alleen aanpassen (bijvoorbeeld een tikfout)']]):'';
+ return {title:weeklyTitle(week),body:form('weeklySave',weeklyFields('text',w?.text||'',w?.image)+ask,'Opslaan',week)};
+}
+// Weekly lezen (vanaf Vandaag).
+const weekly=(db,actor,week)=>({title:'Weekly',body:weeklyCard(db,actor,week)});
 // Week publiceren: wat er ingepland wordt en welke vragen naar medewerkers gaan.
 function publishRow(db,s){
  const question=needsQuestion(db,s)||!available(db,s),base=db.shifts.find(x=>x.id===s.id)||fallbackShift(db,s);
@@ -377,7 +397,9 @@ function pubWeek(db,actor,week){
  const check=rows.some(s=>!available(db,s))
   ?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.'
    +'</label>':'';
- const body='<p>'+h(summary)+'</p>'+rows.map(s=>publishRow(db,s)).join('')+check
+ const weekly=weeklyFor(db,week)?'<p class="notice">De weekly van deze week staat er al. Die blijft zoals hij is;'
+  +' aanpassen kan onder het rooster.</p>':weeklyFields('weekly','');
+ const body='<p>'+h(summary)+'</p>'+rows.map(s=>publishRow(db,s)).join('')+check+weekly
   +'<input type="hidden" name="through" value="'+end+'">';
  return {title:'Rooster publiceren',body:form('publish',body,'Publiceren',week)};
 }
@@ -403,6 +425,7 @@ function proposal(db,actor,id){
 
 // Welke knop (data-act) welk venster opent.
 export const dialogs={
+ weeklyEdit,weekly,
  calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
  decision,
  person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,dayEdit,

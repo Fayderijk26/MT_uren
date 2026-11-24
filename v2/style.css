@@ -79,3 +79,23 @@ a.secondary{text-decoration:none}
 /* Ronde 13: vaste werkdagen in het medewerkerformulier; andere dagen in de vrij-vraag van een oproepkracht. */
 .fixedday{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;align-items:end;margin-top:6px}
 .fixedday .field{margin:0}.insteadrow{grid-template-columns:1fr 1fr}.insteadrow>.field:first-child{grid-column:1/-1}
+
+/* Ronde 14: de Weekly. */
+.weekly{position:relative;margin:16px 0;padding:20px 20px 18px;border-radius:16px;border:1px solid #dce5c9;
+ background:linear-gradient(135deg,#f4f8e6 0%,#fbfcf6 60%);box-shadow:0 2px 5px #183b2410}
+.weekly.unread{border:2px solid #e79824;background:linear-gradient(135deg,#fff6e3 0%,#fffdf7 60%)}
+.weeklytag{display:inline-block;font-size:11px;font-weight:770;letter-spacing:.8px;text-transform:uppercase;
+ color:#fff;background:var(--green);border-radius:20px;padding:5px 11px;margin-bottom:8px}
+.weeklyhead{font-size:20px;margin-bottom:10px}
+.weekly.unread .weeklytag{background:#b8681c}
+.weeklyhint{font-size:13px;font-weight:650;color:#8b571c;margin-bottom:10px}
+.weeklytext p{font-size:15px;line-height:1.55;color:#243e2c;margin:0 0 8px}
+.weeklytext ul{margin:4px 0 10px;padding-left:20px;font-size:15px;line-height:1.55;color:#243e2c}
+.weeklytext li::marker{color:var(--green)}
+.weeklyimg{display:block;max-width:100%;max-height:420px;margin:12px 0;border-radius:12px;object-fit:contain}
+.weeklyreads{font-size:13px;color:var(--muted);margin:10px 0}
+.weekly .primary,.weekly .secondary{margin-top:6px}
+.calendar-day.hidden{opacity:.55;background:repeating-linear-gradient(45deg,#f6f7f2,#f6f7f2 6px,#eef0e9 6px,#eef0e9 12px)}
+textarea{border-radius:8px;border:1px solid #cbd5c8;padding:10px 12px;font:inherit;resize:vertical;min-width:0}
+.blurbox{position:relative}.blurred{filter:blur(6px);pointer-events:none;user-select:none}
+.blurbox>button{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);white-space:nowrap}
