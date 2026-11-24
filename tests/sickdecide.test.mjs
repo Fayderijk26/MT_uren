@@ -62,6 +62,7 @@ test('Alleen de bedrijfsleider beslist, en niet in een afgesloten maand',t=>{
  db=apply(db,'eva','approve',{id:'elise-2026-11-16'});
  assert.throws(()=>apply(db,'iris','sickDecide',{id:'elise-2026-11-19',paid:true}),/Alleen de bedrijfsleider/);
  assert.throws(()=>apply(db,'eva','sickDecide',{id:'eva-2026-11-19',paid:true}),/niet ziek gemeld/);
+ db=apply(db,'eva','sickDecide',{id:'elise-2026-11-19',paid:false});
  t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
  db=apply(db,'eva','closeMonth',{month:'2026-11',confirm:true});
  assert.throws(()=>apply(db,'eva','sickDecide',{id:'elise-2026-11-19',paid:true}),/afgesloten/);

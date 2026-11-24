@@ -107,7 +107,7 @@ function unplanned(db,actor){
 // Ziek melden, of de ziekmelding intrekken.
 function sickAsk(db,actor,id){
  const shift=shiftOf(db,id);
- return {title:'Ziek melden',body:sickAskBody(db,shift,shift.user===actor.id)};
+ return {title:'Ziek melden',body:sickAskBody(db,shift)};
 }
 function sickUndoAsk(db,actor,id){
  const shift=shiftOf(db,id);

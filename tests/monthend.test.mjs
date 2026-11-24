@@ -42,7 +42,7 @@ test('Na de maand staat 17 november niet meer bij Nog in te vullen, maar als Nie
 
 test('Na de maand vult alleen de bedrijfsleider nog uren in; die zijn meteen goedgekeurd',t=>{
  at(t,'2026-11-25T12:00:00+01:00');
- assert.throws(()=>apply(pilotRoster(),'eva','hours',hours),/na de laatste dag van de maand/);
+ assert.throws(()=>apply(pilotRoster(),'eva','hours',hours),/vanaf de laatste dag van de maand/);
  t.mock.timers.setTime(Date.parse('2026-12-01T09:00:00+01:00'));
  assert.throws(()=>apply(pilotRoster(),'iris','hours',hours),/Alleen de bedrijfsleider/);
  const db=apply(pilotRoster(),'eva','hours',hours);
@@ -87,4 +87,30 @@ test('Lege diensten mogen open blijven bij het afsluiten: eerst bevestigen, ze t
  at(t,'2026-12-01T09:00:00+01:00');
  assert.throws(()=>apply(reviewed(),'eva','closeMonth',{month:'2026-11'}),
   /Niet ingevuld bij: .*Sylvia.*Deze diensten tellen niet mee\. Bevestig om af te sluiten\./);
+});
+
+test('Afsluiten kan ook niet zolang er om aanpassing is gevraagd of een ziekmelding geen besluit heeft',t=>{
+ at(t,'2026-11-23T12:00:00+01:00');
+ let db=apply(reviewed(),'elise','hours',{id:'elise-2026-11-19',start:'08:30',end:'18:00',pause:30});
+ db=apply(db,'eva','return',{id:'elise-2026-11-19',reason:'Klopt de eindtijd?'});
+ db=apply(db,'eva','sick',{id:'isis-2026-11-21'});
+ t.mock.timers.setTime(Date.parse('2026-12-01T09:00:00+01:00'));
+ assert.throws(()=>apply(db,'eva','closeMonth',{month:'2026-11',confirm:true}),
+  /Bij deze uren is om aanpassing gevraagd: Elise B\. Vul ze eerst zelf in\./);
+ db=apply(db,'eva','hours',{id:'elise-2026-11-19',start:'08:30',end:'17:30',pause:30});
+ assert.throws(()=>apply(db,'eva','closeMonth',{month:'2026-11',confirm:true}),
+  /Er zijn nog ziekmeldingen zonder besluit bij: Isis N\. Kies eerst Doorbetalen of Wachtdag\./);
+ db=apply(db,'eva','sickDecide',{id:'isis-2026-11-21',paid:false});
+ assert.ok(apply(db,'eva','closeMonth',{month:'2026-11',confirm:true}));
+});
+
+test('Eigen uren van een leidinggevende of de bedrijfsleider zijn meteen goedgekeurd',t=>{
+ at(t,'2026-11-23T12:00:00+01:00');
+ let db=apply(pilotRoster(),'sylvia','hours',hours);
+ assert.equal(db.hours['sylvia-2026-11-17'].status,'approved');
+ assert.equal(db.hours['sylvia-2026-11-17'].approvedBy,'sylvia');
+ db=apply(db,'eva','hours',{id:'eva-2026-11-19',start:'08:30',end:'18:00',pause:30});
+ assert.equal(db.hours['eva-2026-11-19'].status,'approved');
+ db=apply(db,'elise','hours',{id:'elise-2026-11-19',start:'08:30',end:'18:00',pause:30});
+ assert.equal(db.hours['elise-2026-11-19'].status,'pending','een medewerker wacht wel op goedkeuring');
 });

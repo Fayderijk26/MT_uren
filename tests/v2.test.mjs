@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {apply,add,today,weekday,remaining} from '../v2/model.js';
 
+// Sylvia en Iris zijn leidinggevenden: hun eigen uren zijn meteen goedgekeurd. Voor tests over beoordelen
+// maken we ze medewerker.
+const asEmployee=(db,...ids)=>{for(const id of ids)db.people.find(p=>p.id===id).role='employee';return db};
 test('Mila beslist over een wijziging buiten haar beschikbaarheid',()=>{
  let db=seed();
  const old=db.shifts.find(s=>s.id==='s6');
@@ -294,7 +297,7 @@ test('Eva overschrijft de norm van Elise voor november met reden; Iris mag dat n
 });
 
 test('Maandoverzicht november: goedgekeurd, nog open, norm en verschil per persoon',()=>{
- let db=pilotRoster();
+ let db=asEmployee(pilotRoster(),'sylvia');
  db=apply(db,'iris','approve',{id:'elise-2026-11-16'});
  const rows=monthSummary(db,'2026-11','2026-11-19');
  const elise=rows.find(r=>r.user==='elise'),iris=rows.find(r=>r.user==='iris');
@@ -457,7 +460,7 @@ test('Isis geeft extra beschikbaarheid op voor een dag waarop ze al werkt: ze ho
 
 test('Alles goedkeuren: Eva keurt in één keer alle uren goed die precies volgens rooster zijn',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T20:00:00+01:00')});
- let db=pilotRoster();
+ let db=asEmployee(pilotRoster(),'sylvia','iris');
  const eva=db.people.find(p=>p.id==='eva'),ids=db=>asPlanned(db,eva).map(s=>s.id);
  db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:0});
  db=apply(db,'sylvia','hours',{id:'sylvia-2026-11-18',start:'08:30',end:'17:00',pause:30});

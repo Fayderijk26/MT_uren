@@ -118,8 +118,8 @@ export const mayRemind = (db,actor,s) => actor.id!==s.user&&!monthOver(s.date)
 // Uren invullen voor iemand anders: alleen de bedrijfsleider, na de maand of op de laatste dag zelf (SPEC 9e).
 export function fillProblem(db,actor,s){
  if(actor.role!=='admin')return 'Alleen de bedrijfsleider kan uren voor iemand anders invullen.';
- if(!monthOver(s.date)&&!(s.date===today()&&today()===lastDay(s.date.slice(0,7))))
-  return 'Uren voor iemand anders invullen kan pas na de laatste dag van de maand (of op die dag zelf).';
+ if(!monthOver(s.date)&&today()!==lastDay(s.date.slice(0,7)))
+  return 'Uren voor iemand anders invullen kan pas vanaf de laatste dag van de maand.';
  return '';
 }
 // Mag deze persoon de uren van deze dienst nu invullen? Voor de vensters; de controle zit in submitHours.
@@ -237,6 +237,10 @@ function closeMonth({db,actor,p}){
  const open=rows.flatMap(r=>r.open),waiting=open.filter(o=>o.status==='pending');
  check(!waiting.length,'Er wachten nog uren op beoordeling bij: '+who(waiting)
   +'. Keur ze eerst goed of laat ze goedkeuren.');
+ const returned=open.filter(o=>o.status==='returned');
+ check(!returned.length,'Bij deze uren is om aanpassing gevraagd: '+who(returned)+'. Vul ze eerst zelf in.');
+ const sick=db.shifts.filter(s=>s.date.startsWith(p.month+'-')&&sickOpen(s)).map(shift=>({shift}));
+ check(!sick.length,'Er zijn nog ziekmeldingen zonder besluit bij: '+who(sick)+'. Kies eerst Doorbetalen of Wachtdag.');
  const lastDayEmpty=today()===lastDay(p.month)?db.shifts.filter(s=>s.date===today()&&!s.deadline&&!s.sick
   &&!db.hours[s.id]&&tracksHours(db,s.user)).map(shift=>({shift})):[];
  check(!lastDayEmpty.length,'Vandaag staan nog mensen ingepland zonder uren: '+who(lastDayEmpty)
@@ -280,7 +284,9 @@ function submitHours({db,actor,p,s}){
    'Deze uren overlappen een andere dienst.');
   const {approvedBy,approvedAt,reopenedBy}=db.hours[s.id]||{};
   db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending',approvedBy,approvedAt,reopenedBy};
-  if(forOther)Object.assign(db.hours[s.id],{status:'approved',approvedBy:actor.id,approvedAt:new Date().toISOString()});
+  // Ingevuld door de bedrijfsleider voor iemand anders, of eigen uren van leiding of bedrijfsleider: meteen goedgekeurd.
+  if(forOther||actor.role!=='employee')
+   Object.assign(db.hours[s.id],{status:'approved',approvedBy:actor.id,approvedAt:new Date().toISOString()});
 }
 
 function reviewHours({db,actor,op,p,s}){

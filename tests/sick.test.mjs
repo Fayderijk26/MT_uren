@@ -68,12 +68,11 @@ test('Eva en Iris zien op Vandaag wie ziek is gemeld, en het rooster toont Ziek 
  assert.match(weekPage(db,{day:'2026-11-21'}),/10:00–18:00<\/b>(?:(?!<\/button>).)*Ziek gemeld/s);
 });
 
-test('Wie zichzelf ziek meldt (een leidinggevende), ziet dat ze ook moet bellen met de leidinggevende van de dag',()=>{
- const db=pilotRoster(),s=db.shifts.find(x=>x.id===saturday);
- const call=/Ziek melden doe je ook telefonisch bij de leidinggevende van de dag\. Dit mag niet alleen via deze app\./;
- assert.match(sickAskBody(db,s,true),call);
- assert.match(sickAskBody(db,s,true),/data-op="sick"/);
- assert.doesNotMatch(sickAskBody(db,s,false),call,'meldt de leiding iemand ziek, dan hoeft dit er niet');
+test('Venster Ziek melden: geen belmelding meer, wel dat de bedrijfsleider beslist over doorbetalen',()=>{
+ const db=pilotRoster(),s=db.shifts.find(x=>x.id===saturday),body=sickAskBody(db,s);
+ assert.doesNotMatch(body,/telefonisch/);
+ assert.match(body,/7u 30m ziek\. De bedrijfsleider beslist of dit wordt doorbetaald\./);
+ assert.match(body,/data-op="sick"/);
 });
 
 test('Voor een ziek gemelde dienst kun je geen uren indienen en het rooster niet wijzigen',t=>{
@@ -116,6 +115,7 @@ test('In een afgesloten maand kan niemand ziek melden of een ziekmelding intrekk
  thursday(t);
  let db=apply(pilotRoster(),'eva','sick',{id:'elise-2026-11-19'});
  db=apply(db,'eva','approve',{id:'elise-2026-11-16'});
+ db=apply(db,'eva','sickDecide',{id:'elise-2026-11-19',paid:true});
  t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
  db=apply(db,'eva','closeMonth',{month:'2026-11',confirm:true});
  assert.throws(()=>apply(db,'eva','sick',{id:'iris-2026-11-19'}),/afgesloten/);

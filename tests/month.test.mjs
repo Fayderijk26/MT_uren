@@ -13,6 +13,9 @@ const page=db=>monthPage(db,db.people.find(p=>p.id==='eva'),view);
 // De rij van een open dienst: alles vanaf de naam en datum tot het einde van die rij.
 const openRow=(html,label)=>html.split('<h2>Nog open')[1].split(label)[1]?.split('</article>')[0]||'';
 
+// Sylvia en Iris zijn leidinggevenden: hun eigen uren zijn meteen goedgekeurd. Voor tests over beoordelen
+// maken we ze medewerker.
+const asEmployee=(db,...ids)=>{for(const id of ids)db.people.find(p=>p.id===id).role='employee';return db};
 test('Maandoverzicht staat in een tabel met per medewerker een rij en een klikbare norm',()=>{
  const html=page(pilotRoster());
  assert.match(html,/<table class="monthgrid">/);
@@ -22,7 +25,7 @@ test('Maandoverzicht staat in een tabel met per medewerker een rij en een klikba
 });
 
 test('Bij elke open dienst staat de juiste knop voor de bedrijfsleider',()=>{
- let db=apply(pilotRoster(),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
+ let db=apply(asEmployee(pilotRoster(),'sylvia'),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
  db=apply(db,'eva','return',{id:'sylvia-2026-11-17',reason:'pauze klopt niet'});
  const html=page(db);
  assert.match(openRow(html,'Elise B · ma 16 nov'),/data-act="inspect"[^>]*>Beoordelen</);

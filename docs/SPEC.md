@@ -37,7 +37,7 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 ## 4. Besluiten van de eigenaar (blijven staan)
 1. Berichten tussen mensen in de app zijn **bewust weggelaten**. Bij problemen bellen of WhatsAppen ze. Uitzondering: de **Weekly** van de bedrijfsleider bij het publiceren (ronde 14). Dat is een wekelijkse update in één richting; reageren kan niet.
 2. Kantoordienst bestaat niet als aparte soort: een dienst is een dienst.
-3. Bedrijfsleiders en leidinggevenden mogen hun eigen uren goedkeuren. Op één dag mogen meerdere dagleidingen de uren van iedereen goedkeuren.
+3. Bedrijfsleiders en leidinggevenden mogen hun eigen uren goedkeuren. **Gewijzigd (24 november):** hun eigen uren zijn meteen goedgekeurd bij het indienen; nog een keer goedkeuren is dubbelop. Op één dag mogen meerdere dagleidingen de uren van iedereen goedkeuren.
 4. Bij uren heet de actie **"Aanpassen vragen"** (niet terugsturen). Afwijzen is alleen voor ongeplande diensten en voorstellen.
 5. Vrij vragen: minimaal drie weken vooruit. Alleen een goedgekeurde aanvraag telt als vrij.
 6. Voor uren die precies met het rooster overeenkomen komt een knop **"Alles goedkeuren"**.
@@ -209,7 +209,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 
 **9d: ziek melden door de leiding, besluit door de bedrijfsleider** (gebouwd 24 november; actie `sickDecide`)
 - **Medewerkers melden zich niet meer zelf ziek** in de app. De knop gaat weg. Ze bellen de leiding.
-- Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden.
+- Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden. Het venster heeft geen belmelding meer (besluit eigenaar 24 november).
 - Per ziek gemelde dienst beslist de bedrijfsleider: **Doorbetalen** of **Wachtdag (niet doorbetalen)**. Contract en cao noemen 2 wachtdagen, maar de bedrijfsleider kiest per situatie. Tot het besluit staat er "Wacht op besluit" en telt de dienst nog niet mee.
 - De medewerker ziet bij de dienst: "Ziek gemeld door … op …" en daarna "telt mee" of "telt niet mee (wachtdag)".
 - Nieuwe velden bij de ziekmelding (`sick`): `paid` (true = doorbetalen, false = wachtdag), `decidedBy`, `decidedAt`. De bedrijfsleider ziet op Vandaag de kaart **Ziek: besluit nodig** en kiest daar of in het venster van de dienst. Wat wacht, staat bij Mijn uren apart ("ziek wacht op besluit").
@@ -219,9 +219,9 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 **9e: maand dicht op de laatste dag** (gebouwd 24 november; `monthOver`, `mayEnter`, `fillProblem` in `model.js`)
 - Medewerkers vullen uren in en dateren ongeplande diensten terug tot en met de laatste dag van de maand, 23:59 (zie besluit 9). Daarna kunnen zij niets meer aan die maand doen.
 - Daarna ziet de bedrijfsleider bij Ontbreekt de diensten zonder uren (de dagleiding niet meer; Herinner verdwijnt). Per dienst: zelf invullen of leeg laten. Bij meer dagen van één persoon is er één knop **Uren invullen** met een venster per dag. Uren die de bedrijfsleider voor iemand anders invult, zijn meteen goedgekeurd. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
-- **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing).
+- **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing). Ook niet zolang er om aanpassing is gevraagd (de bedrijfsleider vult ze dan zelf in) of een ziekmelding geen besluit heeft (besluit eigenaar 24 november: de bedrijfsleider moet een keuze maken).
 - De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
-- Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen.
+- Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen. Vanaf de laatste dag van de maand kan de bedrijfsleider uren van die maand voor iemand anders invullen.
 
 **9f: maandnorm en lopend saldo** (nog niet gebouwd)
 - Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.

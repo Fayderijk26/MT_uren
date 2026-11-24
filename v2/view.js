@@ -113,13 +113,11 @@ export function sickButton(db,actor,s,label='Ziek melden'){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button(label,'sickAsk',s.id):'';
 }
-// Venster Ziek melden. Meld je jezelf ziek, dan staat erbij dat je ook moet bellen.
-export const SICK_CALL='Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. '
- +'Dit mag niet alleen via deze app.';
-export function sickAskBody(db,s,self){
+// Venster Ziek melden: wie, welke dienst en hoeveel uur. Of het meetelt, beslist de bedrijfsleider (SPEC 9d).
+export function sickAskBody(db,s){
  const what='<p><b>'+h(name(db,s.user))+'</b><br>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>';
- const call=self?'<p class="notice">'+h(SICK_CALL)+'</p>':'';
- return what+call+'<p>Telt '+h(duration(absentMinutes(s)))+' ziek.</p>'+form('sick','','Ziek melden',s.id);
+ return what+'<p>'+h(duration(absentMinutes(s)))+' ziek. De bedrijfsleider beslist of dit wordt doorbetaald.</p>'
+  +form('sick','','Ziek melden',s.id);
 }
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
 export function areaChoice(db,user,current){
