@@ -216,9 +216,9 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Geldt ook voor oproepkrachten (nog bevestigen, zie hoofdstuk 5).
 - Blijft zoals het is: geen betermelding (ziek per dienst); halverwege ziek naar huis = gewerkte uren invullen; ziek op een dag zonder dienst telt niet mee; het loonpercentage bij ziekte rekent de loonadministratie.
 
-**9e: maand dicht op de laatste dag** (nog niet gebouwd)
+**9e: maand dicht op de laatste dag** (gebouwd 24 november; `monthOver`, `mayEnter`, `fillProblem` in `model.js`)
 - Medewerkers vullen uren in en dateren ongeplande diensten terug tot en met de laatste dag van de maand, 23:59 (zie besluit 9). Daarna kunnen zij niets meer aan die maand doen.
-- Daarna ziet de bedrijfsleider een overzicht van diensten zonder uren. Per dienst: zelf invullen of leeg laten. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
+- Daarna ziet de bedrijfsleider bij Ontbreekt de diensten zonder uren (de dagleiding niet meer; Herinner verdwijnt). Per dienst: zelf invullen of leeg laten. Bij meer dagen van één persoon is er één knop **Uren invullen** met een venster per dag. Uren die de bedrijfsleider voor iemand anders invult, zijn meteen goedgekeurd. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
 - **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing).
 - De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
 - Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen.

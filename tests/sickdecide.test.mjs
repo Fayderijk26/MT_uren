@@ -59,6 +59,7 @@ test('Eva kiest Wachtdag: de dienst telt niet mee en Elise ziet dat',t=>{
 test('Alleen de bedrijfsleider beslist, en niet in een afgesloten maand',t=>{
  thursday(t);
  let db=apply(pilotRoster(),'iris','sick',{id:'elise-2026-11-19'});
+ db=apply(db,'eva','approve',{id:'elise-2026-11-16'});
  assert.throws(()=>apply(db,'iris','sickDecide',{id:'elise-2026-11-19',paid:true}),/Alleen de bedrijfsleider/);
  assert.throws(()=>apply(db,'eva','sickDecide',{id:'eva-2026-11-19',paid:true}),/niet ziek gemeld/);
  t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));

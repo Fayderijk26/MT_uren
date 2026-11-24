@@ -48,9 +48,14 @@ export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&!s.sick&&s.dat
 // Afgesloten maand: daarin kan niemand nog iets met uren.
 export const closed = (db,date) => db.closedMonths.some(c=>c.month===date.slice(0,7));
 const notClosed = (db,date) => check(!closed(db,date),'Deze maand is afgesloten.');
-// Afsluiten: alleen de bedrijfsleider, vanaf de 1e van de volgende maand.
+// De laatste dag van een maand ('2026-11' → '2026-11-30').
+export const lastDay=month=>month+'-'+String(new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).getUTCDate());
+// Na de laatste dag van de maand (23:59) kunnen medewerkers niets meer aan die maand doen (SPEC 9e).
+export const monthOver=(date,day=today())=>day>lastDay(date.slice(0,7));
+const OVER='De maand is voorbij. Vraag de bedrijfsleider om je uren in te vullen.';
+// Afsluiten: alleen de bedrijfsleider, vanaf de laatste dag van de maand.
 export const mayCloseMonth = (db,actor,month,day=today()) =>
- actor.role==='admin'&&month<day.slice(0,7)&&!db.closedMonths.some(c=>c.month===month);
+ actor.role==='admin'&&day>=lastDay(month)&&!db.closedMonths.some(c=>c.month===month);
 export const mayReview = (db,actor,s) => !closed(db,s.date)
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
 // Heropenen van goedgekeurde uren: alleen de bedrijfsleider.
@@ -79,8 +84,8 @@ const NO_HOURS='Voor jou worden geen uren bijgehouden.';
 export const futureShifts=(db,user)=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
  .filter(s=>s.user===user&&s.date>=today()).sort((a,b)=>a.date.localeCompare(b.date));
 export function missing(db,actor,day=today()){
- const sees=s=>isActive(db,s.user)
-  &&(actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
+ const sees=s=>isActive(db,s.user)&&(actor.role==='admin'||!monthOver(s.date,day)
+  &&(s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id)));
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
  return db.shifts.filter(s=>!s.deadline&&!s.sick&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s)
   &&tracksHours(db,s.user))
@@ -89,8 +94,8 @@ export function missing(db,actor,day=today()){
 const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 // Eigen uren die nog moeten: dienst voorbij, maand open, nog niet ingevuld of aanpassen gevraagd.
 export const ownTodo = (db,actor,day=today()) => !tracksHours(db,actor.id)?[]:db.shifts
- .filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)
- &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
+ .filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)&&!closed(db,s.date)
+ &&(actor.role==='admin'||!monthOver(s.date,day))&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
 export const toReview = (db,actor) => db.shifts
  .filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(byDate);
@@ -107,8 +112,20 @@ export function badges(db,actor,day=today()){
  return {mine,review,hours:mine+review,requests:offersFor(db,actor).length+requests};
 }
 // Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
-export const mayRemind = (db,actor,s) => actor.id!==s.user
+// Na de maand heeft herinneren geen zin meer: de medewerker kan niets meer invullen.
+export const mayRemind = (db,actor,s) => actor.id!==s.user&&!monthOver(s.date)
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
+// Uren invullen voor iemand anders: alleen de bedrijfsleider, na de maand of op de laatste dag zelf (SPEC 9e).
+export function fillProblem(db,actor,s){
+ if(actor.role!=='admin')return 'Alleen de bedrijfsleider kan uren voor iemand anders invullen.';
+ if(!monthOver(s.date)&&!(s.date===today()&&today()===lastDay(s.date.slice(0,7))))
+  return 'Uren voor iemand anders invullen kan pas na de laatste dag van de maand (of op die dag zelf).';
+ return '';
+}
+// Mag deze persoon de uren van deze dienst nu invullen? Voor de vensters; de controle zit in submitHours.
+export const mayEnter=(db,actor,s)=>!!s&&!s.deadline&&!s.sick&&!closed(db,s.date)&&tracksHours(db,s.user)
+ &&(!db.hours[s.id]||db.hours[s.id].status==='returned')
+ &&(s.user===actor.id?s.date<=today()&&(actor.role==='admin'||!monthOver(s.date)):!fillProblem(db,actor,s));
 export function freeWindows(request,date){
  if(date<request.date||date>request.through)return [];
  let windows=[{start:request.start||'00:00',end:request.end||'23:59'}];
@@ -132,6 +149,7 @@ function announce(db,s,text){db.updates.push({id:crypto.randomUUID(),user:s.user
 function submitUnplanned({db,actor,p}){
  check(tracksHours(db,actor.id),NO_HOURS);
  interval(p);check(p.date<=today()&&/^\d{4}-\d{2}-\d{2}$/.test(p.date),'Kies een gewerkte dag.');notClosed(db,p.date);
+ check(actor.role==='admin'||!monthOver(p.date),OVER);
   const id=crypto.randomUUID();
   check(!db.shifts.some(t=>t.user===actor.id&&t.date===p.date&&intersects(t,p)),
    'Deze uren overlappen een andere dienst.');
@@ -208,13 +226,23 @@ export function monthSummary(db,month,day=today()){
   return {user:person.id,approved,sick,sickWaiting,leave,pending,open,norm,diff:approved-norm};
  });
 }
+// Afsluiten (SPEC 9e): niet zolang er uren wachten op beoordeling. Op de laatste dag zelf moeten eerst de uren
+// van iedereen die die dag ingepland staat zijn ingevuld. Lege diensten van eerder tellen niet mee (bevestigen).
 function closeMonth({db,actor,p}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan een maand afsluiten.');
  check(!db.closedMonths.some(c=>c.month===p.month),'Deze maand is al afgesloten.');
- check(mayCloseMonth(db,actor,p.month),'Een maand kan pas vanaf de 1e van de volgende maand worden afgesloten.');
- const open=monthSummary(db,p.month).filter(r=>r.open.length).map(r=>db.people.find(x=>x.id===r.user).name);
- const warning='Er staan nog uren open bij: '+open.join(', ')+'. Bevestig om toch af te sluiten.';
- check(!open.length||p.confirm===true,warning);
+ check(mayCloseMonth(db,actor,p.month),'Een maand kan pas vanaf de laatste dag van de maand worden afgesloten.');
+ const personName=id=>db.people.find(x=>x.id===id).name;
+ const rows=monthSummary(db,p.month),who=list=>[...new Set(list.map(o=>personName(o.shift.user)))].join(', ');
+ const open=rows.flatMap(r=>r.open),waiting=open.filter(o=>o.status==='pending');
+ check(!waiting.length,'Er wachten nog uren op beoordeling bij: '+who(waiting)
+  +'. Keur ze eerst goed of laat ze goedkeuren.');
+ const lastDayEmpty=today()===lastDay(p.month)?db.shifts.filter(s=>s.date===today()&&!s.deadline&&!s.sick
+  &&!db.hours[s.id]&&tracksHours(db,s.user)).map(shift=>({shift})):[];
+ check(!lastDayEmpty.length,'Vandaag staan nog mensen ingepland zonder uren: '+who(lastDayEmpty)
+  +'. Vul hun uren eerst in.');
+ check(!open.length||p.confirm===true,'Niet ingevuld bij: '+who(open)
+  +'. Deze diensten tellen niet mee. Bevestig om af te sluiten.');
  db.closedMonths.push({month:p.month,by:actor.id,at:new Date().toISOString()});
 }
 // Noodknop: een afgesloten maand weer openen, met reden. Wordt vastgelegd in monthReopens.
@@ -234,19 +262,25 @@ function setNorm({db,actor,p}){
  db.normOverrides=db.normOverrides.filter(n=>!(n.user===p.user&&n.month===p.month));
  db.normOverrides.push({user:p.user,month:p.month,minutes:p.minutes,reason:p.reason.trim(),by:actor.id});
 }
+// Eigen uren: tot en met de laatste dag van de maand (bedrijfsleider tot het afsluiten). Voor iemand anders: alleen
+// de bedrijfsleider, na de maand of op de laatste dag; die uren zijn meteen goedgekeurd (SPEC 9e).
 function submitHours({db,actor,p,s}){
- check(tracksHours(db,actor.id),NO_HOURS);
- check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
+ const forOther=s&&s.user!==actor.id;
+ check(tracksHours(db,forOther?s.user:actor.id),forOther?'Voor deze persoon worden geen uren bijgehouden.':NO_HOURS);
+ check(s&&!s.deadline&&(forOther||s.date<=today()),'Kies een eigen gewerkte dienst.');
  notClosed(db,s.date);
+ if(forOther){const problem=fillProblem(db,actor,s);check(!problem,problem)}
+ else check(actor.role==='admin'||!monthOver(s.date),OVER);
  check(!s.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
-  interval(p);notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
+  interval(p);if(!forOther)notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
   check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),
    'Vul de werkelijke pauze in.');
   check(!db.shifts.some(t=>t.id!==s.id&&t.user===s.user&&t.date===s.date&&intersects(p,db.hours[t.id]||t)),
    'Deze uren overlappen een andere dienst.');
   const {approvedBy,approvedAt,reopenedBy}=db.hours[s.id]||{};
   db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending',approvedBy,approvedAt,reopenedBy};
+  if(forOther)Object.assign(db.hours[s.id],{status:'approved',approvedBy:actor.id,approvedAt:new Date().toISOString()});
 }
 
 function reviewHours({db,actor,op,p,s}){

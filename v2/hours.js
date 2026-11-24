@@ -1,5 +1,5 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
- absentMinutes,tracksHours,maySick} from './model.js';
+ absentMinutes,tracksHours,maySick,monthOver,mayEnter} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -27,7 +27,12 @@ export function missingRow(db,actor,group){
  const days=group.map(m=>m.shift).filter(s=>maySick(db,actor,s));
  const sick=days.length>1?button('Ziek melden','sickPick',shift.user)
   :days.map(s=>sickButton(db,actor,s,'Ziek melden '+dateLabel(s.date))).join('');
- const row=line(name(db,shift.user),text,(remind.length?remindLink(db,remind):'')+sick);
+ // Na de maand vult de bedrijfsleider de uren zelf in (SPEC 9e).
+ // Bij meer dagen één knop die een venster met de dagen opent, net als Ziek melden.
+ const open=group.map(m=>m.shift).filter(s=>s.user!==actor.id&&mayEnter(db,actor,s));
+ const fill=open.length>1?button('Uren invullen','fillPick',shift.user)
+  :open.map(s=>button('Uren invullen','entry',s.id)).join('');
+ const row=line(name(db,shift.user),text,(remind.length?remindLink(db,remind):'')+fill+sick);
  return '<div class="compact">'+row+'</div>';
 }
 export function reviewRow(db,s){
@@ -48,10 +53,13 @@ export function tabs(db,actor,page){
  if(actor.role==='admin')items.push(['Maandoverzicht','month',0]);
  return subtabs(items,page);
 }
-function ownHoursRow(db,s){
+// Na de maand kan de medewerker niets meer: een lege dienst staat er als Niet ingevuld en telt niet mee (SPEC 9e).
+function ownHoursRow(db,actor,s){
  const status=s.sick?'sick':db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
- const text=clock(db.hours[s.id]||s)+(s.sick?' · '+sickStatus(s):'');
- const row=line(dateLabel(s.date),text,button('Bekijken','entry',s.id),status?chip(status):'');
+ const gone=['missing','returned'].includes(status)&&!mayEnter(db,actor,s)&&monthOver(s.date);
+ const text=clock(db.hours[s.id]||s)+(s.sick?' · '+sickStatus(s):gone?' · telt niet mee':'');
+ const label=gone?chip('missing','Niet ingevuld'):status?chip(status):'';
+ const row=line(dateLabel(s.date),text,button('Bekijken','entry',s.id),label);
  return '<div class="compact">'+row+'</div>';
 }
 // Verlofdag: het deel van de dienst dat verviel, en hoeveel het telt.
@@ -74,7 +82,10 @@ function summaryCard(db,actor,month){
  const missing=r.open.filter(o=>o.status==='missing').length,returned=r.open.filter(o=>o.status==='returned').length;
  const todo=[missing&&count(missing,'ontbreekt nog','ontbreken nog'),returned&&count(returned,'aanpassen','aanpassen')]
   .filter(Boolean);
- const open=todo.length?'<p class="hourmissing">'+todo.join(' · ')+' · vul ze in bij Diensten</p>':'';
+ const gone=actor.role!=='admin'&&monthOver(month+'-01'),left=missing+returned;
+ const open=gone&&left?'<p class="hourmissing">'+(left===1?'1 dienst niet ingevuld · telt niet mee'
+  :left+' diensten niet ingevuld · tellen niet mee')+'</p>'
+  :todo.length?'<p class="hourmissing">'+todo.join(' · ')+' · vul ze in bij Diensten</p>':'';
  const wait=(r.pending?'<p class="hourwait">'+duration(r.pending)
   +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'')
   +(r.sickWaiting?'<p class="hourwait">'+duration(r.sickWaiting)
@@ -89,7 +100,7 @@ function summaryCard(db,actor,month){
 // Diensten van de maand: gewerkt tot vandaag, en ook ziek gemelde diensten en verlofdagen. Nieuwste bovenaan.
 function shiftsCard(db,actor,month){
  const shifts=db.shifts.filter(s=>!s.deadline&&s.user===actor.id&&s.date.startsWith(month)&&(s.date<=today()||s.sick))
-  .map(s=>({...s,html:ownHoursRow(db,s)}));
+  .map(s=>({...s,html:ownHoursRow(db,actor,s)}));
  const leave=leaveItems(db,actor.id,month).map(d=>({...d,html:leaveRow(d)}));
  const rows=shifts.concat(leave).sort(sortDate).reverse().map(x=>x.html).join('');
  const head='<div class="cardhead"><h2>Diensten</h2>'+button('Ongeplande dienst invullen','unplanned')+'</div>';

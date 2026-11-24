@@ -1,4 +1,4 @@
-import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview} from './model.js';
+import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview,mayEnter,lastDay} from './model.js';
 import {button,card,line,field,name,dateLabel,moment,h,chip,clock} from './view.js';
 import {tabs,remindLink} from './hours.js';
 
@@ -23,6 +23,7 @@ function openAction(db,actor,{shift,status}){
  const own=shift.user===actor.id;
  if(status==='pending')return mayReview(db,actor,shift)?button('Beoordelen','inspect',shift.id,true):'';
  if(own)return button(status==='returned'?'Aanpassen':'Uren invullen','entry',shift.id,true);
+ if(mayEnter(db,actor,shift))return button('Uren invullen','entry',shift.id,true);
  return mayRemind(db,actor,shift)?remindLink(db,[shift],status):'';
 }
 const openTitle=(db,o)=>name(db,o.shift.user)+' · '+dateLabel(o.shift.date);
@@ -31,8 +32,8 @@ function openRow(db,actor,o){
  return '<div class="compact">'+row+'</div>';
 }
 
-const next=month=>new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'long',timeZone:'UTC'})
- .format(new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),1)));
+const longDate=day=>new Intl.DateTimeFormat('nl-NL',{day:'numeric',month:'long',timeZone:'UTC'})
+ .format(new Date(day+'T12:00:00Z'));
 function statusCard(db,actor,month){
  const done=db.closedMonths.find(c=>c.month===month);
  if(done)return card('Afgesloten','<p>Afgesloten door '+h(name(db,done.by))+' · '+h(moment(done.at))+'.</p>'
@@ -41,16 +42,19 @@ function statusCard(db,actor,month){
  const intro='<p>Na afsluiten liggen de uren van deze maand vast.</p>';
  const action=button('Maand afsluiten','closeMonth',month,true);
  if(mayCloseMonth(db,actor,month))return card('Maand afsluiten',intro+action);
- return card('Maand afsluiten','<p>Deze maand kan vanaf '+next(month)+' worden afgesloten.</p>');
+ return card('Maand afsluiten','<p>Deze maand kan vanaf '+longDate(lastDay(month))+' worden afgesloten.</p>');
 }
-// Inhoud van het venster bij afsluiten: eerst de open uren laten zien, dan bevestigen.
+// Inhoud van het venster bij afsluiten: eerst de open uren laten zien, dan bevestigen (SPEC 9e).
+// Uren die wachten op beoordeling houden het afsluiten tegen; lege diensten tellen niet mee.
 export function closeMonthBody(db,month){
  const open=monthSummary(db,month).flatMap(r=>r.open);
  if(!open.length)return '<p>Alle uren zijn goedgekeurd.</p>';
  const rows=open.map(o=>line(openTitle(db,o),clock(o.shift),'',chip(o.status))).join('');
- const text=open.length===1?'er staat nog 1 dienst open. Die komt'
-  :'er staan nog '+open.length+' diensten open. Die komen';
- return '<p class="notice">Let op: '+text+' niet in de export.</p>'+rows
+ const waiting=open.some(o=>o.status==='pending')
+  ?'<p class="notice">Er wachten nog uren op beoordeling. Keur die eerst goed; daarna kan de maand dicht.</p>':'';
+ const text=open.length===1?'er staat nog 1 dienst open. Die telt niet mee en komt'
+  :'er staan nog '+open.length+' diensten open. Die tellen niet mee en komen';
+ return waiting+'<p class="notice">Let op: '+text+' niet in de export.</p>'+rows
   +'<label class="field"><span><input type="checkbox" name="confirm" required> Toch afsluiten</span></label>';
 }
 export function monthPage(db,actor,view){

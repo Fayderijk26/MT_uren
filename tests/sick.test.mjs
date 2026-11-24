@@ -115,6 +115,7 @@ test('Iris is ziek gemeld: die dag is zij geen dagleiding en keurt ze geen uren 
 test('In een afgesloten maand kan niemand ziek melden of een ziekmelding intrekken',t=>{
  thursday(t);
  let db=apply(pilotRoster(),'eva','sick',{id:'elise-2026-11-19'});
+ db=apply(db,'eva','approve',{id:'elise-2026-11-16'});
  t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
  db=apply(db,'eva','closeMonth',{month:'2026-11',confirm:true});
  assert.throws(()=>apply(db,'eva','sick',{id:'iris-2026-11-19'}),/afgesloten/);

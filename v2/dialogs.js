@@ -2,7 +2,7 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes,dayOf} from './model.js';
+ minutes,dayOf,mayEnter,missing} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
  sickDecision} from './view.js';
@@ -81,7 +81,7 @@ function reviewChoices(shift){
 // Uren invullen (entry) of bekijken en beoordelen (inspect).
 function hoursDialog(db,actor,id,action){
  const shift=shiftOf(db,id),entry=db.hours[id];
- const editable=action==='entry'&&!shift.sick&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
+ const editable=action==='entry'&&mayEnter(db,actor,shift);
  let body='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p>'
   +'<p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
  if(shift.sick)body+=sickText(db,shift,actor);
@@ -115,6 +115,13 @@ function sickUndoAsk(db,actor,id){
  return {title:'Ziekmelding intrekken',body:what+form('sickUndo','','Ziekmelding intrekken',id)};
 }
 
+// Na de maand: de lege diensten van één persoon die de bedrijfsleider nog kan invullen (SPEC 9e).
+function fillPick(db,actor,user){
+ const days=missing(db,actor).map(m=>m.shift).filter(s=>s.user===user&&mayEnter(db,actor,s));
+ const row=s=>'<div class="compact">'+line(dateLabel(s.date),clock(s),button('Uren invullen','entry',s.id))+'</div>';
+ return {title:'Uren invullen voor '+name(db,user),body:'<p>Diensten die je leeg laat, tellen niet mee.</p>'
+  +days.map(row).join('')};
+}
 // Meerdere ontbrekende dagen van één persoon ziek melden: per dag een vinkje, niets vooraf aangevinkt.
 function sickPick(db,actor,user){
  const day=s=>'<label><input type="checkbox" name="ids" value="'+h(s.id)+'"> '
@@ -304,7 +311,8 @@ function proposal(db,actor,id){
 
 // Welke knop (data-act) welk venster opent.
 export const dialogs={
- calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,norm,closeMonth,reopenMonth,decision,
+ calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
+ decision,
  person,planFromRules,approveAll,extraDecision,pubWeek,proposal,
  entry:(db,actor,id)=>hoursDialog(db,actor,id,'entry'),
  inspect:(db,actor,id)=>hoursDialog(db,actor,id,'inspect'),
