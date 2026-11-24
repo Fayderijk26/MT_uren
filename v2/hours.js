@@ -69,12 +69,15 @@ const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),'Verlofdag · t
 // Wachtdagen bij ziekte: hoeveel diensten en uren niet meetellen.
 const waitDays=r=>(r.waitShifts===1?'1 wachtdag telt':r.waitShifts+' wachtdagen tellen')
  +' niet mee ('+duration(r.sickUnpaid)+')';
+// Dichte dagen op een vaste werkdag (ronde 12).
+const shutDays=r=>(r.closedDays===1?'1 dag':r.closedDays+' dagen')+' dicht, '
+ +(r.closedPaid?'doorbetaald ('+duration(r.closedPaid)+')':r.closedDays===1?'telt niet mee':'tellen niet mee');
 // Mijn uren: het totaal dat vastligt (goedgekeurd, ziek, verlof) met een balk; wat nog wacht staat eronder apart.
 // De getallen komen uit monthSummary, dezelfde als in het maandoverzicht van de bedrijfsleider.
 function summaryCard(db,actor,month){
  const r=monthSummary(db,month).find(x=>x.user===actor.id)||{approved:0,sick:0,leave:0,pending:0,open:[]};
  const parts=[['ok','Gewerkt',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave+(r.special||0)]];
- const total=r.approved+r.sick+r.leave+(r.special||0);
+ const total=r.approved+r.sick+r.leave+(r.special||0)+(r.closedPaid||0);
  const monthName=new Intl.DateTimeFormat('nl-NL',{month:'long'}).format(new Date(month+'-15T12:00Z'));
  const bar=total?'<div class="hourbar" aria-hidden="true">'+parts.filter(p=>p[2])
   .map(([tone,,m])=>'<span class="seg-'+tone+'" style="flex:'+m+'"></span>').join('')+'</div>':'';
@@ -103,7 +106,8 @@ function summaryCard(db,actor,month){
  const soFar=normSoFar(db,actor.id,month),ahead=total-soFar;
  const small=vast?[['Norm '+monthName+': '+duration(r.norm)],
   [!over&&soFar>0&&'Tot nu toe: '+duration(total)+' van '+duration(soFar)+' ('+plus(ahead)+')'],
-  [r.sickUnpaid&&waitDays(r)]].map(([x])=>x).filter(Boolean).map(x=>'<p class="hournote">'+h(x)+'</p>').join(''):'';
+  [r.sickUnpaid&&waitDays(r)],[r.closedDays&&shutDays(r)]]
+  .map(([x])=>x).filter(Boolean).map(x=>'<p class="hournote">'+h(x)+'</p>').join(''):'';
  const closedNow=closed(db,month+'-01');
  const end=vast&&over?stat('Saldo einde '+monthName,plus(begin+r.diff),'hourend')
   +(closedNow?'':'<p class="hournote">Nog niet afgesloten: dit kan nog veranderen.</p>'):'';

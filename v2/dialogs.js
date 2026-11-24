@@ -2,7 +2,7 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays} from './model.js';
+ minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays,dayTimes,dayInfo,closedPeople} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
  sickDecision} from './view.js';
@@ -206,7 +206,7 @@ function availabilityDialog(db,actor,day,action){
  if(left!==null)body+='<p>Je hebt nog '+left+' vakantiedagen.</p>';
  if(action==='leave')body+=leaveTypeField(db,actor.id)+field('Tot en met (bij meerdere dagen)','through','date');
  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]
-  :[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],
+  :[['all','Hele dag (08:30–17:30, weekend tot 18:00)'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],
    ['range','Tussen twee tijden']];
  if(action==='weekly')modes.push(['off','Niet beschikbaar']);
  if(action==='leave')body+='<p id="late" role="status"></p>';
@@ -291,12 +291,28 @@ function extraDecision(db,actor,id){
 }
 
 // Conceptdienst maken of wijzigen. De schil vult daarna de beschikbaarheid in (#window).
+// Dag instellen (ronde 12): normaal, aangepaste openingstijden of dicht. Bij dicht: wie werkt er normaal en
+// worden hun uren doorbetaald of zijn het min-uren?
+const list=names=>names.length<2?names.join(''):names.slice(0,-1).join(', ')+' en '+names.at(-1);
+function dayEdit(db,actor,date){
+ const d=dayInfo(db,date)||{status:'normal'},who=closedPeople(db,date).map(id=>name(db,id));
+ const status=select('Deze dag','status',[['normal','Normaal open'],['hours','Aangepaste openingstijden'],
+  ['closed','Dicht']],d.status);
+ const hours='<div id="dayhours"'+(d.status==='hours'?'':' hidden')+'>'+field('Open vanaf','open','time',d.open||TIMES.open)
+  +field('Open tot','close','time',d.close||TIMES.close)+'</div>';
+ const paid=who.length?'<div id="daypaid"'+(d.status==='closed'?'':' hidden')+'><p class="notice">Je zet nu deze dag dicht. Dit is een normale werkdag voor '+h(list(who))
+  +'. Wil je hun uren gewoon doorbetalen of zijn dit min-uren?</p>'
+  +select('Doorbetalen?','paid',[['','Kies…'],['ja','Doorbetalen (8 uur)'],['nee','Min-uren']],
+   d.paid===undefined?'':d.paid?'ja':'nee')+'</div>':'';
+ const body=status+hours+paid;
+ return {title:'Dag instellen · '+dateLabel(date),body:form('setDay',body,'Opslaan',date)};
+}
 function draft(db,actor,id){
  const s=db.drafts.find(x=>x.id===id)||shiftOf(db,id),date=s?.date||id;
  const people=select('Medewerker','user',activePeople(db).map(p=>[p.id,name(db,p.id)]),s?.user);
  const area='<div id="areapick">'+areaChoice(db,s?.user||activePeople(db)[0]?.id,s?.area)+'</div>';
  const body=people+field('Datum','date','date',date,'readonly')+'<p id="window"></p>'
-  +times(s||{start:TIMES.start,end:TIMES.end})+area
+  +times(s||dayTimes(date))+area
   +field('Stand-by? Bericht vóór (optioneel)','deadline','time',s?.deadline||'');
  return {title:'Conceptdienst',body:form('draft',body,'Concept bewaren',s?.id||'')};
 }
@@ -347,7 +363,7 @@ function proposal(db,actor,id){
 export const dialogs={
  calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
  decision,
- person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,
+ person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,dayEdit,
  entry:(db,actor,id)=>hoursDialog(db,actor,id,'entry'),
  inspect:(db,actor,id)=>hoursDialog(db,actor,id,'inspect'),
  leave:(db,actor,id)=>availabilityDialog(db,actor,id,'leave'),

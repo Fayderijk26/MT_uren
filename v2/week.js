@@ -1,5 +1,5 @@
 import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanWeek,
- displayName} from './model.js';
+ displayName,dayInfo,dayTimes} from './model.js';
 import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
 export function availability(db,user,date){
@@ -8,8 +8,10 @@ export function availability(db,user,date){
  const rule=ruleFor(db,{user,date});
  if(!rule)return 'Onbekend';
  if(rule.off)return 'Vrij';
- if(rule.start===TIMES.start)return rule.end===TIMES.end?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;
- return rule.end===TIMES.end?'Beschikbaar vanaf '+rule.start:'Beschikbaar '+clock(rule);
+ // Hele dag: van het begin tot minstens het einde van de standaard werkdag van die dag.
+ const std=dayTimes(date),from=rule.start<=std.start,until=rule.end>=std.end;
+ if(from)return until?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;
+ return until?'Beschikbaar vanaf '+rule.start:'Beschikbaar '+clock(rule);
 }
 function cell(db,person,date,readonly){
  const matches=s=>s.user===person.id&&s.date===date;
@@ -49,15 +51,26 @@ const toolbar=(left,prev,next,unit)=>'<div class="calendar-toolbar"><div class="
 // Wie staat in het rooster: iedereen die actief is, en wie inactief is maar in deze dagen nog iets heeft.
 const shown=(db,days)=>db.people.filter(p=>p.active!==false
  ||db.shifts.concat(db.drafts).some(s=>s.user===p.id&&days.includes(s.date)));
+// Dicht of aangepaste openingstijden (ronde 12): een label bij de dag, voor iedereen.
+export function dayMark(db,date){
+ const d=dayInfo(db,date);
+ if(!d)return '';
+ return d.status==='closed'?'<span class="dayclosed">Dicht</span>'
+  :'<span class="dayhours">Open '+h(d.open+'–'+d.close)+'</span>';
+}
+const shut=(db,date)=>dayInfo(db,date)?.status==='closed'?' closed':'';
 // Dagweergave voor een telefoon: per medewerker één regel met de diensten van die dag.
 function dayView(db,v,readonly,pending){
  const day=v.day;
  const nav=toolbar(plan(db,v,readonly),add(day,-1),add(day,1),'dag');
- const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(displayName(db,p.id))+'</b><div class="dayslots">'
+ const rows=shown(db,[day]).map(p=>'<div class="dayrow'+shut(db,day)+'"><b>'+h(displayName(db,p.id))+'</b>'
+  +'<div class="dayslots">'
   +cell(db,p,day,readonly)+'</div></div>').join('');
  const week=Array.from({length:7},(_,i)=>add(monday(day),i));
  const publish=!readonly&&week.some(pending)?button('Week publiceren','pubWeek',monday(day),true):'';
- return '<div class="dayview">'+nav+'<h3 class="daytitle">'+h(dateLabel(day))+'</h3>'+rows+publish+'</div>';
+ const edit=readonly?'':button('Dag instellen','dayEdit',day);
+ return '<div class="dayview">'+nav+'<div class="dayhead"><h3 class="daytitle">'+h(dateLabel(day))+'</h3>'
+  +dayMark(db,day)+edit+'</div>'+rows+publish+'</div>';
 }
 // Weekraster voor een groot scherm.
 function weekView(db,v,readonly,pending){
@@ -66,9 +79,10 @@ function weekView(db,v,readonly,pending){
  const left=(v.single?button('Hele week','week',first):'')+plan(db,v,readonly);
  let html=toolbar(left,add(first,-7),add(first,7),'week');
  html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
-  +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
+  +days.map(d=>'<th class="'+current(d)+shut(db,d)+'">'+button(dateLabel(d),'day',d)+dayMark(db,d)+'</th>').join('')
+  +'</tr></thead><tbody>';
  html+=shown(db,days).map(p=>'<tr><th scope="row">'+h(displayName(db,p.id))+'</th>'
-  +days.map(d=>'<td class="'+current(d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
+  +days.map(d=>'<td class="'+current(d)+shut(db,d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
   +'</tbody></table></div>';
  const week=Array.from({length:7},(_,i)=>add(first,i));
  if(!readonly&&week.some(pending))html+=button('Week publiceren','pubWeek',first,true);

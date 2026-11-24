@@ -59,7 +59,7 @@ for(const publishFirst of [false,true]){
 }
 test('Stand-by vereist een besluit en kan eenmalig worden afgehandeld',()=>{
  let db=seed();
- db=apply(db,'noor','extra',{date:today()});
+ db=apply(db,'noor','extra',{date:today(),start:'08:30',end:'18:00'});
  db=apply(db,'noor','draft',{user:'noor',date:today(),start:'11:00',end:'18:00',deadline:'11:00',area:'Keuken'});
  db=apply(db,'noor','publish',{date:today(),through:today()});
  const id=db.shifts.find(s=>s.deadline).id;
@@ -75,7 +75,7 @@ function seed(day=today()){
   const people=[{id:'mila',name:'Mila Vos',role:'employee',areas:['Vloer','Keuken']},{id:'bram',name:'Bram Meijer',role:'lead',areas:['Vloer']},
    {id:'noor',name:'Noor Post',role:'admin',areas:['Vloer','Keuken']}];
   const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
-  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Vloer'),shift('s2','bram',0,'09:00','18:00','Vloer'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Vloer'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Vloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[],saldoCorrections:[],leaveCorrections:[]};
+  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Vloer'),shift('s2','bram',0,'09:00','18:00','Vloer'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Vloer'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Vloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[],saldoCorrections:[],leaveCorrections:[],days:[]};
 }
 
 import {pilotRoster} from '../v2/pilot.js';
@@ -104,7 +104,7 @@ test('Hele dag en expliciet behoud bestaande diensten',()=>{
  const free=[0,1,2,3,4,5,6,7].map(n=>add(today(),n)).find(d=>!pilotRoster().shifts.some(s=>s.user==='elise'&&s.date===d));
  let db=apply(pilotRoster(),'elise','extra',{date:free});
  assert.equal(db.extra[0].start,'08:30');
- assert.equal(db.extra[0].end,'18:00');
+ assert.equal(db.extra[0].end,weekday(free)>=6?'18:00':'17:30','standaard werkdag van die dag');
  const thursday=add(today(),(4-weekday(today())+7)%7||7);
  db=apply(db,'elise','weekly',{date:thursday,weekday:4,start:'10:00',end:'16:00'});
  const id=db.requests[0].id;
@@ -445,9 +445,9 @@ test('Extra beschikbaar op een dag zonder gepubliceerd rooster: geen melding, we
  assert.deepEqual(extraToDecide(db),[]);
  assert.equal(extraState(db,db.extra.at(-1)),'');
  assert.throws(()=>apply(db,'eva','planExtra',{user:'isis',date:'2026-12-10',whole:'whole'}),/nog niet gepubliceerd/);
- db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'18:00'});
+ db=apply(db,'eva','draft',{user:'isis',date:'2026-12-10',start:'08:30',end:'17:30'});
  db=apply(db,'eva','publish',{date:'2026-12-10',through:'2026-12-10'});
- assert.match(db.updates.at(-1).text,/Extra ingepland: 08:30–18:00/);
+ assert.match(db.updates.at(-1).text,/Extra ingepland: 08:30–17:30/);
 });
 
 test('Isis geeft extra beschikbaarheid op voor een dag waarop ze al werkt: ze hoort dat ze al ingepland is',t=>{

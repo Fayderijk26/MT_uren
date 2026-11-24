@@ -1,4 +1,4 @@
-import {today,add,monday,weekday,ruleFor,TIMES} from './model.js';
+import {today,add,monday,weekday,ruleFor,dayTimes,closedDay} from './model.js';
 import {h,button,card,clock,dateLabel,requestStatus,weekNames,leaveShort} from './view.js';
 
 // Wat er op een dag voor iemand staat: diensten, beschikbaarheid, aanvragen en voorstellen.
@@ -10,7 +10,9 @@ export function dayContent(db,user,date){
  const state=s=>s.sick?' · Ziek gemeld':' · Ingepland';
  const shiftText=s=>s.deadline?'SB · Bericht vóór '+s.deadline:clock(s)+state(s);
  const items=shifts.map(s=>({text:shiftText(s),kind:'planned',shift:s}));
- const wholeDay=rule&&rule.start===TIMES.start&&rule.end===TIMES.end;
+ // Dicht (ronde 12): bovenaan, voor iedereen.
+ if(closedDay(db,date))items.unshift({text:'Dicht',kind:'closed'});
+ const std=dayTimes(date),wholeDay=rule&&rule.start<=std.start&&rule.end>=std.end;
  if(rule)items.push({text:rule.off?'Vrij':wholeDay?'Hele dag beschikbaar':'Beschikbaar '+clock(rule),kind:'available'});
  const what=r=>r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r))
   :leaveShort(r)+(r.start?' '+clock(r):'');
@@ -32,7 +34,7 @@ export function calendarPage(db,actor,view){
  let grid='<div class="calendar-scroll"><div class="personal-calendar">';
  for(const day of weekNames)grid+='<div class="weekday">'+day.slice(0,2)+'</div>';
  for(let d=start;d<end;d=add(d,1)){
-  const kind=(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'');
+  const kind=(closedDay(db,d)?'closed ':'')+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'');
   const items=dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('');
   grid+='<button class="calendar-day '+kind+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'
    +items+'</button>';
