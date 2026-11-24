@@ -231,7 +231,10 @@ function person(db,actor,id){
   +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
   +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
-  +areaBoxes(p.areas||['Vloer']);
+  +areaBoxes(p.areas||['Vloer'])
+  +'<p class="hint">Voor de export naar de loonadministratie:</p>'
+  +[['Personeelsnummer','staffNumber'],['Voornaam','firstName'],['Achternaam','lastName'],['Voorletters','initials']]
+   .map(([label,key])=>field(label,key,'text',p[key]||'')).join('');
  const title=id?'Medewerker wijzigen':'Medewerker toevoegen';
  return {title,body:form('savePerson',body,'Opslaan',id)+(id?inactiveBox(db,actor,p):'')};
 }

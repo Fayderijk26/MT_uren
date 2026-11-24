@@ -124,7 +124,7 @@ function show(action,id){
  if(action==='approve'||action==='seen'){save(action,{id});return}
  if(action==='sickPaid'||action==='sickUnpaid'){save('sickDecide',{id,paid:action==='sickPaid'});return}
  if(action==='reactivate'){save('setActive',{id,active:true});return}
- if(action==='export'){exportMonthFile(id);return}
+ if(action==='export'){exportMonthFile(view.month,id);return}
  if(action==='planExtra'){
   const [date,user]=id.split('|');show('newDraft',date);
   modal.querySelector('[name=user]').value=user;pickArea();suggestWindow(true);
@@ -195,11 +195,11 @@ function showNet(){
  const net=minutes(end)-minutes(start)-Number(pause);
  el.textContent=net>0?'Netto '+duration(net):'Controleer de pauze.';
 }
-async function exportMonthFile(month){
+// kind: 'pay' (loonadministratie) of 'full' (uitgebreid), zie SPEC 9h.
+async function exportMonthFile(month,kind){
  try{
   const {exportMonth}=await import('../excel/roster.js');
-  const {rows,summary,metadata}=exportData(db,month);
-  await exportMonth(rows,summary,month,metadata);
+  await exportMonth(month,exportData(db,month)[kind]);
  }catch(e){open('Export mislukt','<p>'+h(e.message)+'</p>')}
 }
 async function save(op,p){

@@ -203,9 +203,9 @@ export function absentMinutes(s){
 export const LEAVE_TYPES=['verlof','onbetaald'];
 const PAID_ONLY='Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.';
 export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
-// Verlof (betaald) in een maand: de vervallen (delen van) diensten van goedgekeurde verlofaanvragen.
-export const leaveItems=(db,user,month)=>db.requests
- .filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.status==='approved'&&r.user===user)
+// Verlof in een maand: de vervallen (delen van) diensten van goedgekeurde aanvragen van deze soort.
+export const leaveItems=(db,user,month,type='verlof')=>db.requests
+ .filter(r=>r.kind==='leave'&&(r.type||'onbetaald')===type&&r.status==='approved'&&r.user===user)
  .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'));
 // Per persoon: goedgekeurde minuten, ziek, verlof, wacht op beoordeling, open diensten
 // (wacht, aanpassen of ontbreekt), norm en verschil.
@@ -219,13 +219,16 @@ export function monthSummary(db,month,day=today()){
   const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
   const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
   const leave=leaveItems(db,person.id,month).reduce((sum,d)=>sum+absentMinutes(d),0);
+  const unpaid=leaveItems(db,person.id,month,'onbetaald').reduce((sum,d)=>sum+absentMinutes(d),0);
+  // Dagen gewerkt (SPEC 9h): losse dagen met goedgekeurde uren, ook als het maar een paar uur was.
+  const days=new Set(shifts.filter(s=>status(s)==='approved'&&net(db.hours[s.id])>0).map(s=>s.date)).size;
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave-norm:null;
-  return {user:person.id,approved,sick,sickWaiting,leave,pending,open,norm,diff};
+  return {user:person.id,approved,sick,sickWaiting,leave,unpaid,days,pending,open,norm,diff};
  });
 }
 // Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
@@ -566,6 +569,8 @@ function declineExtra({db,admin,p}){
 function savePerson({db,admin,p}){
  check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
  const name=String(p.name||'').trim(),hours=Number(p.contractHours),phone=String(p.phone||'').trim();
+ // Voor de export naar de loonadministratie (SPEC 9h). Niet verplicht.
+ const pay=Object.fromEntries(['staffNumber','firstName','lastName','initials'].map(k=>[k,String(p[k]||'').trim()]));
  const old=p.id?db.people.find(x=>x.id===p.id):null;
  check(!p.id||old,'Deze medewerker bestaat niet.');
  check(name,'Vul een naam in.');
@@ -578,7 +583,8 @@ function savePerson({db,admin,p}){
  check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
- const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false};
+ const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false,
+  ...pay};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 

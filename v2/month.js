@@ -1,4 +1,4 @@
-import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview,mayEnter,lastDay,saldo} from './model.js';
+import {monthSummary,net,closed,mayCloseMonth,mayRemind,mayReview,mayEnter,lastDay,saldo} from './model.js';
 import {button,card,line,field,name,dateLabel,moment,h,chip,clock} from './view.js';
 import {tabs,remindLink} from './hours.js';
 
@@ -67,19 +67,33 @@ export function monthPage(db,actor,view){
  const openRows=open.map(o=>openRow(db,actor,o));
  html+=card('Nog open ('+open.length+')',openRows.join('')||'<p>Alle uren van deze maand zijn goedgekeurd.</p>');
  html+=statusCard(db,actor,month);
- html+=card('Loonadministratie','<p>De export bevat alleen goedgekeurde uren.</p>'
-  +button('Exporteren naar Excel','export',month,true));
+ html+=card('Exports','<p>Alleen goedgekeurde uren. Uren staan als decimaal getal (6,50).</p>'
+  +'<div class="vactions">'+button('Export loonadministratie','export','pay',true)
+  +button('Uitgebreide export','export','full')+'</div>');
  return html;
 }
 
-// Gegevens voor de Excel-export: alleen goedgekeurde uren.
+// De twee exports (SPEC 9h), alleen goedgekeurde uren. Per cel: tekst, een getal, {hours:minuten} of
+// {date}/{clock}; excel/roster.js maakt er een Excel-bestand van.
 export function exportData(db,month){
- const rows=db.shifts.filter(s=>s.date.startsWith(month+'-')&&db.hours[s.id]?.status==='approved')
+ const rows=monthSummary(db,month),who=id=>db.people.find(p=>p.id===id);
+ const hours=m=>({hours:m}),vast=r=>who(r.user).contract==='vast';
+ const payRow=r=>{const p=who(r.user);return [p.staffNumber||'',[p.lastName,p.initials].filter(Boolean).join(', '),
+  p.firstName||'',vast(r)?'Vast':'Oproep','',hours(r.approved),r.days,hours(r.sick),hours(r.leave)]};
+ const fullRow=r=>{const own=saldo(db,r.user);return [who(r.user).staffNumber||'',name(db,r.user),
+  vast(r)?'Vast':'Oproep',...[r.approved,r.sick,r.leave,r.unpaid,r.approved+r.sick+r.leave].map(hours),
+  ...(vast(r)?[r.norm,r.diff,own].map(hours):['','',''])]};
+ const shifts=db.shifts.filter(s=>s.date.startsWith(month+'-')&&db.hours[s.id]?.status==='approved')
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))
-  .map(s=>{const e=db.hours[s.id];return {employeeId:s.user,name:name(db,s.user),date:s.date,start:e.start,end:e.end,
-   breakMinutes:e.pause,netMinutes:net(e)}});
- const summary=monthSummary(db,month).map(r=>({employeeId:r.user,name:name(db,r.user),workedMinutes:r.approved,
-  normMinutes:normMinutes(db,r.user,month),absenceMinutes:0,balanceMinutes:r.diff}));
+  .map(s=>{const e=db.hours[s.id];return [who(s.user).staffNumber||'',name(db,s.user),{date:s.date},{clock:e.start},
+   {clock:e.end},hours(e.pause),hours(net(e))]});
  const metadata={revision:db.monthReopens.filter(r=>r.month===month).length,closed:closed(db,month+'-01')};
- return {rows,summary,metadata};
+ const pay={file:'MonkeyTown-loonadministratie-'+month,metadata,sheets:[{name:'Loonadministratie',
+  head:['Personeelsnummer','Achternaam en voorletters','Voornaam','Vast of oproep','Percentage','Uren gewerkt',
+   'Dagen gewerkt','Ziek (uren)','Verlof (uren)'],rows:rows.map(payRow)}]};
+ const full={file:'MonkeyTown-uitgebreid-'+month,metadata,sheets:[{name:'Maandoverzicht',
+  head:['Personeelsnummer','Naam','Contract','Gewerkt','Ziek','Verlof','Onbetaald vrij','Totaal','Norm','Verschil',
+   'Saldo'],rows:rows.map(fullRow)},{name:'Diensten',
+  head:['Personeelsnummer','Naam','Datum','Begin','Einde','Pauze','Netto gewerkt'],rows:shifts}]};
+ return {pay,full};
 }
