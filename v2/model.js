@@ -167,10 +167,18 @@ export function normMinutes(db,user,month){
  const person=db.people.find(p=>p.id===user);
  return Math.round((person?.contractHours||0)*60*52/12);
 }
-// Ziek of verlof: de geplande tijd; langer dan 3 uur gaat er 30 minuten pauze af (voorlopig, zie SPEC ronde 9).
+// Pauzeregel (SPEC 9c), van begin tot eind: tot en met 3 uur geen pauze, daarboven 15 minuten, vanaf 6 uur 30.
+export const pauseFor=gross=>gross>=360?30:gross>180?15:0;
+// Minder dan 30 minuten pauze bij 6 uur of meer: een vraag, geen blokkade.
+export function pauseQuestion(start,end,pause){
+ if(!start||!end||pauseFor(minutes(end)-minutes(start))<30||Number(pause)>=30)return '';
+ const had=Number(pause)?'maar '+Number(pause)+' min pauze':'geen pauze';
+ return 'Let op: officieel heb je recht op 30 min pauze. Klopt het dat je '+had+' hebt gehad?';
+}
+// Ziek of verlof: de geplande tijd min de pauzeregel.
 export function absentMinutes(s){
  const planned=minutes(s.end)-minutes(s.start);
- return planned>180?planned-30:planned;
+ return planned-pauseFor(planned);
 }
 // Verlof (betaald) alleen bij een vast contract; onbetaald vrij kan iedereen vragen.
 export const LEAVE_TYPES=['verlof','onbetaald'];

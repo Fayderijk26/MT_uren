@@ -1,7 +1,8 @@
 // De vensters (dialogen) van de app. Elk venster is een functie (db, wie, id) die {title, body} teruggeeft,
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
- asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable} from './model.js';
+ asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
+ minutes} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
 import {dayContent} from './calendar.js';
@@ -87,7 +88,8 @@ function hoursDialog(db,actor,id,action){
  if(closed(db,shift.date))body+='<p class="notice">Deze maand is afgesloten.</p>';
  if(approvalText(db,entry))body+='<p>'+h(approvalText(db,entry))+'</p>';
  if(action==='inspect')body+=warnings(db,shift).map(w=>'<p class="notice">Let op: '+h(w)+'</p>').join('');
- if(editable)body+=form('hours',times(entry||shift)+pauseField(entry?.pause),'Uren indienen',id);
+ const pause=entry?pauseField(entry.pause):pauseField(pauseFor(minutes(shift.end)-minutes(shift.start)),true);
+ if(editable)body+=form('hours',times(entry||shift)+pause,'Uren indienen',id);
  if(action==='inspect'&&entry?.status==='pending')body+=reviewChoices(shift);
  if(mayReopen(db,actor,shift))body+=form('reopen',reason(true),'Heropenen',id);
  return {title:editable?'Uren invullen':'Gewerkte uren',body};
@@ -96,7 +98,7 @@ function hoursDialog(db,actor,id,action){
 // Ongeplande dienst: een gewerkte dag (vandaag of eerder) met tijden, pauze en werkplek.
 function unplanned(db,actor){
  const date=field('Datum','date','date',today(),'required max="'+today()+'"');
- const body=date+times()+pauseField()+areaChoice(db,actor.id);
+ const body=date+times()+pauseField(0,true)+areaChoice(db,actor.id);
  return {title:'Ongeplande dienst',body:form('unplanned',body,'Uren indienen')};
 }
 

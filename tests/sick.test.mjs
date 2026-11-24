@@ -15,11 +15,11 @@ const thursday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T1
 const person=(db,id)=>db.people.find(p=>p.id===id);
 const saturday='elise-2026-11-21';
 
-test('Ziek telt de geplande tijd; langer dan 3 uur gaat er 30 minuten pauze af',()=>{
+test('Ziek telt de geplande tijd min de pauzeregel: boven 3 uur 15 minuten, vanaf 6 uur 30 minuten',()=>{
  assert.equal(absentMinutes({start:'08:30',end:'15:00'}),360);
  assert.equal(absentMinutes({start:'10:00',end:'18:00'}),450);
  assert.equal(absentMinutes({start:'14:00',end:'17:00'}),180);
- assert.equal(absentMinutes({start:'14:00',end:'17:15'}),165);
+ assert.equal(absentMinutes({start:'14:00',end:'17:15'}),180);
 });
 
 test('Elise meldt zich ziek voor zaterdag: niet bij Nog in te vullen of ontbrekend, wel 7u 30m ziek',t=>{

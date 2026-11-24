@@ -43,15 +43,18 @@ export function field(label,name,type,value='',extra=''){
 }
 // Pauze: knoppen 0–60 min en Anders. De gekozen knop is donkergroen; het minutenveld verschijnt alleen bij Anders.
 // De gekozen pauze staat in het verborgen veld 'pause'; daaronder de regel met netto uren (#net).
-// Standaard 30 minuten pauze: dat scheelt de meeste mensen een tik. Ingevulde uren houden hun eigen pauze.
-export function pauseField(value=30){
- const known=['0','15','30','45','60'],v=String(value),other=v!==''&&!known.includes(v);
+// Met 'auto' volgt de pauze de pauzeregel bij elke tijdwijziging, tot je zelf een knop kiest (SPEC 9c).
+// Ingevulde uren houden hun eigen pauze. #pausecheck toont de vraag bij te weinig pauze.
+export function pauseField(value,auto=false){
+ const known=['0','15','30','45','60'],v=String(value??''),other=v!==''&&!known.includes(v);
  const choices=known.map(n=>button(n+' min','pause',n,v===n)).join('')+button('Anders','pause','other',other);
  return '<div class="field"><span>Pauze</span><div class="pausechoices">'+choices+'</div></div>'
-  +'<input type="hidden" name="pause" value="'+h(v)+'">'
+  +'<input type="hidden" name="pause" value="'+h(v)+'"'+(auto?' data-auto="1"':'')+'>'
+  +'<input type="hidden" name="pauseOk" value="">'
   +'<label class="field" id="pauseother"'+(other?'':' hidden')+'><span>Pauze in minuten</span>'
   +'<input name="pauseOther" type="number" min="0" step="1" value="'+(other?h(v):'')+'"></label>'
-  +'<p class="net" id="net"></p>';
+  +'<p class="net" id="net"></p>'
+  +'<div id="pausecheck" hidden><p class="notice"></p>'+button('Ja, dat klopt','pauseOk','',true)+'</div>';
 }
 // Keuzelijst; met 'value' staat die keuze vooraf geselecteerd.
 export const select=(label,name,opts,value)=>'<label class="field"><span>'+label+'</span><select name="'+name+'">'
