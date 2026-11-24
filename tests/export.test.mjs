@@ -36,13 +36,14 @@ test('Export loonadministratie: één regel per persoon, uren als decimaal, ziek
 test('Uitgebreide export voor de bedrijfsleiders: gewerkt, ziek, verlof, onbetaald vrij, totaal, norm, verschil, saldo',t=>{
  const {full}=exportData(november(t),'2026-11');
  assert.deepEqual(full.sheets[0].head,['Personeelsnummer','Naam','Contract','Gewerkt','Ziek','Verlof',
-  'Onbetaald vrij','Overuren ingezet','Totaal','Norm','Verschil','Saldo']);
+  'Bijzonder verlof','Onbetaald vrij','Overuren ingezet','Totaal','Norm','Verschil','Saldo']);
  const elise=rowOf(full.sheets[0],'1004');
- assert.deepEqual(elise.slice(1,9),['Elise B','Vast',{hours:780},{hours:540},{hours:0},{hours:0},{hours:0},{hours:1320}]);
- assert.deepEqual(elise[9],{hours:104*60});
- assert.deepEqual(elise[10],{hours:1320-104*60});
- assert.deepEqual(elise[11],{hours:0},'november is nog niet afgesloten');
- assert.deepEqual(rowOf(full.sheets[0],'1005').slice(9),['','',''],'contract Uren: geen norm, verschil of saldo');
+ assert.deepEqual(elise.slice(1,10),['Elise B','Vast',{hours:780},{hours:540},{hours:0},{hours:0},{hours:0},{hours:0},
+  {hours:1320}]);
+ assert.deepEqual(elise[10],{hours:104*60});
+ assert.deepEqual(elise[11],{hours:1320-104*60});
+ assert.deepEqual(elise[12],{hours:0},'november is nog niet afgesloten');
+ assert.deepEqual(rowOf(full.sheets[0],'1005').slice(10),['','',''],'contract Uren: geen norm, verschil of saldo');
  assert.equal(full.sheets[1].name,'Diensten');
  assert.equal(full.file,'MonkeyTown-uitgebreid-2026-11');
 });
