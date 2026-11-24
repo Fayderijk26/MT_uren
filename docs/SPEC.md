@@ -35,30 +35,35 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 - De gegevens staan nu in de browser (`localStorage`) en zijn **niet gedeeld** tussen mensen. Dat is alleen geschikt voor een demo (zie ronde 8).
 
 ## 4. Besluiten van de eigenaar (blijven staan)
-1. Berichten tussen mensen in de app zijn **bewust weggelaten**. Bij problemen bellen of WhatsAppen ze.
+1. Berichten tussen mensen in de app zijn **bewust weggelaten**. Bij problemen bellen of WhatsAppen ze. Uitzondering: de **Weekly** van de bedrijfsleider bij het publiceren (ronde 14). Dat is een wekelijkse update in één richting; reageren kan niet.
 2. Kantoordienst bestaat niet als aparte soort: een dienst is een dienst.
 3. Bedrijfsleiders en leidinggevenden mogen hun eigen uren goedkeuren. Op één dag mogen meerdere dagleidingen de uren van iedereen goedkeuren.
 4. Bij uren heet de actie **"Aanpassen vragen"** (niet terugsturen). Afwijzen is alleen voor ongeplande diensten en voorstellen.
 5. Vrij vragen: minimaal drie weken vooruit. Alleen een goedgekeurde aanvraag telt als vrij.
 6. Voor uren die precies met het rooster overeenkomen komt een knop **"Alles goedkeuren"**.
-7. De maandnorm wordt berekend uit de contracturen en is niet handmatig in te typen (een bedrijfsleider mag overschrijven, met reden).
+7. De maandnorm wordt berekend uit de contracturen en is niet handmatig in te typen (een bedrijfsleider mag overschrijven, met reden). Bevestigd door het bedrijf (24 november): contracturen per week × 52 ÷ 12, elke maand gelijk. Niet iedereen heeft hetzelfde aantal uren. Contracturen veranderen alleen per de 1e van een maand.
 8. Herinneringen: een overzichtsmail aan de leiding en medewerkers op dagen dat ze dienst hebben, en een tweede herinnering de volgende dag om 09:00.
-9. Terugdateren van ongeplande diensten en het invullen van ontbrekende uren kan **zolang de maand nog niet is afgesloten**, dus ook in de eerste dagen van de volgende maand. Er is verder geen limiet.
+9. ~~Terugdateren van ongeplande diensten en het invullen van ontbrekende uren kan zolang de maand nog niet is afgesloten.~~ **Gewijzigd (gesprek 24 november, bouwen in 9e):** medewerkers kunnen uren invullen en ongeplande diensten terugdateren tot en met de **laatste dag van de maand, 23:59**. Daarna gaat de maand voor hen op slot. Alleen de bedrijfsleider kan daarna nog uren invullen, tot de maand is afgesloten.
 10. Tijden blijven **per kwartier**.
 11. Uren heropenen mag **alleen de bedrijfsleider**, met een reden, en **nooit na het afsluiten van de maand**.
 12. De knop **"Herinner via WhatsApp"** komt er, voor de bedrijfsleider én voor de dagleiding. Hij opent WhatsApp met een ingevulde tekst. Telefoonnummers worden bewaard, zijn alleen zichtbaar voor leiding en bedrijfsleider, staan alleen in de echte database en **nooit in de repository**.
-13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan.
+13. **Openingstijden:** elke dag 09:00–17:30 (voor bezoekers). Medewerkers werken vaak van 08:30 (openen) tot 18:00 (opruimen en schoonmaak). Daarom is de **werkdag** 08:30–18:00: dat is de standaardtijd van een nieuwe dienst en van "hele dag beschikbaar". Wie korter werkt, past de tijden aan. **Gewijzigd (gesprek 24 november, bouwen in 12):** de standaard werkdag is doordeweeks 08:30–17:30 en in het weekend 08:30–18:00. De tijdkeuzes lopen van 06:00 tot 22:00 (nu 00:00–23:45).
 14. **Ingediend is ingediend.** De medewerker kan ingediende uren niet zelf aanpassen. Dat kan alleen nadat de leiding "Aanpassen vragen" heeft gedaan (zo werkt het nu al). Eindigen de uren vóór het geplande einde van de dienst, dan krijgt de leiding een **waarschuwing** (niet blokkeren).
-15. Voor later: pushmeldingen (zie ronde 11), collega's zien in het rooster, toeslagen. Ziek en verlof: zie ronde 9 (voorstel).
+15. Voor later: pushmeldingen (zie ronde 11), collega's zien in het rooster, toeslagen. Ziek en verlof: zie ronde 9 (uitkomst gesprek 24 november).
 16. **Inloggen met e-mail en wachtwoord** (niet met telefoonnummer en sms: dat kost geld). De bedrijfsleider zet een medewerker erin met e-mailadres. Die krijgt een uitnodigingsmail en kiest daarmee een wachtwoord. Daarna blijft de medewerker ingelogd op die telefoon tot hij of zij uitlogt. Wachtwoord vergeten gaat via een mail met een link. Wie niet door een bedrijfsleider is toegevoegd of op inactief staat, komt er niet in. Advies aan medewerkers: zet de app op het beginscherm (Safari › Delen › Zet op beginscherm), dan blijft de login bewaard. Uitwerking in ronde 8.
 
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
-- Op dit moment geen open vragen voor de bouw.
+Het gesprek met het bedrijf was op 24 november. De uitkomst staat in ronde 9 ("Uitkomst gesprek 24 november") en in de rondes 12 t/m 14. Wat nog open is:
 
-**Te bespreken met het bedrijf** (voorlopig gebouwd zoals hieronder; aanpassen zodra het bedrijf beslist):
-- **Maandnorm:** nu contracturen per week × 52 ÷ 12 (elke maand gelijk). Klopt dat met hoe het bedrijf rekent?
-- **Ziekte en verlof:** voorlopig gebouwd in ronde 9 (9a ziek melden). Zie de tabel "Te overleggen met het bedrijf" in ronde 9.
-- **Loonperiode en afsluiten:** nu per kalendermaand; een maand kan dicht vanaf de 1e van de volgende maand. Mogelijk loopt de loonperiode van de 21e tot de 20e. Navragen.
+- **Verlof en saldo:** een verlofdag telt als 1 dag, niet in uren. Hoe telt een verlofdag dan mee in de plus- en minuren van een vast contract? Zonder regel lijkt iemand met verlof uren tekort te komen. Het bedrijf noemde eerder 8 uur per verlofdag. *Open punt, nog bespreken.*
+- **Later beginnen op een vaste dag** (bijv. 11:30 in plaats van 08:30): de medewerker past de beschikbaarheid eenmalig aan en de gemiste uren worden minuren. Hoe dat precies gaat, moet nog bedacht worden. *Open punt.*
+- **Bijzonder verlof:** welke soorten in de keuzelijst (genoemd: zwangerschapsverlof en Anders met reden) en wat de bedrijfsleider per soort kan kiezen. *Navragen.*
+- **Feestdagen en sluitingsdagen:** welke keuzes de bedrijfsleider heeft als een feestdag of sluitingsdag op iemands vaste dag valt, en welke feestdagen tellen. *Niet besproken.*
+- **Export:** wat het percentage bij een vast contract betekent (85% is waarschijnlijk 32 uur; hoeveel uur is dan 100%?). Of de export automatisch naar de loonadministratie gaat: voorlopig niet, alleen naar de bedrijfsleiders. *Navragen.*
+- **Weekly:** is hij verplicht bij elke gepubliceerde week, en wat is geblokkeerd tot hij gelezen is (alleen het rooster van die week, of ook Vandaag en uren invullen)? *Navragen.*
+- **Herinnering extra beschikbaarheid** (eens per maand, voor medewerkers zonder vast contract): wel of niet? *Navragen.*
+- **Ziek bij oproepkrachten:** de bedrijfsleider heeft dezelfde keuze als bij vaste medewerkers ("denk ik"). *Bevestigen.*
+- **Niet besproken, blijft zoals het nu is:** cao, toeslagen, vinkje jonger dan 18, privacygegevens en bewaartermijn, welke meldingen, accounts (wordt besproken bij ronde 8), loonpercentage bij ziekte (beslist de loonadministratie).
 
 ## 6. Nog te bouwen, in rondes
 Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de eigenaar het zelf en loopt de tests door.
@@ -138,6 +143,7 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
 - **Mail:** de ingebouwde mail van Supabase is alleen voor testen (een paar mails per uur). Voor echt gebruik koppelen we een gratis maildienst (bijvoorbeeld Resend of Brevo) via SMTP. Het bedrijf maakt dat account aan.
 - Delen: **8a** opslag en regels op de server (de demo blijft werken), **8b** inloggen met e-mail en wachtwoord, **8c** per rol alleen de juiste gegevens, **8d** proef met twee of drie collega's.
 - Daarna de mails en pushmeldingen: zie ronde 11.
+- **Nog te bespreken met de eigenaar** (na het gesprek van 24 november): accounts (wie maakt Supabase, de maildienst en het domein aan), waar de code wordt bewaard, en de back-up: een eigen dagelijkse kopie van de database, of het betaalde plan van Supabase (ongeveer $25 per maand, met dagelijkse back-ups).
 - **Privacy en beveiliging** (hoort bij 8a–8c, moet klaar zijn vóór de proef 8d):
   - **Row level security op elke tabel.** De sleutel in de browser is openbaar. De browser leest en schrijft daarom niets rechtstreeks: alles gaat via de server, die met `model.js` controleert wie wat mag. *Scenario:* Isis is ingelogd en probeert de uren en het telefoonnummer van Elise op te halen: dat mislukt. Zo ook voor elke tabel en elke rol.
   - Supabase-project in een **EU-regio**. Het bedrijf tekent de verwerkersovereenkomst (DPA) van Supabase en een verwerkersovereenkomst met de beheerder van de app.
@@ -148,7 +154,7 @@ Eén ronde is één pull request (of een paar kleine). Na elke ronde probeert de
   - **Bewaartermijn:** gegevens ouder dan de afgesproken termijn worden verwijderd (voorstel: 2 jaar na het afsluiten van de maand). De maandexport is het archief van het bedrijf voor de loonadministratie (7 jaar). *Te vragen aan het bedrijf.*
 - **Tot dit klaar is, mogen er geen echte medewerkersgegevens in de app.**
 
-**Ronde 9: ziek en verlof (voorlopig gebouwd, nog te overleggen met het bedrijf)**
+**Ronde 9: ziek en verlof** (9a en 9b voorlopig gebouwd; na het gesprek van 24 november volgen 9c t/m 9h)
 Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt ook in de demo. De keuzes hieronder zijn **voorlopig** (besluit eigenaar 23 november: eerst de werking, daarna definitief na overleg). Zie de lijst "Te overleggen met het bedrijf" onderaan.
 
 *Wat er misging (gecontroleerd 23 november):*
@@ -157,7 +163,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - Het maandoverzicht telt alleen gewerkte uren. Wie met een vast contract verlof had, lijkt uren tekort te komen. De export heeft een kolom afwezigheid (`absenceMinutes`), maar die staat altijd op 0.
 - Ziekmelden bestond niet.
 
-**9a: ziek melden per dienst**
+**9a: ziek melden per dienst** (gebouwd; wordt aangepast in 9c en 9d: geen ziekmelding meer door de medewerker zelf, nieuwe pauzeregel)
 - Ziek melden gaat **per dienst**. Er is geen "beter melden": elke dienst wordt apart ziek gemeld.
 - **Wie:** de medewerker zelf, voor een eigen dienst die nog niet begonnen is (vandaag of later). De dagleiding van die dag en de bedrijfsleider kunnen het namens iemand doen, ook achteraf. Iedereen met een dienst kan zich ziek melden, ook met contract Uren.
 - **Niet mogelijk:** bij een stand-bydienst, een ongeplande dienst, een dienst waarvoor al uren zijn ingediend, of in een afgesloten maand.
@@ -172,7 +178,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - *Scenario:* Elise meldt zich ziek voor zaterdag 10:00–18:00. Die dienst telt 7u 30m ziek, staat niet bij Nog in te vullen en niet bij de ontbrekende uren.
 - *Scenario:* Elise is al aan het werk. Ze kan zich niet meer zelf ziek melden; Iris (dagleiding die dag) of Eva kan dat wel.
 
-**9b: soort bij vrij vragen**
+**9b: soort bij vrij vragen** (gebouwd; verlof in dagen en bijzonder verlof volgen in 9g)
 - **Soort contract** per persoon, verplicht, in te stellen onder Medewerkers: **Vast** (met maandnorm) of **Uren** (betaald per gewerkt uur, de norm is alleen informatie). Nieuw veld: `contract` (`vast` of `uren`). In de demo heeft Isis contract Uren, de rest Vast.
 - **Vrij vragen krijgt een soort.** Nieuw veld bij een aanvraag: `type` (`verlof` of `onbetaald`).
   - **Verlof (betaald):** alleen bij een vast contract. De medewerker vraagt aan, de bedrijfsleider keurt goed. Telt mee als uren.
@@ -192,11 +198,58 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 - Daaronder de kaart **Diensten**, met de knop Ongeplande dienst invullen rechts naast de kop: gewerkte diensten tot vandaag, ziek gemelde diensten en verlofdagen (ook later in de maand), met hoeveel ze tellen. Nieuwste bovenaan.
 - De getallen komen uit `monthSummary` (nu ook met `pending`), dezelfde als in het maandoverzicht van de bedrijfsleider. Norm en verschil staan er nog niet; dat volgt na het besluit over de maandnorm (9c).
 
-**9c: maandoverzicht en export** (nog niet gebouwd)
-- Per persoon Gewerkt, Ziek, Verlof, Totaal, Norm en Verschil. Bij contract Uren staat de norm als informatie en is er geen verschil.
-- Export: aparte kolommen Ziek en Verlof in plaats van de lege kolom afwezigheid.
+**Uitkomst gesprek met het bedrijf (24 november)**
+Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde is één pull request, met akkoord van de eigenaar vooraf. Open punten staan in hoofdstuk 5. Komt er een nieuw veld, dan staat het hier; de precieze naam wordt bij het plan van die ronde bevestigd.
 
-*Te overleggen met het bedrijf (nu gebouwd zoals bij "Nu", daarna definitief maken):*
+**9c: pauzeregel** (nog niet gebouwd)
+- Gerekend van begin tot eind van de dienst: **tot en met 3 uur** geen pauze, **meer dan 3 uur** 15 minuten, **6 uur of meer** 30 minuten. Voorbeeld: 08:30–14:30 is 6 uur en telt 5u 30m.
+- Bij nieuwe uren staat de pauze volgens deze regel vooraf gekozen (nu altijd 30 minuten).
+- Kiest iemand bij 6 uur of meer een kortere pauze, dan vraagt de app: "Let op: officieel heb je recht op 30 min pauze. Klopt het dat je maar 15 min pauze hebt gehad?" Het blijft een vraag, geen blokkade.
+- Ziekte-uren gebruiken dezelfde regel (nu: 30 minuten bij meer dan 3 uur).
+- *Nog bevestigen bij het plan:* verandert de vooraf gekozen pauze mee als iemand de tijden aanpast? Voorstel: ja, zolang de pauze niet zelf is aangeklikt.
+
+**9d: ziek melden door de leiding, besluit door de bedrijfsleider** (nog niet gebouwd)
+- **Medewerkers melden zich niet meer zelf ziek** in de app. De knop gaat weg. Ze bellen de leiding.
+- Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden.
+- Per ziek gemelde dienst beslist de bedrijfsleider: **Doorbetalen** of **Wachtdag (niet doorbetalen)**. Contract en cao noemen 2 wachtdagen, maar de bedrijfsleider kiest per situatie. Tot het besluit staat er "Wacht op besluit" en telt de dienst nog niet mee.
+- De medewerker ziet bij de dienst: "Ziek gemeld door … op …" en daarna "telt mee" of "telt niet mee (wachtdag)".
+- Nieuw veld bij de ziekmelding: het besluit van de bedrijfsleider.
+- Geldt ook voor oproepkrachten (nog bevestigen, zie hoofdstuk 5).
+- Blijft zoals het is: geen betermelding (ziek per dienst); halverwege ziek naar huis = gewerkte uren invullen; ziek op een dag zonder dienst telt niet mee; het loonpercentage bij ziekte rekent de loonadministratie.
+
+**9e: maand dicht op de laatste dag** (nog niet gebouwd)
+- Medewerkers vullen uren in en dateren ongeplande diensten terug tot en met de laatste dag van de maand, 23:59 (zie besluit 9). Daarna kunnen zij niets meer aan die maand doen.
+- Daarna ziet de bedrijfsleider een overzicht van diensten zonder uren. Per dienst: zelf invullen of leeg laten. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
+- **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing).
+- De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
+- *Nog bevestigen bij het plan:* uren waarvoor "Aanpassen vragen" open staat na 23:59 — die kan alleen de bedrijfsleider nog afhandelen.
+
+**9f: maandnorm en lopend saldo** (nog niet gebouwd)
+- Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.
+- Het verschil (gewerkt + ziek dat meetelt + verlof, min de norm) gaat elke maand mee naar de volgende maand en naar het volgende jaar: een **lopend saldo** plus- en minuren.
+- De medewerker ziet het saldo bij Mijn uren. Leidinggevenden en de bedrijfsleider zien het ook.
+- Geen grens en geen toeslag. Het saldo wordt nooit vanzelf afgerekend: de bedrijfsleider zet het op 0 als het is uitbetaald of verrekend (met reden, vastgelegd). Aan het eind van het jaar bekijkt het bedrijf het saldo.
+- Hoe een verlofdag in het saldo telt: open punt (hoofdstuk 5).
+- Nieuw: een lijst met saldo-correcties (wie, wanneer, hoeveel, reden). Het saldo zelf wordt uitgerekend, niet opgeslagen.
+
+**9g: vakantiedagen in dagen** (nog niet gebouwd)
+- Verlof telt in **dagen**: 1 verlofdag is 1 dag, ongeacht de uren. Bijvoorbeeld: 32 uur per week heeft 21 vakantiedagen per jaar.
+- Bij het aanmaken van een medewerker vult de bedrijfsleider het **aantal vakantiedagen per jaar** en een **startsaldo** in. Het verlofjaar is het kalenderjaar.
+- De app houdt het saldo bij (opgenomen en over). Aan het eind van het jaar wordt het gelijkgetrokken met de loonadministratie.
+- **Betaald verlof** kan tot het saldo op is; daarna alleen onbetaald vrij (de app controleert dat). Over vrij boven het saldo beslist de bedrijfsleider: van de plusuren af of onbetaald.
+- Vaste medewerkers vragen vrij voor hun vaste werkdagen; die dag gaat van het saldo af (zie ronde 13).
+- De medewerker kiest betaald of onbetaald, de bedrijfsleider kan het aanpassen (zoals nu). Oproepkrachten: alleen onbetaald vrij (zoals nu). Drie weken vooruit blijft (besluit 5).
+- **Bijzonder verlof:** een derde soort met een keuzelijst (bijvoorbeeld zwangerschapsverlof, of Anders met een reden). De bedrijfsleider beslist wat ermee gebeurt. Bij het tekstvak staat "Vermeld geen medische informatie." Welke soorten en keuzes: open punt.
+- Nieuwe velden: vakantiedagen per jaar en startsaldo bij een persoon; soort bijzonder verlof bij een aanvraag.
+
+**9h: maandoverzicht en twee exports** (nog niet gebouwd; vervangt de oude 9c)
+- Uren als decimaal getal (6,50). Eén regel per persoon.
+- **Export voor de loonadministratie** (zoals het bedrijf nu in Excel werkt): personeelsnummer, achternaam met voorletters, voornaam, vast of oproep (bij vast een percentage, zie hoofdstuk 5), uren gewerkt, dagen gewerkt (aantal losse dagen met gewerkte uren, ook als het maar 3 uur was). Ziek en verlof staan in eigen kolommen, niet bij uren gewerkt.
+- **Uitgebreide export** voor de bedrijfsleiders: daarbij gewerkt, ziek, verlof, onbetaald vrij, totaal, norm, verschil en saldo. Later misschien: hoe vaak ziek, hoeveel extra beschikbaarheid, hoeveel vrij gevraagd.
+- Na het afsluiten gaan beide bestanden per mail naar alle bedrijfsleiders (de mail komt na ronde 8). Automatisch naar de loonadministratie: voorlopig niet.
+- Nieuwe velden bij een persoon: personeelsnummer, achternaam, voorletters, voornaam (nu één veld `name`).
+
+*Voorlopige keuzes van vóór het gesprek (ter vergelijking; de uitkomst staat hierboven):*
 | Onderwerp | Nu (voorlopig) | Of liever |
 |---|---|---|
 | Ziekte-uren | Geplande tijd van de dienst, min 30 minuten pauze bij meer dan 3 uur | Gemiddelde per dag uit het contract (bijv. contracturen ÷ 5); of de pauze volgens een andere regel |
@@ -224,7 +277,7 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
   - Wel alle rechten van de rol.
 - *Scenario:* de eigenaar staat zaterdag in het rooster. Zondag staat haar dienst niet bij Ontbreekt en ze krijgt geen herinnering. Ze keurt wel de uren van de rest goed.
 - *Besluit eigenaar app (23 november):* er zijn **meerdere mensen** van wie de uren niet tellen. Zij staan **wel in het rooster**, net als iedereen (dienst zichtbaar voor het team, publiceren zoals altijd).
-- Een leidinggevende met Uren bijhouden: nee is op haar dagen gewoon **dagleiding** (de rechten horen bij de rol). *Nog bevestigen met het bedrijf.*
+- Een leidinggevende met Uren bijhouden: nee is op haar dagen gewoon **dagleiding** (de rechten horen bij de rol). *Nog bevestigen met het bedrijf* (niet besproken op 24 november).
 - Demo: **Mieke**, leidinggevende, Uren bijhouden: nee. Woensdag 11:00–17:00 en zondag 11:00–16:00. Oudere demogegevens in de browser krijgen haar er vanzelf bij.
 
 **Ronde 11: pushmeldingen en herinneringsmails** (nog niet gebouwd; pas na ronde 8, want er is een server en een login nodig)
@@ -238,6 +291,37 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
   - **Bedrijfsleider: maand afronden.** Vanaf de 1e van de volgende maand: mail én pushmelding "November kan worden afgesloten. Nog X uren te beoordelen en Y ontbreken. Sluit de maand af en download het maandoverzicht." Elke paar dagen opnieuw tot de maand is afgesloten. Na afsluiten opent meteen het downloaden van het maandoverzicht.
 - **Mails** (besluit 8): dagoverzicht aan wie dienst had en de herinnering de volgende dag om 09:00, via de maildienst uit ronde 8.
 - *Te vragen aan het bedrijf:* welke meldingen wel en niet; hoe vaak de maandherinnering terugkomt; tot welke dag de maand afgerond moet zijn (hangt samen met de loonperiode).
+- **Uit het gesprek van 24 november:**
+  - Herinnering uren invullen op de dag van de dienst: om **17:30** doordeweeks en om **18:00** in het weekend. Hoe dit zich verhoudt tot besluit 8 (mail en 09:00 de volgende dag): bij het plan bevestigen.
+  - **Twee dagen voor het einde van de maand** aan wie nog uren open heeft: "Let op: over 2 dagen kun je je uren niet meer aanpassen. Vul je uren nog in!"
+  - De maand moet op de laatste dag af zijn (zie 9e). De herinnering "maand afronden" past zich daaraan aan.
+  - Na afsluiten worden beide exports gemaild naar alle bedrijfsleiders (9h).
+  - Melding bij een nieuwe Weekly (ronde 14).
+  - Eventueel: maandelijkse herinnering extra beschikbaarheid voor medewerkers zonder vast contract (open punt, hoofdstuk 5).
+
+**Ronde 12: rooster — openingstijden, sluitingsdagen en standaardtijden** (nog niet gebouwd)
+- De bedrijfsleider kan per dag **aangepaste openingstijden** opgeven en een dag **dicht** zetten. Een dag die dicht is, is in het rooster bij iedereen lichtrood met de melding "Dicht".
+- Standaard werkdag doordeweeks 08:30–17:30, weekend 08:30–18:00 (besluit 13). Geldt voor een nieuwe dienst en voor "hele dag beschikbaar".
+- Tijdkeuzes lopen van 06:00 tot 22:00.
+- **Feestdag of sluitingsdag op iemands vaste dag** (vast contract): de bedrijfsleider kiest wat ermee gebeurt (bijvoorbeeld vrije dag, doorbetalen of overuren). Welke keuzes en welke feestdagen: open punt (hoofdstuk 5).
+- Nieuw: een lijst met dagen met aangepaste tijden of dicht.
+
+**Ronde 13: vaste werkdagen en vrij vragen** (nog niet gebouwd)
+- *Waarom:* het bedrijf wil niet dat medewerkers te makkelijk vrij vragen.
+- Bij het aanmaken van een medewerker vult de bedrijfsleider de **vaste werkdagen** in (de vaste beschikbaarheid wordt echt vast). De medewerker kan een wijziging vragen; de bedrijfsleider beslist (zoals nu).
+- **Vast contract:** vrij vragen kan alleen voor een vaste werkdag; die dag gaat van het verlofsaldo af (9g). Op andere dagen geeft de medewerker **Niet beschikbaar** of **Extra beschikbaar** op. Niet beschikbaar staat alleen in het rooster van de bedrijfsleider; geen melding en geen goedkeuring.
+- **Oproepkrachten** hebben ook een vaste beschikbaarheid (vaak een weekenddag). Vraagt een oproepkracht die dag vrij, dan volgt een pop-up met een uitnodigende tekst om een of meer andere dagen extra beschikbaar te zijn, al is het maar een paar uur. De oproepkracht kiest zelf de dagen (niet per se in het weekend), met de knop "Ja, beschikbaar 08:30–18:00" en de mogelijkheid de tijden aan te passen. De precieze tekst wordt bij het plan voorgelegd.
+- **Beschikbaarheid is een wens, geen garantie.** Bij het opgeven staat: "Let op: je wordt niet standaard van 08:30 tot 18:00 ingepland. Dit is alleen je beschikbaarheid." Past iemand de tijden aan: "Let op: je wordt niet meteen op deze tijd ingepland. We proberen rekening te houden met je wensen."
+- Later beginnen op een vaste dag (eenmalig de beschikbaarheid aanpassen, minuren bij vast contract): open punt (hoofdstuk 5).
+
+**Ronde 14: Weekly bij publiceren** (nog niet gebouwd)
+- Bij het publiceren van een week schrijft de bedrijfsleider een **Weekly**: punten die die week aandacht nodig hebben.
+- Medewerkers en leidinggevenden zien het rooster van die week pas na de knop **"Ik heb de weekly gelezen"**.
+- Past de bedrijfsleider de Weekly aan, dan kan die het vinkje **"Opnieuw laten lezen"** aanzetten; dan moet iedereen opnieuw bevestigen. Zonder vinkje (bijvoorbeeld een tikfout) niet.
+- De bedrijfsleider ziet wie de Weekly heeft gelezen.
+- Reageren kan niet (besluit 1).
+- Open: verplicht bij elke week, en wat er precies geblokkeerd is (hoofdstuk 5).
+- Nieuw: de Weekly per week (tekst, versie) en wie hem heeft gelezen.
 
 ## 7. Woordenlijst
 - **Concept:** diensten die nog niet zichtbaar zijn voor medewerkers. **Publiceren** maakt ze zichtbaar.
