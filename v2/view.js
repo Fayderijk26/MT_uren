@@ -1,5 +1,6 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave,sickPaid,sickOpen,dayOf,
+ displayName,SPECIAL_TYPES} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -64,7 +65,7 @@ export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.sta
  +field('Tot','end','time',s.end||'','required')+'</div>';
 export const form=(action,body,label,id='',primary=true)=>'<form data-op="'+action+'" data-id="'+h(id)+'">'+body
  +'<p role="alert" class="err"></p><button class="'+(primary?'primary':'secondary')+'">'+label+'</button></form>';
-export const name=(db,id)=>db.people.find(p=>p.id===id)?.name||'';
+export const name=(db,id)=>displayName(db,id);
 export const moment=iso=>new Intl.DateTimeFormat('nl-NL',
  {timeZone:'Europe/Amsterdam',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
  .format(new Date(iso));
@@ -78,19 +79,27 @@ export function approvalText(db,e){
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 // Soort vrij: oude aanvragen zonder soort zijn onbetaald vrij.
-export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij'};
-export const leaveName=r=>leaveNames[r.type]||leaveNames.onbetaald;
+export const leaveNames={verlof:'Verlof (betaald)',overuren:'Overuren inzetten',onbetaald:'Onbetaald vrij',
+ bijzonder:'Bijzonder verlof'};
+const specialName=s=>s[0].toUpperCase()+s.slice(1);
+export const leaveName=r=>(leaveNames[r.type]||leaveNames.onbetaald)+(r.special?' ('+r.special+')':'');
 // Keuze Soort bij vrij vragen en beoordelen. Vast contract: Verlof (betaald) vooraf gekozen. Uren: alleen onbetaald.
-export function leaveTypeField(db,user,current){
- const paid=mayPaidLeave(db,user),types=paid?['verlof','onbetaald']:['onbetaald'];
+// Bijzonder verlof: een keuzelijst die verschijnt zodra die soort is gekozen (SPEC 9g).
+export function leaveTypeField(db,user,current,special=''){
+ const paid=mayPaidLeave(db,user),types=paid?['verlof','overuren','onbetaald','bijzonder']:['onbetaald','bijzonder'];
  const pick=types.includes(current)?current:types[0];
  const option=t=>'<option value="'+t+'"'+(t===pick?' selected':'')+'>'+h(leaveNames[t])+'</option>';
  const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
+ const kinds=SPECIAL_TYPES.map(s=>'<option value="'+s+'"'+(s===special?' selected':'')+'>'+h(specialName(s))
+  +'</option>').join('');
+ const box='<div id="special"'+(pick==='bijzonder'?'':' hidden')+'><label class="field"><span>Welk bijzonder verlof?'
+  +'</span><select name="special"><option value="">Kies…</option>'+kinds+'</select></label>'
+  +'<p class="hint">Bij Anders: geef een reden. Vermeld geen medische informatie.</p></div>';
  return '<label class="field"><span>Soort</span><select name="type" required>'+types.map(option).join('')
-  +'</select></label>'+hint;
+  +'</select></label>'+hint+box;
 }
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
-export const leaveShort=r=>r.type==='verlof'?'Verlof':'Vrij';
+export const leaveShort=r=>({verlof:'Verlof',bijzonder:'Bijzonder verlof',overuren:'Overuren'})[r.type]||'Vrij';
 export const requestName=r=>r.kind==='weekly'
  ?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
  :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')
@@ -103,17 +112,21 @@ export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.s
 export const requestChip=r=>chip(r.status,requestStatus(r));
 
 // Ziek melden of de ziekmelding intrekken, als deze persoon dat mag (de regel staat in model.js).
+// Ziek gemeld: telt het mee? Het besluit is van de bedrijfsleider (SPEC 9d).
+export const sickStatus=s=>sickOpen(s)?'wacht op besluit':sickPaid(s)?'telt '+duration(absentMinutes(s))
+ :'telt niet mee (wachtdag)';
+// Doorbetalen of Wachtdag: voor de bedrijfsleider zolang er geen besluit is.
+export const sickDecision=(db,actor,s)=>actor.role==='admin'&&sickOpen(s)
+ ?button('Doorbetalen','sickPaid',s.id,true)+button('Wachtdag','sickUnpaid',s.id):'';
 export function sickButton(db,actor,s,label='Ziek melden'){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button(label,'sickAsk',s.id):'';
 }
-// Venster Ziek melden. Meld je jezelf ziek, dan staat erbij dat je ook moet bellen.
-export const SICK_CALL='Ziek melden doe je ook telefonisch bij de leidinggevende van de dag. '
- +'Dit mag niet alleen via deze app.';
-export function sickAskBody(db,s,self){
+// Venster Ziek melden: wie, welke dienst en hoeveel uur.
+export function sickAskBody(db,s){
  const what='<p><b>'+h(name(db,s.user))+'</b><br>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>';
- const call=self?'<p class="notice">'+h(SICK_CALL)+'</p>':'';
- return what+call+'<p>Telt '+h(duration(absentMinutes(s)))+' ziek.</p>'+form('sick','','Ziek melden',s.id);
+ return what+'<p>'+h(duration(absentMinutes(s)))+' ziek gemeld</p>'
+  +form('sick','','Ziek melden',s.id);
 }
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
 export function areaChoice(db,user,current){

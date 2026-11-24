@@ -155,34 +155,26 @@ function download(blob,filename) {
   setTimeout(()=>URL.revokeObjectURL(href),60000);
 }
 const clockNumber = t=>{const [h,m]=t.split(':').map(Number);return number((h*60+m)/1440,3);};
-const duration = n=>n==null ? null : number(n/1440,2);
 const dateNumber = iso=>number(Date.parse(iso)/dayMs+25569,4);
 
-export async function exportMonth(rows,summary,month,metadata) {
+// Een maandexport (SPEC 9h): book = {file, metadata, sheets:[{name, head, rows}]} uit v2/month.js.
+// Cellen: tekst, een getal, {hours:minuten} (decimaal, 6,50), {date:'2026-11-16'} of {clock:'08:30'}.
+const cell = v=>v==null || typeof v!=='object' ? (typeof v==='number' ? number(v,0) : v)
+  : 'hours' in v ? number(Math.round(v.hours/60*100)/100,5)
+  : 'date' in v ? dateNumber(v.date) : clockNumber(v.clock);
+export async function exportMonth(month,book) {
   if (!/^\d{4}-(0[1-9]|1[012])$/.test(month)) throw Error('Kies een geldige maand.');
-  const entries = rows.filter(r=>r.date.startsWith(month+'-'));
-  const detail = [['Medewerker-ID','Naam','Datum','Begin','Einde','Pauze','Netto gewerkt'],...entries.map(r=>[r.employeeId,r.name,dateNumber(r.date),clockNumber(r.start),clockNumber(r.end),duration(r.breakMinutes),duration(r.netMinutes)])];
-  const totals = [['Medewerker-ID','Naam','Gewerkt','Maandnorm','Afwezigheid','Saldo (uren)'],...summary.map(s=>[s.employeeId,s.name,duration(s.workedMinutes),duration(s.normMinutes),duration(s.absenceMinutes),s.balanceMinutes==null?null:number(s.balanceMinutes/60,5)])];
-  const sheets = [
-    {name:'Maandstaat',rows:totals,widths:[38,26,16,16,18,18]},
-    {name:'Diensten',rows:detail,widths:[38,26,16,12,12,12,18]}
-  ];
-  let suffix = '';
-  if (metadata !== undefined) {
-    const {revision,closed} = metadata;
-    if (!Number.isSafeInteger(revision) || revision < 0 || typeof closed !== 'boolean') {
-      throw Error('De maandexport mist een geldige revisie of afsluitstatus.');
-    }
-    const status = closed ? 'Afgesloten' : 'Voorlopig';
-    sheets.push({
-      name:'Exportinformatie',
-      rows:[['Maand','Status','Revisie'],[month,status,number(revision,0)]],
-      widths:[16,20,14]
-    });
-    suffix = '-' + status.toLowerCase() + '-v' + revision;
+  const sheets = book.sheets.map(s=>({name:s.name,rows:[s.head,...s.rows.map(r=>r.map(cell))],
+    widths:s.head.map(h=>Math.max(12,h.length+4))}));
+  const {revision,closed} = book.metadata;
+  if (!Number.isSafeInteger(revision) || revision < 0 || typeof closed !== 'boolean') {
+    throw Error('De maandexport mist een geldige revisie of afsluitstatus.');
   }
+  const status = closed ? 'Afgesloten' : 'Voorlopig';
+  sheets.push({name:'Exportinformatie',rows:[['Maand','Status','Revisie'],[month,status,number(revision,0)]],
+    widths:[16,20,14]});
   const blob = await createBook(sheets);
-  download(blob,'MonkeyTown-uren-'+month+suffix+'.xlsx');
+  download(blob,book.file+'-'+status.toLowerCase()+'-v'+revision+'.xlsx');
   return blob;
 }
 

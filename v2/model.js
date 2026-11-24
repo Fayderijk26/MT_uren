@@ -1,6 +1,7 @@
 // Vaste tijden. Bezoekers: open tot close. Werkdag medewerkers (ook "hele dag" en een nieuwe dienst): start tot end.
 export const TIMES = {open:'09:00',close:'17:30',start:'08:30',end:'18:00'};
-export const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date());
+export const dayOf = when => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date(when));
+export const today = () => dayOf(Date.now());
 export const now = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'})
  .format(new Date());
 export function add(day,n){
@@ -47,9 +48,14 @@ export const leads = (db,day) => db.shifts.filter(s=>!s.deadline&&!s.sick&&s.dat
 // Afgesloten maand: daarin kan niemand nog iets met uren.
 export const closed = (db,date) => db.closedMonths.some(c=>c.month===date.slice(0,7));
 const notClosed = (db,date) => check(!closed(db,date),'Deze maand is afgesloten.');
-// Afsluiten: alleen de bedrijfsleider, vanaf de 1e van de volgende maand.
+// De laatste dag van een maand ('2026-11' → '2026-11-30').
+export const lastDay=month=>month+'-'+String(new Date(Date.UTC(+month.slice(0,4),+month.slice(5,7),0)).getUTCDate());
+// Na de laatste dag van de maand (23:59) kunnen medewerkers niets meer aan die maand doen (SPEC 9e).
+export const monthOver=(date,day=today())=>day>lastDay(date.slice(0,7));
+const OVER='De maand is voorbij. Vraag de bedrijfsleider om je uren in te vullen.';
+// Afsluiten: alleen de bedrijfsleider, vanaf de laatste dag van de maand.
 export const mayCloseMonth = (db,actor,month,day=today()) =>
- actor.role==='admin'&&month<day.slice(0,7)&&!db.closedMonths.some(c=>c.month===month);
+ actor.role==='admin'&&day>=lastDay(month)&&!db.closedMonths.some(c=>c.month===month);
 export const mayReview = (db,actor,s) => !closed(db,s.date)
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
 // Heropenen van goedgekeurde uren: alleen de bedrijfsleider.
@@ -78,8 +84,8 @@ const NO_HOURS='Voor jou worden geen uren bijgehouden.';
 export const futureShifts=(db,user)=>db.shifts.concat(db.drafts,db.offers.map(o=>o.row))
  .filter(s=>s.user===user&&s.date>=today()).sort((a,b)=>a.date.localeCompare(b.date));
 export function missing(db,actor,day=today()){
- const sees=s=>isActive(db,s.user)
-  &&(actor.role==='admin'||s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
+ const sees=s=>isActive(db,s.user)&&(actor.role==='admin'||!monthOver(s.date,day)
+  &&(s.user===actor.id||actor.role==='lead'&&leads(db,s.date).includes(actor.id)));
  const late=s=>Math.round((Date.parse(day)-Date.parse(s.date))/86400000);
  return db.shifts.filter(s=>!s.deadline&&!s.sick&&ended(s,day)&&!db.hours[s.id]&&!closed(db,s.date)&&sees(s)
   &&tracksHours(db,s.user))
@@ -88,8 +94,8 @@ export function missing(db,actor,day=today()){
 const byDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 // Eigen uren die nog moeten: dienst voorbij, maand open, nog niet ingevuld of aanpassen gevraagd.
 export const ownTodo = (db,actor,day=today()) => !tracksHours(db,actor.id)?[]:db.shifts
- .filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)
- &&!closed(db,s.date)&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
+ .filter(s=>!s.deadline&&!s.sick&&s.user===actor.id&&ended(s,day)&&!closed(db,s.date)
+ &&(actor.role==='admin'||!monthOver(s.date,day))&&(!db.hours[s.id]||db.hours[s.id].status==='returned')).sort(byDate);
 // Uren die deze persoon nu kan beoordelen.
 export const toReview = (db,actor) => db.shifts
  .filter(s=>mayReview(db,actor,s)&&db.hours[s.id]?.status==='pending').sort(byDate);
@@ -106,8 +112,20 @@ export function badges(db,actor,day=today()){
  return {mine,review,hours:mine+review,requests:offersFor(db,actor).length+requests};
 }
 // Herinneren mag de bedrijfsleider of de dagleiding van die dag, nooit aan zichzelf.
-export const mayRemind = (db,actor,s) => actor.id!==s.user
+// Na de maand heeft herinneren geen zin meer: de medewerker kan niets meer invullen.
+export const mayRemind = (db,actor,s) => actor.id!==s.user&&!monthOver(s.date)
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id));
+// Uren invullen voor iemand anders: alleen de bedrijfsleider, na de maand of op de laatste dag zelf (SPEC 9e).
+export function fillProblem(db,actor,s){
+ if(actor.role!=='admin')return 'Alleen de bedrijfsleider kan uren voor iemand anders invullen.';
+ if(!monthOver(s.date)&&today()!==lastDay(s.date.slice(0,7)))
+  return 'Uren voor iemand anders invullen kan pas vanaf de laatste dag van de maand.';
+ return '';
+}
+// Mag deze persoon de uren van deze dienst nu invullen? Voor de vensters; de controle zit in submitHours.
+export const mayEnter=(db,actor,s)=>!!s&&!s.deadline&&!s.sick&&!closed(db,s.date)&&tracksHours(db,s.user)
+ &&(!db.hours[s.id]||db.hours[s.id].status==='returned')
+ &&(s.user===actor.id?s.date<=today()&&(actor.role==='admin'||!monthOver(s.date)):!fillProblem(db,actor,s));
 export function freeWindows(request,date){
  if(date<request.date||date>request.through)return [];
  let windows=[{start:request.start||'00:00',end:request.end||'23:59'}];
@@ -131,6 +149,7 @@ function announce(db,s,text){db.updates.push({id:crypto.randomUUID(),user:s.user
 function submitUnplanned({db,actor,p}){
  check(tracksHours(db,actor.id),NO_HOURS);
  interval(p);check(p.date<=today()&&/^\d{4}-\d{2}-\d{2}$/.test(p.date),'Kies een gewerkte dag.');notClosed(db,p.date);
+ check(actor.role==='admin'||!monthOver(p.date),OVER);
   const id=crypto.randomUUID();
   check(!db.shifts.some(t=>t.user===actor.id&&t.date===p.date&&intersects(t,p)),
    'Deze uren overlappen een andere dienst.');
@@ -180,14 +199,61 @@ export function absentMinutes(s){
  const planned=minutes(s.end)-minutes(s.start);
  return planned-pauseFor(planned);
 }
-// Verlof (betaald) alleen bij een vast contract; onbetaald vrij kan iedereen vragen.
-export const LEAVE_TYPES=['verlof','onbetaald'];
+// Verlof (betaald) alleen bij een vast contract; onbetaald vrij en bijzonder verlof kan iedereen vragen.
+// Overuren inzetten (SPEC 9g, nog te overleggen): vrij dat van het saldo plus- en minuren afgaat; alleen bij vast.
+export const LEAVE_TYPES=['verlof','overuren','onbetaald','bijzonder'];
+const PICK_TYPE='Kies verlof, overuren inzetten, onbetaald vrij of bijzonder verlof.';
+const VAST_ONLY='Overuren inzetten kan alleen bij een vast contract. Kies onbetaald vrij.';
+const WHOLE='Betaald verlof gaat in hele dagen. Kies voor een deel van de dag overuren inzetten of onbetaald vrij.';
+// Een verlofdag telt altijd 8 uur in de uren van de maand (besluit eigenaar 24 november).
+export const LEAVE_DAY_MINUTES=480;
+// Bijzonder verlof (SPEC 9g): de soort uit een keuzelijst; bij Anders een reden. Gaat niet van de vakantiedagen af.
+export const SPECIAL_TYPES=['zwangerschapsverlof','ouderschapsverlof','rouwverlof','kort verzuim','anders'];
+function checkSpecial(p){
+ check(SPECIAL_TYPES.includes(p.special),'Kies welk bijzonder verlof.');
+ check(p.special!=='anders'||p.reason?.trim(),'Geef bij Anders een reden.');
+}
+// Vakantiedagen (SPEC 9g): een verlofdag is 1 dag. Een dag telt als die persoon er een vaste werkdag heeft
+// (vaste beschikbaarheid, niet Niet beschikbaar), ook bij een deel van de dag.
+const fixedDay=(db,user,date)=>{const r=ruleFor({...db,extra:[]},{user,date});return !!r&&!r.off};
+const fixedDates=(db,r,from='',to='9999')=>{
+ const out=[];
+ for(let d=r.date>from?r.date:from;d<=r.through&&d<=to;d=add(d,1))if(fixedDay(db,r.user,d))out.push(d);
+ return out;
+};
+export const leaveDays=(db,r,from)=>fixedDates(db,r,from).length;
+// Vakantiedagen over: startsaldo + per nieuw kalenderjaar de dagen per jaar, min goedgekeurd verlof, plus correcties
+// van de bedrijfsleider. Wat over is gaat mee naar het volgende jaar. null: niet ingesteld (bijvoorbeeld contract Uren).
+export function vacationLeft(db,user,state='approved'){
+ const p=db.people.find(x=>x.id===user);
+ if(!p?.leaveYear||!mayPaidLeave(db,user))return null;
+ const years=Number(today().slice(0,4))-Number(p.leaveYear);
+ const taken=db.requests.filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.user===user
+  &&[].concat(state).includes(r.status)).reduce((sum,r)=>sum+leaveDays(db,r,p.leaveYear+'-01-01'),0);
+ const fixes=db.leaveCorrections.filter(c=>c.user===user).reduce((sum,c)=>sum+c.days,0);
+ return p.leaveStartBalance+p.vacationDays*years-taken+fixes;
+}
+const dayWord=n=>n===1?'1 vakantiedag':n+' vakantiedagen';
+// Saldo vakantiedagen aanpassen (de bedrijfsleider, met reden): p.days is het nieuwe saldo. Wordt vastgelegd.
+function setVacation({db,actor,admin,p}){
+ check(admin,'Alleen de bedrijfsleider kan vakantiedagen aanpassen.');
+ const now=vacationLeft(db,p.user),days=Number(p.days);
+ check(now!==null,'Voor deze medewerker zijn geen vakantiedagen ingesteld.');
+ check(String(p.days).trim()!==''&&Number.isFinite(days)&&days*2===Math.round(days*2),'Vul een aantal dagen in.');
+ check(p.reason?.trim(),'Geef een reden.');
+ db.leaveCorrections.push({user:p.user,days:days-now,reason:p.reason.trim(),by:actor.id,at:new Date().toISOString()});
+}
 const PAID_ONLY='Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.';
 export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
-// Verlof (betaald) in een maand: de vervallen (delen van) diensten van goedgekeurde verlofaanvragen.
-export const leaveItems=(db,user,month)=>db.requests
- .filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.status==='approved'&&r.user===user)
- .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'));
+// Vrij in een maand, per soort, met minutes: hoeveel het telt. Verlof: elke vaste werkdag 8 uur.
+// Andere soorten: de vervallen (delen van) diensten.
+export function leaveItems(db,user,month,type='verlof'){
+ const asked=db.requests.filter(r=>r.kind==='leave'&&(r.type||'onbetaald')===type&&r.status==='approved'&&r.user===user);
+ if(type==='verlof')return asked.flatMap(r=>fixedDates(db,r,month+'-01',lastDay(month)))
+  .map(date=>({date,minutes:LEAVE_DAY_MINUTES,day:true}));
+ return asked.flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'))
+  .map(d=>({...d,minutes:absentMinutes(d)}));
+}
 // Per persoon: goedgekeurde minuten, ziek, verlof, wacht op beoordeling, open diensten
 // (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
@@ -197,22 +263,59 @@ export function monthSummary(db,month,day=today()){
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
-  const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+absentMinutes(s),0);
-  const leave=leaveItems(db,person.id,month).reduce((sum,d)=>sum+absentMinutes(d),0);
+  const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const count=type=>leaveItems(db,person.id,month,type).reduce((sum,d)=>sum+d.minutes,0);
+  const leave=count('verlof'),unpaid=count('onbetaald'),overtime=count('overuren');
+  // Dagen gewerkt (SPEC 9h): losse dagen met goedgekeurde uren, ook als het maar een paar uur was.
+  const days=new Set(shifts.filter(s=>status(s)==='approved'&&net(db.hours[s.id])>0).map(s=>s.date)).size;
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,sick,leave,pending,open,norm,diff:approved-norm};
+  // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
+  const diff=person.contract==='vast'?approved+sick+leave-norm:null;
+  return {user:person.id,approved,sick,sickWaiting,leave,unpaid,overtime,days,pending,open,norm,diff};
  });
 }
+// Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
+// bedrijfsleider. Een maand telt mee zodra hij is afgesloten. Alleen bij een vast contract.
+export function saldo(db,user){
+ if(db.people.find(p=>p.id===user)?.contract!=='vast'||!tracksHours(db,user))return null;
+ const months=db.closedMonths.map(c=>monthSummary(db,c.month).find(r=>r.user===user)?.diff||0);
+ const fixes=db.saldoCorrections.filter(c=>c.user===user).map(c=>c.minutes);
+ return months.concat(fixes).reduce((a,b)=>a+b,0);
+}
+// Saldo op 0 zetten als het is uitbetaald of verrekend: alleen de bedrijfsleider, met reden. Wordt vastgelegd.
+function resetSaldo({db,actor,admin,p}){
+ check(admin,'Alleen de bedrijfsleider kan het saldo aanpassen.');
+ const now=saldo(db,p.user);
+ check(now!==null,'Deze medewerker heeft geen saldo.');
+ check(now!==0,'Het saldo is al 0.');
+ check(p.reason?.trim(),'Geef een reden, bijvoorbeeld uitbetaald of verrekend.');
+ db.saldoCorrections.push({user:p.user,minutes:-now,reason:p.reason.trim(),by:actor.id,at:new Date().toISOString()});
+}
+// Afsluiten (SPEC 9e): niet zolang er uren wachten op beoordeling. Op de laatste dag zelf moeten eerst de uren
+// van iedereen die die dag ingepland staat zijn ingevuld. Lege diensten van eerder tellen niet mee (bevestigen).
 function closeMonth({db,actor,p}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan een maand afsluiten.');
  check(!db.closedMonths.some(c=>c.month===p.month),'Deze maand is al afgesloten.');
- check(mayCloseMonth(db,actor,p.month),'Een maand kan pas vanaf de 1e van de volgende maand worden afgesloten.');
- const open=monthSummary(db,p.month).filter(r=>r.open.length).map(r=>db.people.find(x=>x.id===r.user).name);
- const warning='Er staan nog uren open bij: '+open.join(', ')+'. Bevestig om toch af te sluiten.';
- check(!open.length||p.confirm===true,warning);
+ check(mayCloseMonth(db,actor,p.month),'Een maand kan pas vanaf de laatste dag van de maand worden afgesloten.');
+ const personName=id=>displayName(db,id);
+ const rows=monthSummary(db,p.month),who=list=>[...new Set(list.map(o=>personName(o.shift.user)))].join(', ');
+ const open=rows.flatMap(r=>r.open),waiting=open.filter(o=>o.status==='pending');
+ check(!waiting.length,'Er wachten nog uren op beoordeling bij: '+who(waiting)
+  +'. Keur ze eerst goed of laat ze goedkeuren.');
+ const returned=open.filter(o=>o.status==='returned');
+ check(!returned.length,'Bij deze uren is om aanpassing gevraagd: '+who(returned)+'. Vul ze eerst zelf in.');
+ const sick=db.shifts.filter(s=>s.date.startsWith(p.month+'-')&&sickOpen(s)).map(shift=>({shift}));
+ check(!sick.length,'Er zijn nog ziekmeldingen zonder besluit bij: '+who(sick)+'. Kies eerst Doorbetalen of Wachtdag.');
+ const lastDayEmpty=today()===lastDay(p.month)?db.shifts.filter(s=>s.date===today()&&!s.deadline&&!s.sick
+  &&!db.hours[s.id]&&tracksHours(db,s.user)).map(shift=>({shift})):[];
+ check(!lastDayEmpty.length,'Vandaag staan nog mensen ingepland zonder uren: '+who(lastDayEmpty)
+  +'. Vul hun uren eerst in.');
+ check(!open.length||p.confirm===true,'Niet ingevuld bij: '+who(open)
+  +'. Deze diensten tellen niet mee. Bevestig om af te sluiten.');
  db.closedMonths.push({month:p.month,by:actor.id,at:new Date().toISOString()});
 }
 // Noodknop: een afgesloten maand weer openen, met reden. Wordt vastgelegd in monthReopens.
@@ -232,19 +335,27 @@ function setNorm({db,actor,p}){
  db.normOverrides=db.normOverrides.filter(n=>!(n.user===p.user&&n.month===p.month));
  db.normOverrides.push({user:p.user,month:p.month,minutes:p.minutes,reason:p.reason.trim(),by:actor.id});
 }
+// Eigen uren: tot en met de laatste dag van de maand (bedrijfsleider tot het afsluiten). Voor iemand anders: alleen
+// de bedrijfsleider, na de maand of op de laatste dag; die uren zijn meteen goedgekeurd (SPEC 9e).
 function submitHours({db,actor,p,s}){
- check(tracksHours(db,actor.id),NO_HOURS);
- check(!s?.deadline&&s?.user===actor.id&&s.date<=today(),'Kies een eigen gewerkte dienst.');
+ const forOther=s&&s.user!==actor.id;
+ check(tracksHours(db,forOther?s.user:actor.id),forOther?'Voor deze persoon worden geen uren bijgehouden.':NO_HOURS);
+ check(s&&!s.deadline&&(forOther||s.date<=today()),'Kies een eigen gewerkte dienst.');
  notClosed(db,s.date);
+ if(forOther){const problem=fillProblem(db,actor,s);check(!problem,problem)}
+ else check(actor.role==='admin'||!monthOver(s.date),OVER);
  check(!s.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
   check(!db.hours[s.id]||db.hours[s.id].status==='returned','Deze uren zijn al ingediend.');
-  interval(p);notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
+  interval(p);if(!forOther)notLaterThanNow(s.date,p.end);const pause=Number(p.pause);
   check(String(p.pause).trim()!==''&&Number.isInteger(pause)&&pause>=0&&pause<minutes(p.end)-minutes(p.start),
    'Vul de werkelijke pauze in.');
   check(!db.shifts.some(t=>t.id!==s.id&&t.user===s.user&&t.date===s.date&&intersects(p,db.hours[t.id]||t)),
    'Deze uren overlappen een andere dienst.');
   const {approvedBy,approvedAt,reopenedBy}=db.hours[s.id]||{};
   db.hours[s.id]={start:p.start,end:p.end,pause,status:'pending',approvedBy,approvedAt,reopenedBy};
+  // Ingevuld door de bedrijfsleider voor iemand anders, of eigen uren van leiding of bedrijfsleider: meteen goedgekeurd.
+  if(forOther||actor.role!=='employee')
+   Object.assign(db.hours[s.id],{status:'approved',approvedBy:actor.id,approvedAt:new Date().toISOString()});
 }
 
 function reviewHours({db,actor,op,p,s}){
@@ -291,8 +402,15 @@ function recordAvailability({db,actor,op,p}){
    check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
    const type=op==='leave'?p.type||'onbetaald':undefined;
    if(op==='leave'){
-    check(LEAVE_TYPES.includes(type),'Kies verlof of onbetaald vrij.');
+    check(LEAVE_TYPES.includes(type),PICK_TYPE);
     check(type!=='verlof'||mayPaidLeave(db,actor.id),PAID_ONLY);
+    check(type!=='overuren'||mayPaidLeave(db,actor.id),VAST_ONLY);
+    check(type!=='verlof'||!start,WHOLE);
+    if(type==='bijzonder')checkSpecial(p);
+    const left=type==='verlof'?vacationLeft(db,actor.id,['approved','pending']):null;
+    const want=leaveDays(db,{user:actor.id,date:p.date,through});
+    check(left===null||want<=left,'Je hebt nog '+dayWord(left)+' over (na je open aanvragen). Je vraagt er '+want
+     +'. Kies minder dagen, overuren inzetten of onbetaald vrij.');
    }
    const overlaps=r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date
     &&(!start||!r.start||intersects(r,p));
@@ -300,6 +418,7 @@ function recordAvailability({db,actor,op,p}){
    db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,
     weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
    if(type)db.requests.at(-1).type=type;
+   if(type==='bijzonder')db.requests.at(-1).special=p.special;
   };
 }
 
@@ -322,10 +441,17 @@ function decideRequest({db,admin,p,r}){
   }else if(p.accept){
    // De bedrijfsleider kan de soort aanpassen (voorlopig, zie SPEC ronde 9b). De gevraagde soort blijft in askedType.
    if(r.kind==='leave'&&p.type&&p.type!==r.type){
-    check(LEAVE_TYPES.includes(p.type),'Kies verlof of onbetaald vrij.');
+    check(LEAVE_TYPES.includes(p.type),PICK_TYPE);
+    if(p.type==='bijzonder')checkSpecial(p);
     r.askedType=r.type||'onbetaald';r.type=p.type;
+    if(p.type==='bijzonder')r.special=p.special;
    }
    check(r.type!=='verlof'||mayPaidLeave(db,r.user),PAID_ONLY);
+   check(r.type!=='overuren'||mayPaidLeave(db,r.user),VAST_ONLY);
+   check(r.type!=='verlof'||!r.start,WHOLE);
+   const left=r.type==='verlof'?vacationLeft(db,r.user):null,cost=r.kind==='leave'?leaveDays(db,r):0;
+   check(left===null||cost<=left,displayName(db,r.user)+' heeft nog '+dayWord(left)+'; deze aanvraag is '+cost
+    +'. Kies onbetaald vrij of pas het saldo vakantiedagen aan.');
    check(!closed(db,r.date)&&!closed(db,r.through),'Deze maand is afgesloten.');
    r.dropped=[];
    for(const old of affected(db,r)){
@@ -502,13 +628,26 @@ function declineExtra({db,admin,p}){
 }
 
 // Medewerker toevoegen of wijzigen (alleen de bedrijfsleider). Er blijft altijd minstens één bedrijfsleider.
+// Naam in de app: bij twee mensen met dezelfde naam altijd naam en achternaam (besluit eigenaar 24 november).
+export function displayName(db,id){
+ const p=db.people.find(x=>x.id===id);
+ if(!p)return '';
+ const same=db.people.some(x=>x!==p&&x.name.toLowerCase()===p.name.toLowerCase());
+ return same&&p.lastName?p.name+' '+p.lastName:p.name;
+}
 function savePerson({db,admin,p}){
  check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
  const name=String(p.name||'').trim(),hours=Number(p.contractHours),phone=String(p.phone||'').trim();
+ // Voor de export naar de loonadministratie (SPEC 9h). Niet verplicht.
+ const pay=Object.fromEntries(['staffNumber','firstName','lastName','initials'].map(k=>[k,String(p[k]||'').trim()]));
  const old=p.id?db.people.find(x=>x.id===p.id):null;
  check(!p.id||old,'Deze medewerker bestaat niet.');
  check(name,'Vul een naam in.');
- check(!db.people.some(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase()),'Er bestaat al iemand met deze naam.');
+ // Dezelfde naam mag, als allebei een (verschillende) achternaam hebben; die toont de app dan erbij.
+ const twin=db.people.find(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase());
+ const last=String(p.lastName||'').trim();
+ check(!twin||last&&twin.lastName&&twin.lastName.toLowerCase()!==last.toLowerCase(),
+  'Er bestaat al iemand met deze naam. Vul bij allebei een achternaam in; de app toont dan naam en achternaam.');
  check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
  check(['vast','uren'].includes(p.contract),'Kies het soort contract: vast of uren.');
  check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
@@ -517,13 +656,23 @@ function savePerson({db,admin,p}){
  check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
- const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false};
+ // Vakantiedagen per jaar en startsaldo (SPEC 9g), alleen bij een vast contract. Het startsaldo geldt voor het jaar
+ // waarin het voor het eerst is ingevuld.
+ const vacation={};
+ if(p.contract==='vast'&&String(p.vacationDays??'').trim()!==''){
+  vacation.vacationDays=Number(p.vacationDays);
+  vacation.leaveStartBalance=Number(String(p.leaveStartBalance??'').trim()||p.vacationDays);
+  check([vacation.vacationDays,vacation.leaveStartBalance].every(n=>Number.isFinite(n)&&n>=0&&n<=100),
+   'Vul de vakantiedagen in als een aantal dagen (0 of meer).');
+  vacation.leaveYear=old?.leaveYear||today().slice(0,4);
+ }
+ const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false,
+  ...pay,...vacation};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
-// Ziek melden per dienst (voorlopig, zie SPEC ronde 9a). Zelf: een eigen dienst die nog niet begonnen is.
-// Dagleiding van die dag en bedrijfsleider: ook namens iemand anders en achteraf. Geen goedkeuring nodig.
-const started=s=>s.date<today()||s.date===today()&&s.start<=now();
+// Ziek melden per dienst (SPEC 9a en 9d): alleen de dagleiding van die dag en de bedrijfsleider, ook achteraf.
+// Medewerkers melden zich niet zelf ziek; een leidinggevende kan zichzelf ziek melden voor een eigen dienst.
 const mayReportFor=(db,actor,s)=>actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
 export function sickProblem(db,actor,s){
  if(!s)return 'Deze dienst bestaat niet.';
@@ -534,8 +683,8 @@ export function sickProblem(db,actor,s){
  if(s.unplanned)return 'Een ongeplande dienst kun je niet ziek melden.';
  if(db.hours[s.id])return 'Voor deze dienst zijn al uren ingediend.';
  if(mayReportFor(db,actor,s))return '';
- if(s.user!==actor.id)return 'Je kunt deze dienst niet ziek melden.';
- return started(s)?'Je dienst is al begonnen. Bel de leiding: die kan je ziek melden.':'';
+ return s.user===actor.id?'Ziek melden doet de leiding. Bel de leidinggevende van de dag.'
+  :'Je kunt deze dienst niet ziek melden.';
 }
 export const maySick=(db,actor,s)=>!sickProblem(db,actor,s);
 export const mayUndoSick=(db,actor,s)=>!!s?.sick&&!closed(db,s.date)&&(actor.role==='admin'||s.sick.by===actor.id);
@@ -543,7 +692,7 @@ function reportSick({db,actor,s}){
  const problem=sickProblem(db,actor,s);
  check(!problem,problem);
  s.sick={by:actor.id,at:new Date().toISOString()};
- if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+actor.name+' · '+s.start+'–'+s.end);
+ if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+displayName(db,actor.id)+' · '+s.start+'–'+s.end);
 }
 // Meerdere dagen tegelijk ziek melden (bij Ontbreekt). Alles of niets: mag één dag niet, dan wordt niets gemeld.
 function reportSickMany({db,actor,p}){
@@ -559,8 +708,19 @@ function undoSick({db,actor,s}){
  check(s?.sick,'Deze dienst is niet ziek gemeld.');
  check(mayUndoSick(db,actor,s),'Alleen wie de ziekmelding deed of een bedrijfsleider kan hem intrekken.');
  delete s.sick;
- if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+actor.name+' · '+s.start+'–'+s.end);
+ if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+displayName(db,actor.id)+' · '+s.start+'–'+s.end);
 }
+// Per ziek gemelde dienst beslist de bedrijfsleider: doorbetalen of wachtdag (SPEC 9d). Tot dan telt hij niet mee.
+export const sickPaid=s=>s.sick?.paid===true;
+export const sickOpen=s=>!!s.sick&&s.sick.paid===undefined;
+function decideSick({db,actor,admin,s,p}){
+ check(admin,'Alleen de bedrijfsleider beslist over doorbetalen bij ziekte.');
+ check(s?.sick,'Deze dienst is niet ziek gemeld.');
+ notClosed(db,s.date);
+ Object.assign(s.sick,{paid:p.paid===true||p.paid==='true',decidedBy:actor.id,decidedAt:new Date().toISOString()});
+}
+// Ziekmeldingen zonder besluit in een open maand: voor de bedrijfsleider.
+export const sickToDecide=db=>db.shifts.filter(s=>sickOpen(s)&&!closed(db,s.date)).sort(byDate);
 // Ziek gemelde diensten vanaf vandaag die deze persoon overziet: bedrijfsleider alles, dagleiding haar dagen.
 export const sickList=(db,actor,day=today())=>db.shifts.filter(s=>s.sick&&s.date>=day&&s.user!==actor.id
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id))).sort(byDate);
@@ -601,7 +761,7 @@ function answerOffer({db,actor,admin,p}){
   }
   // Antwoord van de bedrijfsleider gaat naar de medewerker; antwoord van de medewerker naar iedere bedrijfsleider.
   const to=o.turn==='admin'?[o.row.user]:activePeople(db).filter(x=>x.role==='admin').map(x=>x.id);
-  const answer=db.people.find(x=>x.id===o.row.user).name+' · '
+  const answer=displayName(db,o.row.user)+' · '
    +(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end
    :o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end
    :'Voorstel afgewezen · '+o.row.start+'–'+o.row.end);
@@ -632,6 +792,9 @@ const actions={
   sick: reportSick,
   sickMany: reportSickMany,
   sickUndo: undoSick,
+  sickDecide: decideSick,
+  saldoReset: resetSaldo,
+  leaveSet: setVacation,
   setActive,
   return: reviewHours,
   reopen: reopenHours,

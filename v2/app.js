@@ -3,7 +3,7 @@ import {calendarPage} from './calendar.js';
 import {ic} from '../ui.js';
 import {weekPage} from './week.js';
 import {needsQuestion,ruleFor,today,add,apply,TIMES,minutes,badges,pauseFor,pauseQuestion} from './model.js';
-import {h,button,clock,duration,badge,roleNames,areaChoice} from './view.js';
+import {h,button,clock,duration,badge,roleNames,areaChoice,name} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -22,7 +22,8 @@ const read=()=>{
  }
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
- data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
+ data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];data.saldoCorrections??=[];
+ data.leaveCorrections??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
@@ -80,7 +81,7 @@ function render(){
 }
 // Demo: kiezen als wie je de app bekijkt. Verdwijnt als er echt ingelogd wordt (ronde 8).
 function profilePicker(){
- const option=p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+roleNames[p.role]
+ const option=p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+name(db,p.id)+' · '+roleNames[p.role]
   +'</option>';
  const people=db.people.filter(p=>p.active!==false||p.id===actorId);
  return '<label>Demoprofiel <select id="profile">'+people.map(option).join('')+'</select></label>';
@@ -122,8 +123,9 @@ function show(action,id){
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();backToRequest();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='sickPaid'||action==='sickUnpaid'){save('sickDecide',{id,paid:action==='sickPaid'});return}
  if(action==='reactivate'){save('setActive',{id,active:true});return}
- if(action==='export'){exportMonthFile(id);return}
+ if(action==='export'){exportMonthFile(view.month,id);return}
  if(action==='planExtra'){
   const [date,user]=id.split('|');show('newDraft',date);
   modal.querySelector('[name=user]').value=user;pickArea();suggestWindow(true);
@@ -194,11 +196,11 @@ function showNet(){
  const net=minutes(end)-minutes(start)-Number(pause);
  el.textContent=net>0?'Netto '+duration(net):'Controleer de pauze.';
 }
-async function exportMonthFile(month){
+// kind: 'pay' (loonadministratie) of 'full' (uitgebreid), zie SPEC 9h.
+async function exportMonthFile(month,kind){
  try{
   const {exportMonth}=await import('../excel/roster.js');
-  const {rows,summary,metadata}=exportData(db,month);
-  await exportMonth(rows,summary,month,metadata);
+  await exportMonth(month,exportData(db,month)[kind]);
  }catch(e){open('Export mislukt','<p>'+h(e.message)+'</p>')}
 }
 async function save(op,p){
@@ -232,6 +234,8 @@ document.addEventListener('change',e=>{
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
 document.addEventListener('change',e=>{
  if(e.target.name==='whole')modal.querySelector('#extratimes').hidden=e.target.value==='whole';
+ if(e.target.name==='type'&&modal.querySelector('#special'))
+  modal.querySelector('#special').hidden=e.target.value!=='bijzonder';
 });
 document.addEventListener('input',e=>{
  if(e.target.name!=='pauseOther')return;
@@ -258,6 +262,7 @@ modal.addEventListener('submit',e=>{
  if(op==='setActive')p.active=p.active==='true';
  if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
+ if(op==='saldoReset'||op==='leaveSet')p.user=p.id;
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

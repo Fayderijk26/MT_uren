@@ -7,6 +7,9 @@ globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(u
 const {pilotRoster}=await import('../v2/pilot.js');
 const {hoursPage}=await import('../v2/hours.js');
 
+// Sylvia en Iris zijn leidinggevenden: hun eigen uren zijn meteen goedgekeurd. Voor tests over beoordelen
+// maken we ze medewerker.
+const asEmployee=(db,...ids)=>{for(const id of ids)db.people.find(p=>p.id===id).role='employee';return db};
 test('Sylvia mist twee dagen: Eva ziet één regel voor Sylvia en stuurt één herinnering voor beide dagen',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
  const db=pilotRoster(),eva=db.people.find(p=>p.id==='eva');
@@ -35,9 +38,11 @@ const {apply,monthSummary}=await import('../v2/model.js');
 // Maandag 23 november. Sylvia: di 17 goedgekeurd (9u), wo 18 en vr 20 ziek, zo 22 wacht op beoordeling.
 function sylviaMonth(t){
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
- let db=apply(pilotRoster(),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
+ let db=apply(asEmployee(pilotRoster(),'sylvia'),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
  db=apply(db,'eva','approve',{id:'sylvia-2026-11-17'});
- for(const id of ['sylvia-2026-11-18','sylvia-2026-11-20'])db=apply(db,'eva','sick',{id});
+ for(const id of ['sylvia-2026-11-18','sylvia-2026-11-20']){
+  db=apply(db,'eva','sick',{id});db=apply(db,'eva','sickDecide',{id,paid:true});
+ }
  return apply(db,'sylvia','hours',{id:'sylvia-2026-11-22',start:'08:30',end:'18:00',pause:30});
 }
 const mine=db=>hoursPage(db,db.people.find(p=>p.id==='sylvia'),{page:'hours',month:'2026-11'});
@@ -67,9 +72,9 @@ test('Onder Diensten staan ook ziek gemelde diensten en verlofdagen, met hoeveel
   choices:{[shift.id]:{before:JSON.stringify(shift),value:'none'}}});
  t.mock.timers.setTime(Date.parse('2026-11-23T12:00:00+01:00'));
  const list=between(mine(db),'<h2>Diensten','</section>');
- assert.match(list,/wo 25 nov<\/b><small>08:30–18:00 · telt 9u 0m<\/small>[\s\S]*?chip-leave">Verlof \(betaald\)/);
+ assert.match(list,/wo 25 nov<\/b><small>Verlofdag · telt 8u 0m<\/small>[\s\S]*?chip-leave">Verlof \(betaald\)/);
  assert.match(list,/vr 20 nov<\/b><small>10:00–18:00 · telt 7u 30m<\/small>[\s\S]*?chip-off">Ziek gemeld/);
- assert.match(between(mine(db),'<h2>Mijn uren','</section>'),/Verlof<\/span><b>9u 0m<\/b>/);
+ assert.match(between(mine(db),'<h2>Mijn uren','</section>'),/Verlof<\/span><b>8u 0m<\/b>/);
  assert.match(list,/data-act="unplanned"/);
 });
 

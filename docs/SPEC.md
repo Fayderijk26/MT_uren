@@ -37,7 +37,7 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 ## 4. Besluiten van de eigenaar (blijven staan)
 1. Berichten tussen mensen in de app zijn **bewust weggelaten**. Bij problemen bellen of WhatsAppen ze. Uitzondering: de **Weekly** van de bedrijfsleider bij het publiceren (ronde 14). Dat is een wekelijkse update in één richting; reageren kan niet.
 2. Kantoordienst bestaat niet als aparte soort: een dienst is een dienst.
-3. Bedrijfsleiders en leidinggevenden mogen hun eigen uren goedkeuren. Op één dag mogen meerdere dagleidingen de uren van iedereen goedkeuren.
+3. Bedrijfsleiders en leidinggevenden mogen hun eigen uren goedkeuren. **Gewijzigd (24 november):** hun eigen uren zijn meteen goedgekeurd bij het indienen; nog een keer goedkeuren is dubbelop. Op één dag mogen meerdere dagleidingen de uren van iedereen goedkeuren.
 4. Bij uren heet de actie **"Aanpassen vragen"** (niet terugsturen). Afwijzen is alleen voor ongeplande diensten en voorstellen.
 5. Vrij vragen: minimaal drie weken vooruit. Alleen een goedgekeurde aanvraag telt als vrij.
 6. Voor uren die precies met het rooster overeenkomen komt een knop **"Alles goedkeuren"**.
@@ -207,31 +207,39 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Ziekte-uren gebruiken dezelfde regel (nu: 30 minuten bij meer dan 3 uur).
 - De vooraf gekozen pauze verandert mee als iemand de tijden aanpast, zolang de pauze niet zelf is aangeklikt.
 
-**9d: ziek melden door de leiding, besluit door de bedrijfsleider** (nog niet gebouwd)
+**9d: ziek melden door de leiding, besluit door de bedrijfsleider** (gebouwd 24 november; actie `sickDecide`)
 - **Medewerkers melden zich niet meer zelf ziek** in de app. De knop gaat weg. Ze bellen de leiding.
-- Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden.
+- Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden. Het venster heeft geen belmelding meer (besluit eigenaar 24 november).
 - Per ziek gemelde dienst beslist de bedrijfsleider: **Doorbetalen** of **Wachtdag (niet doorbetalen)**. Contract en cao noemen 2 wachtdagen, maar de bedrijfsleider kiest per situatie. Tot het besluit staat er "Wacht op besluit" en telt de dienst nog niet mee.
 - De medewerker ziet bij de dienst: "Ziek gemeld door … op …" en daarna "telt mee" of "telt niet mee (wachtdag)".
-- Nieuw veld bij de ziekmelding: het besluit van de bedrijfsleider.
+- Nieuwe velden bij de ziekmelding (`sick`): `paid` (true = doorbetalen, false = wachtdag), `decidedBy`, `decidedAt`. De bedrijfsleider ziet op Vandaag de kaart **Ziek: besluit nodig** en kiest daar of in het venster van de dienst. Wat wacht, staat bij Mijn uren apart ("ziek wacht op besluit").
 - Geldt ook voor oproepkrachten (nog bevestigen, zie hoofdstuk 5).
 - Blijft zoals het is: geen betermelding (ziek per dienst); halverwege ziek naar huis = gewerkte uren invullen; ziek op een dag zonder dienst telt niet mee; het loonpercentage bij ziekte rekent de loonadministratie.
 
-**9e: maand dicht op de laatste dag** (nog niet gebouwd)
+**9e: maand dicht op de laatste dag** (gebouwd 24 november; `monthOver`, `mayEnter`, `fillProblem` in `model.js`)
 - Medewerkers vullen uren in en dateren ongeplande diensten terug tot en met de laatste dag van de maand, 23:59 (zie besluit 9). Daarna kunnen zij niets meer aan die maand doen.
-- Daarna ziet de bedrijfsleider een overzicht van diensten zonder uren. Per dienst: zelf invullen of leeg laten. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
-- **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing).
+- Daarna ziet de bedrijfsleider bij Ontbreekt de diensten zonder uren (de dagleiding niet meer; Herinner verdwijnt). Per dienst: zelf invullen of leeg laten. Bij meer dagen van één persoon is er één knop **Uren invullen** met een venster per dag. Uren die de bedrijfsleider voor iemand anders invult, zijn meteen goedgekeurd. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
+- **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing). Ook niet zolang er om aanpassing is gevraagd (de bedrijfsleider vult ze dan zelf in) of een ziekmelding geen besluit heeft (besluit eigenaar 24 november: de bedrijfsleider moet een keuze maken).
 - De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
-- Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen.
+- Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen. Vanaf de laatste dag van de maand kan de bedrijfsleider uren van die maand voor iemand anders invullen.
 
-**9f: maandnorm en lopend saldo** (nog niet gebouwd)
+**9f: maandnorm en lopend saldo** (gebouwd 24 november; `saldo` in `model.js`, lijst `saldoCorrections`. Het saldo telt de afgesloten maanden)
 - Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.
 - Het verschil (gewerkt + ziek dat meetelt + verlof, min de norm) gaat elke maand mee naar de volgende maand en naar het volgende jaar: een **lopend saldo** plus- en minuren.
-- De medewerker ziet het saldo bij Mijn uren. Leidinggevenden en de bedrijfsleider zien het ook.
+- De medewerker ziet zijn eigen saldo bij Mijn uren. Het saldo van anderen ziet alleen de bedrijfsleider (besluit eigenaar 24 november; leidinggevenden niet). Zolang de maand loopt staat er "Verschil tot nu toe".
 - Geen grens en geen toeslag. Het saldo wordt nooit vanzelf afgerekend: de bedrijfsleider zet het op 0 als het is uitbetaald of verrekend (met reden, vastgelegd). Aan het eind van het jaar bekijkt het bedrijf het saldo.
 - Hoe een verlofdag in het saldo telt: open punt (hoofdstuk 5).
 - Nieuw: een lijst met saldo-correcties (wie, wanneer, hoeveel, reden). Het saldo zelf wordt uitgerekend, niet opgeslagen.
 
-**9g: vakantiedagen in dagen** (nog niet gebouwd)
+**9g: vakantiedagen in dagen** (gebouwd 24 november; `leaveDays`, `vacationLeft` in `model.js`, lijst `leaveCorrections`)
+- Besluiten eigenaar 24 november: een verlofdag telt als de dag een vaste werkdag is in de vaste beschikbaarheid (keuze 1A); vakantiedagen gaan in hele dagen, plus- en minuren in uren (eerder of langer werken). Wat over is gaat mee naar het volgende jaar; de bedrijfsleider kan het saldo aanpassen (nieuw aantal, met reden, vastgelegd). Bijzonder verlof: zwangerschapsverlof, ouderschapsverlof, rouwverlof, kort verzuim, anders (met reden).
+- Een verlofdag telt altijd **8 uur** in de uren van de maand, ook zonder geplande dienst (besluit eigenaar 24 november). Betaald verlof gaat in hele dagen.
+- **Nog te overleggen, te kiezen in de testfase met proefgebruikers:**
+  - **Overuren inzetten** als vierde soort vrij (alleen vast contract). Telt niet als verlof: de uren van de vervallen diensten gaan van het saldo plus- en minuren af. De bedrijfsleider ziet bij beoordelen het saldo en keurt goed of af. Staat er nog geen dienst, dan telt het 0 uur.
+  - Een deel van de dag vrij kan alleen als overuren inzetten of onbetaald vrij, niet als betaald verlof.
+- Bijzonder verlof keurt de bedrijfsleider goed of af, zoals elke aanvraag.
+- Gekozen bij het bouwen (te bevestigen): bijzonder verlof kan iedereen vragen en telt niet mee in de uren van de maand; zonder ingevulde vakantiedagen controleert de app niets.
+- Medewerkers en leidinggevenden met een vast contract zien hun eigen saldo plus- en minuren en vakantiedagen bij Mijn uren.
 - Verlof telt in **dagen**: 1 verlofdag is 1 dag, ongeacht de uren. Bijvoorbeeld: 32 uur per week heeft 21 vakantiedagen per jaar.
 - Bij het aanmaken van een medewerker vult de bedrijfsleider het **aantal vakantiedagen per jaar** en een **startsaldo** in. Het verlofjaar is het kalenderjaar.
 - De app houdt het saldo bij (opgenomen en over). Aan het eind van het jaar wordt het gelijkgetrokken met de loonadministratie.
@@ -241,7 +249,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - **Bijzonder verlof:** een derde soort met een keuzelijst (bijvoorbeeld zwangerschapsverlof, of Anders met een reden). De bedrijfsleider beslist wat ermee gebeurt. Bij het tekstvak staat "Vermeld geen medische informatie." Welke soorten en keuzes: open punt.
 - Nieuwe velden: vakantiedagen per jaar en startsaldo bij een persoon; soort bijzonder verlof bij een aanvraag.
 
-**9h: maandoverzicht en twee exports** (nog niet gebouwd; vervangt de oude 9c)
+**9h: maandoverzicht en twee exports** (gebouwd 24 november, zonder mail; `exportData` in `month.js`. De kolom Percentage blijft leeg tot dat besloten is. `name` blijft de naam in de app; de vier nieuwe velden zijn voor de export. Hebben twee mensen dezelfde naam, dan toont de app overal naam en achternaam (`displayName`); de achternaam is dan bij allebei verplicht)
 - Uren als decimaal getal (6,50). Eén regel per persoon.
 - **Export voor de loonadministratie** (zoals het bedrijf nu in Excel werkt): personeelsnummer, achternaam met voorletters, voornaam, vast of oproep (bij vast een percentage, zie hoofdstuk 5), uren gewerkt, dagen gewerkt (aantal losse dagen met gewerkte uren, ook als het maar 3 uur was). Ziek en verlof staan in eigen kolommen, niet bij uren gewerkt.
 - **Uitgebreide export** voor de bedrijfsleiders: daarbij gewerkt, ziek, verlof, onbetaald vrij, totaal, norm, verschil en saldo. Later misschien: hoe vaak ziek, hoeveel extra beschikbaarheid, hoeveel vrij gevraagd.

@@ -2,9 +2,10 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes} from './model.js';
+ minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
- duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
+ duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
+ sickDecision} from './view.js';
 import {dayContent} from './calendar.js';
 import {availability} from './week.js';
 import {closeMonthBody} from './month.js';
@@ -12,9 +13,10 @@ import {closeMonthBody} from './month.js';
 const shiftOf=(db,id)=>db.shifts.find(s=>s.id===id);
 const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)','reason','text','',
  required?'required':'');
-// Ziek gemeld: wie het meldde en hoeveel uur het telt.
-export const sickText=(db,s)=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' · telt '
- +duration(absentMinutes(s))+'</p>';
+// Ziek gemeld: wie het meldde, wanneer, en of het meetelt. De bedrijfsleider ziet de knoppen voor het besluit.
+export const sickText=(db,s,actor)=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' op '
+ +h(dateLabel(dayOf(s.sick.at)))+' · '+h(sickStatus(s))+'</p>'
+ +(actor&&!closed(db,s.date)&&sickDecision(db,actor,s)?'<div class="vactions">'+sickDecision(db,actor,s)+'</div>':'');
 
 // Een dag in Mijn rooster: wat er die dag staat, en vanaf vandaag Vrij vragen en Beschikbaarheid opgeven.
 function calendarDay(db,actor,day){
@@ -32,7 +34,7 @@ function ownShift(db,actor,id){
  const canEnter=shift.date<=today()&&!shift.deadline&&!shift.sick&&tracksHours(db,actor.id);
  const body='<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p>'
   +'<p>Aangegeven beschikbaarheid: '+h(availability(db,actor.id,shift.date))+'</p>'
-  +(shift.sick?sickText(db,shift):'')
+  +(shift.sick?sickText(db,shift,actor):'')
   +(canEnter?button('Gewerkte uren','entry',id):'')
   +sickButton(db,actor,shift);
  return {title:'Mijn dienst',body};
@@ -48,7 +50,7 @@ function shiftDetails(db,actor,id){
  let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p>'
   +'<p>Aangegeven beschikbaarheid: '+h(known==='Onbekend'?'Geen beschikbaarheid opgegeven':known)+'</p>';
  if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
- if(row.sick)body+=sickText(db,row);
+ if(row.sick)body+=sickText(db,row,actor);
  if(!draft)body+=sickButton(db,actor,row);
  if(admin&&entry)body+=button('Uren bekijken','inspect',id);
  if(admin&&row.date>=today()){
@@ -79,10 +81,10 @@ function reviewChoices(shift){
 // Uren invullen (entry) of bekijken en beoordelen (inspect).
 function hoursDialog(db,actor,id,action){
  const shift=shiftOf(db,id),entry=db.hours[id];
- const editable=action==='entry'&&!shift.sick&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
+ const editable=action==='entry'&&mayEnter(db,actor,shift);
  let body='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p>'
   +'<p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
- if(shift.sick)body+=sickText(db,shift);
+ if(shift.sick)body+=sickText(db,shift,actor);
  if(entry)body+='<p>'+chip(entry.status)+' '+clock(entry)+' · '+entry.pause+' min pauze</p>';
  if(entry?.reason)body+='<p>'+h(entry.reason)+'</p>';
  if(closed(db,shift.date))body+='<p class="notice">Deze maand is afgesloten.</p>';
@@ -105,7 +107,7 @@ function unplanned(db,actor){
 // Ziek melden, of de ziekmelding intrekken.
 function sickAsk(db,actor,id){
  const shift=shiftOf(db,id);
- return {title:'Ziek melden',body:sickAskBody(db,shift,shift.user===actor.id)};
+ return {title:'Ziek melden',body:sickAskBody(db,shift)};
 }
 function sickUndoAsk(db,actor,id){
  const shift=shiftOf(db,id);
@@ -113,6 +115,13 @@ function sickUndoAsk(db,actor,id){
  return {title:'Ziekmelding intrekken',body:what+form('sickUndo','','Ziekmelding intrekken',id)};
 }
 
+// Na de maand: de lege diensten van één persoon die de bedrijfsleider nog kan invullen (SPEC 9e).
+function fillPick(db,actor,user){
+ const days=missing(db,actor).map(m=>m.shift).filter(s=>s.user===user&&mayEnter(db,actor,s));
+ const row=s=>'<div class="compact">'+line(dateLabel(s.date),clock(s),button('Uren invullen','entry',s.id))+'</div>';
+ return {title:'Uren invullen voor '+name(db,user),body:'<p>Diensten die je leeg laat, tellen niet mee.</p>'
+  +days.map(row).join('')};
+}
 // Meerdere ontbrekende dagen van één persoon ziek melden: per dag een vinkje, niets vooraf aangevinkt.
 function sickPick(db,actor,user){
  const day=s=>'<label><input type="checkbox" name="ids" value="'+h(s.id)+'"> '
@@ -126,6 +135,16 @@ function sickPick(db,actor,user){
 function norm(db,actor,id){
  const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);
  return {title:'Norm aanpassen · '+name(db,id),body:form('setNorm',body,'Norm opslaan',id)};
+}
+// Saldo plus- en minuren van één medewerker: de stand, de correcties, en op 0 zetten met reden (SPEC 9f).
+function saldoDialog(db,actor,user){
+ const own=saldo(db,user);
+ if(own===null)return null;
+ const fixes=db.saldoCorrections.filter(c=>c.user===user).map(c=>'<p>'+h(dateLabel(dayOf(c.at))+' · op 0 gezet door '
+  +name(db,c.by)+' · '+c.reason)+'</p>').join('');
+ const reset=own?form('saldoReset',reason(true),'Saldo op 0 zetten',user):'';
+ return {title:'Saldo '+name(db,user),body:'<p>Saldo plus- en minuren: <b>'+h((own>0?'+':'')+duration(own))
+  +'</b></p><p>Telt de afgesloten maanden. Zet het op 0 als het is uitbetaald of verrekend.</p>'+fixes+reset};
 }
 function closeMonth(db,actor,month){
  return {title:'Maand afsluiten',body:form('closeMonth',closeMonthBody(db,month),'Maand afsluiten',month)};
@@ -160,10 +179,18 @@ function decision(db,actor,id){
  const r=db.requests.find(x=>x.id===id),leave=r.kind==='leave';
  const effects=r.kind==='weekly'?weeklyEffects(db,r):leave?leaveEffects(db,r):'';
  const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
- const zero=leave&&r.type==='verlof'&&!affected(db,r).length
-  ?'<p class="notice">Er staan nog geen diensten in deze periode: dit verlof telt nu 0 uur.</p>':'';
- const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero;
- const type=leave?leaveTypeField(db,r.user,r.type):'';
+ const zero=leave&&r.type==='overuren'&&!affected(db,r).length
+  ?'<p class="notice">Er staan nog geen diensten in deze periode: dit telt nu 0 uur.</p>':'';
+ const own=leave&&r.type==='overuren'?saldo(db,r.user):null;
+ const plus=own===null?'':'<p>Saldo plus- en minuren van '+h(name(db,r.user))+': '+(own>0?'+':'')+duration(own)
+  +'</p>';
+ // Vakantiedagen (SPEC 9g): wat deze aanvraag kost en wat er nog over is.
+ const left=leave&&r.type==='verlof'?vacationLeft(db,r.user):null;
+ const cost=left===null?'':'<p>Telt '+leaveDays(db,r)+' vakantiedagen. '+h(name(db,r.user))
+  +' heeft er nog '+left+'.</p>';
+ const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero
+  +cost+plus;
+ const type=leave?leaveTypeField(db,r.user,r.type,r.special):'';
  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
   +button('Aanvraag afwijzen','askReject',id)+'</div>';
  const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
@@ -175,6 +202,8 @@ const availabilityTitles={leave:'Vrij vragen',weekly:'Vaste beschikbaarheid wijz
 function availabilityDialog(db,actor,day,action){
  let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',day||today(),'required min="'+today()+'"');
  if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
+ const left=action==='leave'?vacationLeft(db,actor.id,['approved','pending']):null;
+ if(left!==null)body+='<p>Je hebt nog '+left+' vakantiedagen.</p>';
  if(action==='leave')body+=leaveTypeField(db,actor.id)+field('Tot en met (bij meerdere dagen)','through','date');
  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]
   :[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],
@@ -193,13 +222,21 @@ const areaBoxes=own=>'<fieldset class="field areas"><span>Werkplek</span>'+AREAS
 function inactiveBox(db,actor,p){
  if(p.id===actor.id)return '';
  const future=futureShifts(db,p.id);
- if(future.length)return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' heeft nog '+future.length
+ if(future.length)return '<h3>Op inactief zetten</h3><p>'+h(name(db,p.id))+' heeft nog '+future.length
   +' dienst(en) in de toekomst. Haal die eerst weg of geef ze aan iemand anders:</p>'
   +future.map(s=>'<p>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>').join('');
- return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' verdwijnt uit het rooster. Oude uren blijven bewaard.</p>'
+ return '<h3>Op inactief zetten</h3><p>'+h(name(db,p.id))+' verdwijnt uit het rooster. Oude uren blijven bewaard.</p>'
   +form('setActive','<input type="hidden" name="active" value="">','Op inactief zetten',p.id,false);
 }
 // Medewerker toevoegen (zonder id) of wijzigen.
+// Saldo vakantiedagen van één medewerker; de bedrijfsleider zet het op een nieuw aantal met reden (SPEC 9g).
+function vacationBox(db,id){
+ const left=vacationLeft(db,id);
+ if(left===null)return '';
+ const set=field('Nieuw saldo (dagen)','days','number',left,'required step="0.5"')+reason(true);
+ return '<h3>Vakantiedagen</h3><p>Vakantiedagen over: <b>'+left+'</b></p>'
+  +'<p class="hint">Wat over is, gaat mee naar het volgende jaar.</p>'+form('leaveSet',set,'Saldo aanpassen',id);
+}
 function person(db,actor,id){
  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contract:'vast',contractHours:'',phone:''};
  const body=field('Naam','name','text',p.name,'required')
@@ -212,9 +249,15 @@ function person(db,actor,id){
   +field('Contracturen per week','contractHours','number',p.contractHours,'required min="0" max="40" step="0.5"')
   +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
-  +areaBoxes(p.areas||['Vloer']);
+  +areaBoxes(p.areas||['Vloer'])
+  +'<p class="hint">Vakantiedagen (alleen bij vast contract). Startsaldo: wat er dit jaar nog over is.</p>'
+  +field('Vakantiedagen per jaar','vacationDays','number',p.vacationDays??'','min="0" step="0.5"')
+  +field('Startsaldo vakantiedagen','leaveStartBalance','number',p.leaveStartBalance??'','min="0" step="0.5"')
+  +'<p class="hint">Voor de export naar de loonadministratie:</p>'
+  +[['Personeelsnummer','staffNumber'],['Voornaam','firstName'],['Achternaam','lastName'],['Voorletters','initials']]
+   .map(([label,key])=>field(label,key,'text',p[key]||'')).join('');
  const title=id?'Medewerker wijzigen':'Medewerker toevoegen';
- return {title,body:form('savePerson',body,'Opslaan',id)+(id?inactiveBox(db,actor,p):'')};
+ return {title,body:form('savePerson',body,'Opslaan',id)+(id?vacationBox(db,id)+inactiveBox(db,actor,p):'')};
 }
 
 // Concept uit vaste beschikbaarheid voor de week vanaf maandag 'week'.
@@ -250,7 +293,7 @@ function extraDecision(db,actor,id){
 // Conceptdienst maken of wijzigen. De schil vult daarna de beschikbaarheid in (#window).
 function draft(db,actor,id){
  const s=db.drafts.find(x=>x.id===id)||shiftOf(db,id),date=s?.date||id;
- const people=select('Medewerker','user',activePeople(db).map(p=>[p.id,p.name]),s?.user);
+ const people=select('Medewerker','user',activePeople(db).map(p=>[p.id,name(db,p.id)]),s?.user);
  const area='<div id="areapick">'+areaChoice(db,s?.user||activePeople(db)[0]?.id,s?.area)+'</div>';
  const body=people+field('Datum','date','date',date,'readonly')+'<p id="window"></p>'
   +times(s||{start:TIMES.start,end:TIMES.end})+area
@@ -302,8 +345,9 @@ function proposal(db,actor,id){
 
 // Welke knop (data-act) welk venster opent.
 export const dialogs={
- calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,norm,closeMonth,reopenMonth,decision,
- person,planFromRules,approveAll,extraDecision,pubWeek,proposal,
+ calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
+ decision,
+ person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,
  entry:(db,actor,id)=>hoursDialog(db,actor,id,'entry'),
  inspect:(db,actor,id)=>hoursDialog(db,actor,id,'inspect'),
  leave:(db,actor,id)=>availabilityDialog(db,actor,id,'leave'),

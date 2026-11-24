@@ -30,13 +30,13 @@ test('Isis heeft contract Uren: zij kan geen betaald verlof kiezen, alleen onbet
  assert.equal(apply(db,'isis','leave',{date:'2026-12-24',type:'onbetaald'}).requests.at(-1).type,'onbetaald');
 });
 
-test('Elise krijgt verlof voor zaterdag: de vervallen dienst blijft bewaard en telt 7u 30m verlof',t=>{
+test('Elise krijgt verlof voor zaterdag: de vervallen dienst blijft bewaard en een verlofdag telt altijd 8 uur',t=>{
  thursday(t);
  let db=apply(pilotRoster(),'elise','leave',{date:'2026-11-21',type:'verlof',reason:'Bruiloft'});
  db=approve(db);
  assert.ok(!db.shifts.some(s=>s.id===saturday),'dienst staat niet meer in het rooster');
  assert.deepEqual(db.requests.at(-1).dropped,[{date:'2026-11-21',start:'10:00',end:'18:00'}]);
- assert.equal(monthSummary(db,'2026-11').find(r=>r.user==='elise').leave,450);
+ assert.equal(monthSummary(db,'2026-11').find(r=>r.user==='elise').leave,480);
 });
 
 test('Onbetaald vrij bewaart ook de vervallen dienst, maar telt niet als verlof',t=>{
@@ -47,21 +47,27 @@ test('Onbetaald vrij bewaart ook de vervallen dienst, maar telt niet als verlof'
  assert.equal(monthSummary(db,'2026-11').find(r=>r.user==='elise').leave,0);
 });
 
-test('Deels verlof: Elise werkt zaterdag tot 15:00, alleen 15:00–18:00 telt als verlof',t=>{
+test('Een deel van de dag kan geen betaald verlof zijn: Elise zet overuren in voor zaterdag 15:00–18:00',t=>{
  thursday(t);
- let db=apply(pilotRoster(),'elise','leave',{date:'2026-11-21',start:'15:00',end:'18:00',type:'verlof'});
+ const part={date:'2026-11-21',start:'15:00',end:'18:00'};
+ assert.throws(()=>apply(pilotRoster(),'elise','leave',{...part,type:'verlof'}),
+  /Betaald verlof gaat in hele dagen\. Kies voor een deel van de dag overuren inzetten of onbetaald vrij\./);
+ assert.throws(()=>apply(pilotRoster(),'isis','leave',{...part,date:'2026-11-28',type:'overuren'}),/vast contract/);
+ let db=apply(pilotRoster(),'elise','leave',{...part,type:'overuren'});
  db=approve(db,'0');
  assert.deepEqual(db.shifts.filter(s=>s.user==='elise'&&s.date==='2026-11-21').map(s=>s.start+'-'+s.end),['10:00-15:00']);
  assert.deepEqual(db.requests.at(-1).dropped,[{date:'2026-11-21',start:'15:00',end:'18:00'}]);
- assert.equal(monthSummary(db,'2026-11').find(r=>r.user==='elise').leave,absentMinutes({start:'15:00',end:'18:00'}));
+ const row=monthSummary(db,'2026-11').find(r=>r.user==='elise');
+ assert.equal(row.leave,0,'telt niet als verlof: het gaat van de plusuren af');
+ assert.equal(row.overtime,absentMinutes({start:'15:00',end:'18:00'}));
 });
 
-test('Verlof op een dag zonder geplande dienst telt 0 uur',t=>{
+test('Verlof op een vaste werkdag zonder geplande dienst telt ook 8 uur',t=>{
  thursday(t);
  let db=apply(pilotRoster(),'elise','leave',{date:'2026-12-24',type:'verlof'});
  db=approve(db);
  assert.deepEqual(db.requests.at(-1).dropped,[]);
- assert.equal(monthSummary(db,'2026-12').find(r=>r.user==='elise').leave,0);
+ assert.equal(monthSummary(db,'2026-12').find(r=>r.user==='elise').leave,480);
 });
 
 test('Elise gaat naar contract Uren voordat haar verlof is goedgekeurd: goedkeuren als verlof lukt dan niet',t=>{
@@ -96,7 +102,7 @@ const {leaveTypeField}=await import('../v2/view.js');
 
 test('Vrij vragen: bij een vast contract staat Verlof (betaald) vooraf gekozen, bij Uren alleen Onbetaald vrij',()=>{
  const db=pilotRoster();
- assert.match(leaveTypeField(db,'elise'),/<option value="verlof" selected>Verlof \(betaald\)<\/option><option value="onbetaald">/);
+ assert.match(leaveTypeField(db,'elise'),/<option value="verlof" selected>Verlof \(betaald\)<\/option><option value="overuren">/);
  assert.doesNotMatch(leaveTypeField(db,'isis'),/value="verlof"/);
  assert.match(leaveTypeField(db,'isis'),/alleen bij een vast contract/);
 });
@@ -119,6 +125,6 @@ test('Eva kan een aanvraag van Isis (contract Uren) niet als betaald verlof goed
  const db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',type:'onbetaald'});
  const id=db.requests.at(-1).id;
  assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'verlof'}),/vast contract/);
- assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'vakantie'}),/Kies verlof of onbetaald/);
+ assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'vakantie'}),/Kies verlof, overuren inzetten, onbetaald vrij of bijzonder verlof/);
  assert.equal(apply(db,'eva','decide',{id,accept:true,type:'onbetaald'}).requests.at(-1).askedType,undefined);
 });

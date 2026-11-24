@@ -10,8 +10,11 @@ const {todayPage}=await import('../v2/today.js');
 
 const reviewCard=html=>html.split('<h2>Uren goedkeuren')[1].split('</section>')[0];
 
+// Sylvia en Iris zijn leidinggevenden: hun eigen uren zijn meteen goedgekeurd. Voor tests over beoordelen
+// maken we ze medewerker.
+const asEmployee=(db,...ids)=>{for(const id of ids)db.people.find(p=>p.id===id).role='employee';return db};
 test('Sylvia vult haar uren van dinsdag in: Eva ziet ze op Vandaag bij Uren goedkeuren',()=>{
- const db=apply(pilotRoster(),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
+ const db=apply(asEmployee(pilotRoster(),'sylvia'),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
  const eva=db.people.find(p=>p.id==='eva');
  const card=reviewCard(todayPage(db,eva));
  assert.match(card,/Sylvia · di 17 nov/);

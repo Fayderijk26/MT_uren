@@ -16,6 +16,9 @@ const {availabilityPage}=await import('../v2/availability.js');
 const monday=t=>t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
 const person=(db,id)=>db.people.find(p=>p.id===id);
 
+// Sylvia en Iris zijn leidinggevenden: hun eigen uren zijn meteen goedgekeurd. Voor tests over beoordelen
+// maken we ze medewerker.
+const asEmployee=(db,...ids)=>{for(const id of ids)db.people.find(p=>p.id===id).role='employee';return db};
 test('Mieke staat in het rooster op woensdag 11:00–17:00 en zondag 11:00–16:00',()=>{
  const db=pilotRoster(),mieke=person(db,'mieke');
  assert.deepEqual([mieke.role,mieke.tracksHours],['lead',false]);
@@ -46,7 +49,7 @@ test('Mieke kan geen uren of ongeplande dienst indienen',t=>{
 
 test('Mieke is woensdag dagleiding en keurt de uren van Sylvia goed',t=>{
  monday(t);
- let db=pilotRoster();
+ let db=asEmployee(pilotRoster(),'sylvia');
  assert.ok(leads(db,'2026-11-18').includes('mieke'));
  const s=db.shifts.find(x=>x.id==='sylvia-2026-11-18');
  assert.ok(mayReview(db,person(db,'mieke'),s));

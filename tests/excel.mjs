@@ -49,11 +49,11 @@ try {
  const download=page.waitForEvent('download');
  await page.evaluate(async()=>{
    const {exportMonth}=await import('/excel/roster.js');
-   await exportMonth([{employeeId:'001',name:'=TEST',date:'2026-11-11',start:'09:00',end:'17:45',breakMinutes:30,netMinutes:495}],
-     [{employeeId:'001',name:'=TEST',workedMinutes:1935,normMinutes:2400,absenceMinutes:0,balanceMinutes:-465}], '2026-11');
+   await exportMonth('2026-11',{file:'MonkeyTown-test-2026-11',metadata:{revision:0,closed:false},sheets:[{name:'Test',
+     head:['Naam','Datum','Begin','Uren'],rows:[['=TEST',{date:'2026-11-11'},{clock:'09:00'},{hours:495}]]}]});
  });
  const result=await download;
- assert.match(result.suggestedFilename(),/2026-11\.xlsx$/);
+ assert.match(result.suggestedFilename(),/2026-11-voorlopig-v0\.xlsx$/);
  if(process.env.ROSTER_TEST_EXPORT) await result.saveAs(process.env.ROSTER_TEST_EXPORT);
  console.log('Geslaagd: voorbeeld, kalenderdatums, vrije dagen, werkplekken, stand-by, openen/sluiten, ongeldige waarden en maandexport.');
 } finally {await browser.close();}
