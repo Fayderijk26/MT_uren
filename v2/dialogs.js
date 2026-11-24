@@ -378,7 +378,7 @@ function weeklyEdit(db,actor,week){
  return {title:weeklyTitle(week),body:form('weeklySave',weeklyFields('text',w?.text||'',w?.image)+ask,'Opslaan',week)};
 }
 // Weekly lezen (vanaf Vandaag).
-const weekly=(db,actor,week)=>({title:'Weekly',body:weeklyCard(db,actor,week)});
+const weeklyView=(db,actor,week)=>({title:'Weekly',body:weeklyCard(db,actor,week)});
 // Week publiceren: wat er ingepland wordt en welke vragen naar medewerkers gaan.
 // Ronde 15: drie groepen. Eerst beslissen (open aanvragen), voorstel aan medewerker (botsing), wordt ingepland.
 const who=(db,s)=>name(db,s.user)+' · '+dateLabel(s.date);
@@ -433,16 +433,26 @@ function proposal(db,actor,id){
    +form('yes','','Ja, '+clock(o.row),id)+form('no','','Nee, behoud '+clock(o.fallback),id);
   return {title:'Roosterwijziging',body};
  }
- const standbyText=o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:'';
- const body='<p>'+h(name(db,o.row.user)+' · '+dateLabel(o.row.date)+' · '+clock(o.row)+standbyText)+'</p>'
-  +form('yes','','Accepteren',id)+form('no','','Afwijzen',id)
-  +(o.turn==='employee'?form('counter',times(o.row),'Andere tijden voorstellen',id):'');
+ // De medewerker: accepteren, of een wijziging voorstellen (de tijden komen pas na die knop in beeld).
+ const standby=o.row.deadline?' · Stand-by · Bericht vóór '+o.row.deadline:'';
+ const head='<div class="proposal"><p class="proposalday">'+h(dateLabel(o.row.date))+'</p><p class="proposaltime">'
+  +h(clock(o.row)+' · '+o.row.area+standby)+'</p>';
+ if(o.turn==='employee'){
+  const by=o.requestedBy?name(db,o.requestedBy):'De bedrijfsleider';
+  const body=head+'<p>'+h(by+' vraagt of je deze dienst kunt werken.')+'</p></div>'
+   +'<div class="proposalactions">'+form('yes','','Dienst accepteren',id)+button('Wijziging voorstellen','reveal','counter')
+   +'</div><div id="counter" hidden>'+form('counter',times(o.row),'Deze tijden voorstellen',id)+'</div>'
+   +form('no','','Ik kan niet',id,false);
+  return {title:'Dienstvoorstel',body};
+ }
+ const body=head+'<p>'+h(name(db,o.row.user)+' stelt andere tijden voor: '+clock(o.row)+'.')+'</p></div>'
+  +'<div class="proposalactions">'+form('yes','','Voorstel accepteren',id)+form('no','','Afwijzen',id,false)+'</div>';
  return {title:'Dienstvoorstel',body};
 }
 
 // Welke knop (data-act) welk venster opent.
 export const dialogs={
- weeklyEdit,weekly,
+ weeklyEdit,weeklyView,
  calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
  decision,
  person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,dayEdit,

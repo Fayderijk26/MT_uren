@@ -112,6 +112,9 @@ function show(action,id){
  if(action==='pauseOk'){
   const f=modal.querySelector('#pausecheck').closest('form');f.elements.pauseOk.value='1';f.requestSubmit();return;
  }
+ if(action==='reveal'){
+  const box=modal.querySelector('#'+id);box.hidden=false;box.querySelector('select,input')?.focus();return;
+ }
  if(action==='askChange'||action==='askReject'){
   const box=modal.querySelector('#'+action);box.hidden=false;box.querySelector('[name=reason]').focus();return;
  }

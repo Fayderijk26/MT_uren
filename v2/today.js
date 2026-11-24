@@ -63,7 +63,7 @@ function sickDecideCard(db,actor){
 function nextLine(db,actor,s){
  if(!mustRead(db,actor.id,s.date))return shiftLine(db,actor,s);
  return '<div class="blurbox"><div class="blurred" aria-hidden="true">'+shiftLine(db,actor,s)+'</div>'
-  +button('Lees eerst de weekly','weekly',monday(s.date),true)+'</div>';
+  +button('Lees eerst de weekly','weeklyView',monday(s.date),true)+'</div>';
 }
 function myShift(db,actor,mine,day){
  const current=mine.filter(s=>s.date===day),next=mine.find(s=>s.date>day);
