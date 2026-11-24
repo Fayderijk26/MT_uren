@@ -14,7 +14,7 @@ const team=[
 
 export function pilotRoster(){
  const db={people:[],rules:[],shifts:[],hours:{},drafts:[],requests:[],offers:[],extra:[],updates:[],published:[],
-  normOverrides:[],closedMonths:[],monthReopens:[]};
+  normOverrides:[],closedMonths:[],monthReopens:[],saldoCorrections:[]};
  for(const {id,name,role,contract,hours,days,weekend=[],areas,tracksHours,times={}} of team){
   db.people.push({id,name,role,contract,contractHours:hours,areas,...(tracksHours===false?{tracksHours}:{})});
   const rule={user:id,date:firstMonday,start:'08:30',end:'18:00'};

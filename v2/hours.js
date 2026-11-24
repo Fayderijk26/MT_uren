@@ -1,5 +1,5 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
- absentMinutes,tracksHours,maySick,monthOver,mayEnter} from './model.js';
+ absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -90,12 +90,18 @@ function summaryCard(db,actor,month){
   +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'')
   +(r.sickWaiting?'<p class="hourwait">'+duration(r.sickWaiting)
   +' ziek wacht op besluit van de bedrijfsleider</p>':'');
+ // Vast contract (SPEC 9f): norm en verschil van de maand, en het saldo van de afgesloten maanden.
+ const plus=m=>(m>0?'+':'')+duration(m),own=saldo(db,actor.id);
+ const balance=r.diff===null||r.diff===undefined||own===null?'':'<div class="hourparts hourbalance">'
+  +[['Norm',duration(r.norm)],['Verschil',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
+  .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'
+  +'<p class="hourwait">Het saldo telt de afgesloten maanden.</p>';
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
   +field('Maand','month','month',month,'data-view="month"')+'</div>';
  return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'
   +'<b class="hourtotal">'+duration(total)+'</b></div>'+bar
   +'<div class="hourparts">'+parts.map(part).join('')+'</div></div>'
-  +open+wait+'</section>';
+  +open+wait+balance+'</section>';
 }
 // Diensten van de maand: gewerkt tot vandaag, en ook ziek gemelde diensten en verlofdagen. Nieuwste bovenaan.
 function shiftsCard(db,actor,month){

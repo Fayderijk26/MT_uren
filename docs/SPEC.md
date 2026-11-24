@@ -223,7 +223,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
 - Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen. Vanaf de laatste dag van de maand kan de bedrijfsleider uren van die maand voor iemand anders invullen.
 
-**9f: maandnorm en lopend saldo** (nog niet gebouwd)
+**9f: maandnorm en lopend saldo** (gebouwd 24 november; `saldo` in `model.js`, lijst `saldoCorrections`. Het saldo telt de afgesloten maanden; leidinggevenden zien het nog nergens)
 - Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.
 - Het verschil (gewerkt + ziek dat meetelt + verlof, min de norm) gaat elke maand mee naar de volgende maand en naar het volgende jaar: een **lopend saldo** plus- en minuren.
 - De medewerker ziet het saldo bij Mijn uren. Leidinggevenden en de bedrijfsleider zien het ook.

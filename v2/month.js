@@ -1,4 +1,4 @@
-import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview,mayEnter,lastDay} from './model.js';
+import {monthSummary,normMinutes,net,closed,mayCloseMonth,mayRemind,mayReview,mayEnter,lastDay,saldo} from './model.js';
 import {button,card,line,field,name,dateLabel,moment,h,chip,clock} from './view.js';
 import {tabs,remindLink} from './hours.js';
 
@@ -9,12 +9,14 @@ const short=m=>(m<0?'−':'')+Math.floor(Math.abs(m)/60)+'u'+(Math.abs(m)%60?Str
 function personRow(db,month,r){
  const changed=db.normOverrides.some(n=>n.user===r.user&&n.month===month);
  const norm=closed(db,month+'-01')?h(short(r.norm)):button(short(r.norm),'norm',r.user);
- const cells=[h(name(db,r.user)),short(r.approved),norm+(changed?'<small>aangepast</small>':''),short(r.diff),
-  r.open.length||'–'];
+ // Saldo (SPEC 9f): een knop waarmee de bedrijfsleider het bekijkt of op 0 zet. Geen saldo bij contract Uren.
+ const own=saldo(db,r.user),balance=own===null?'–':button(short(own),'saldo',r.user);
+ const cells=[h(name(db,r.user)),short(r.approved),norm+(changed?'<small>aangepast</small>':''),
+  r.diff===null?'–':short(r.diff),balance,r.open.length||'–'];
  return '<tr class="person">'+cells.map(c=>'<td>'+c+'</td>').join('')+'</tr>';
 }
 function personTable(db,month,rows){
- const head=['Medewerker','Goedgekeurd','Norm','Verschil','Open'].map(x=>'<th>'+x+'</th>').join('');
+ const head=['Medewerker','Goedgekeurd','Norm','Verschil','Saldo','Open'].map(x=>'<th>'+x+'</th>').join('');
  return '<div class="monthscroll"><table class="monthgrid"><thead><tr>'+head+'</tr></thead><tbody>'
   +rows.map(r=>personRow(db,month,r)).join('')+'</tbody></table></div>';
 }

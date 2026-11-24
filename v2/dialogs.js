@@ -2,7 +2,7 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes,dayOf,mayEnter,missing} from './model.js';
+ minutes,dayOf,mayEnter,missing,saldo} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
  sickDecision} from './view.js';
@@ -135,6 +135,16 @@ function sickPick(db,actor,user){
 function norm(db,actor,id){
  const body=field('Norm in uren','hours','number','','required min="0" step="0.25"')+reason(true);
  return {title:'Norm aanpassen · '+name(db,id),body:form('setNorm',body,'Norm opslaan',id)};
+}
+// Saldo plus- en minuren van één medewerker: de stand, de correcties, en op 0 zetten met reden (SPEC 9f).
+function saldoDialog(db,actor,user){
+ const own=saldo(db,user);
+ if(own===null)return null;
+ const fixes=db.saldoCorrections.filter(c=>c.user===user).map(c=>'<p>'+h(dateLabel(dayOf(c.at))+' · op 0 gezet door '
+  +name(db,c.by)+' · '+c.reason)+'</p>').join('');
+ const reset=own?form('saldoReset',reason(true),'Saldo op 0 zetten',user):'';
+ return {title:'Saldo '+name(db,user),body:'<p>Saldo plus- en minuren: <b>'+h((own>0?'+':'')+duration(own))
+  +'</b></p><p>Telt de afgesloten maanden. Zet het op 0 als het is uitbetaald of verrekend.</p>'+fixes+reset};
 }
 function closeMonth(db,actor,month){
  return {title:'Maand afsluiten',body:form('closeMonth',closeMonthBody(db,month),'Maand afsluiten',month)};
@@ -313,7 +323,7 @@ function proposal(db,actor,id){
 export const dialogs={
  calendarDay,ownShift,shiftDetails,standby,unplanned,sickAsk,sickUndoAsk,sickPick,fillPick,norm,closeMonth,reopenMonth,
  decision,
- person,planFromRules,approveAll,extraDecision,pubWeek,proposal,
+ person,planFromRules,approveAll,extraDecision,pubWeek,proposal,saldo:saldoDialog,
  entry:(db,actor,id)=>hoursDialog(db,actor,id,'entry'),
  inspect:(db,actor,id)=>hoursDialog(db,actor,id,'inspect'),
  leave:(db,actor,id)=>availabilityDialog(db,actor,id,'leave'),

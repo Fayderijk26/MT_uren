@@ -223,8 +223,27 @@ export function monthSummary(db,month,day=today()){
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,sick,sickWaiting,leave,pending,open,norm,diff:approved-norm};
+  // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
+  const diff=person.contract==='vast'?approved+sick+leave-norm:null;
+  return {user:person.id,approved,sick,sickWaiting,leave,pending,open,norm,diff};
  });
+}
+// Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
+// bedrijfsleider. Een maand telt mee zodra hij is afgesloten. Alleen bij een vast contract.
+export function saldo(db,user){
+ if(db.people.find(p=>p.id===user)?.contract!=='vast'||!tracksHours(db,user))return null;
+ const months=db.closedMonths.map(c=>monthSummary(db,c.month).find(r=>r.user===user)?.diff||0);
+ const fixes=db.saldoCorrections.filter(c=>c.user===user).map(c=>c.minutes);
+ return months.concat(fixes).reduce((a,b)=>a+b,0);
+}
+// Saldo op 0 zetten als het is uitbetaald of verrekend: alleen de bedrijfsleider, met reden. Wordt vastgelegd.
+function resetSaldo({db,actor,admin,p}){
+ check(admin,'Alleen de bedrijfsleider kan het saldo aanpassen.');
+ const now=saldo(db,p.user);
+ check(now!==null,'Deze medewerker heeft geen saldo.');
+ check(now!==0,'Het saldo is al 0.');
+ check(p.reason?.trim(),'Geef een reden, bijvoorbeeld uitbetaald of verrekend.');
+ db.saldoCorrections.push({user:p.user,minutes:-now,reason:p.reason.trim(),by:actor.id,at:new Date().toISOString()});
 }
 // Afsluiten (SPEC 9e): niet zolang er uren wachten op beoordeling. Op de laatste dag zelf moeten eerst de uren
 // van iedereen die die dag ingepland staat zijn ingevuld. Lege diensten van eerder tellen niet mee (bevestigen).
@@ -685,6 +704,7 @@ const actions={
   sickMany: reportSickMany,
   sickUndo: undoSick,
   sickDecide: decideSick,
+  saldoReset: resetSaldo,
   setActive,
   return: reviewHours,
   reopen: reopenHours,

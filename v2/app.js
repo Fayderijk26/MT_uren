@@ -22,7 +22,7 @@ const read=()=>{
  }
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
- data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];
+ data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];data.saldoCorrections??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
@@ -259,6 +259,7 @@ modal.addEventListener('submit',e=>{
  if(op==='setActive')p.active=p.active==='true';
  if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
+ if(op==='saldoReset')p.user=p.id;
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

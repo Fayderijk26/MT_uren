@@ -75,7 +75,7 @@ function seed(day=today()){
   const people=[{id:'mila',name:'Mila Vos',role:'employee',areas:['Vloer','Keuken']},{id:'bram',name:'Bram Meijer',role:'lead',areas:['Vloer']},
    {id:'noor',name:'Noor Post',role:'admin',areas:['Vloer','Keuken']}];
   const shift=(id,user,n,start,end,area)=>({id,user,date:add(day,n),start,end,area});
-  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Vloer'),shift('s2','bram',0,'09:00','18:00','Vloer'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Vloer'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Vloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[]};
+  return {people,shifts:[shift('s1','mila',0,'09:30','17:30','Vloer'),shift('s2','bram',0,'09:00','18:00','Vloer'),shift('s3','mila',-1,'10:00','18:00','Keuken'),shift('s4','bram',-1,'09:00','18:00','Vloer'),shift('s5','mila',-2,'12:00','16:00','Keuken'),shift('s6','mila',3,'12:00','18:00','Vloer')],hours:{s3:{start:'10:00',end:'18:00',pause:30,status:'pending'}},drafts:[],requests:[],offers:[],rules:[],extra:[],updates:[],normOverrides:[],closedMonths:[],monthReopens:[],saldoCorrections:[]};
 }
 
 import {pilotRoster} from '../v2/pilot.js';
