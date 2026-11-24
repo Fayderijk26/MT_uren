@@ -207,12 +207,12 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Ziekte-uren gebruiken dezelfde regel (nu: 30 minuten bij meer dan 3 uur).
 - De vooraf gekozen pauze verandert mee als iemand de tijden aanpast, zolang de pauze niet zelf is aangeklikt.
 
-**9d: ziek melden door de leiding, besluit door de bedrijfsleider** (nog niet gebouwd)
+**9d: ziek melden door de leiding, besluit door de bedrijfsleider** (gebouwd 24 november; actie `sickDecide`)
 - **Medewerkers melden zich niet meer zelf ziek** in de app. De knop gaat weg. Ze bellen de leiding.
 - Ziek melden doen de dagleiding van die dag en de bedrijfsleider (zoals nu). Een leidinggevende kan zichzelf ziek melden.
 - Per ziek gemelde dienst beslist de bedrijfsleider: **Doorbetalen** of **Wachtdag (niet doorbetalen)**. Contract en cao noemen 2 wachtdagen, maar de bedrijfsleider kiest per situatie. Tot het besluit staat er "Wacht op besluit" en telt de dienst nog niet mee.
 - De medewerker ziet bij de dienst: "Ziek gemeld door … op …" en daarna "telt mee" of "telt niet mee (wachtdag)".
-- Nieuw veld bij de ziekmelding: het besluit van de bedrijfsleider.
+- Nieuwe velden bij de ziekmelding (`sick`): `paid` (true = doorbetalen, false = wachtdag), `decidedBy`, `decidedAt`. De bedrijfsleider ziet op Vandaag de kaart **Ziek: besluit nodig** en kiest daar of in het venster van de dienst. Wat wacht, staat bij Mijn uren apart ("ziek wacht op besluit").
 - Geldt ook voor oproepkrachten (nog bevestigen, zie hoofdstuk 5).
 - Blijft zoals het is: geen betermelding (ziek per dienst); halverwege ziek naar huis = gewerkte uren invullen; ziek op een dag zonder dienst telt niet mee; het loonpercentage bij ziekte rekent de loonadministratie.
 

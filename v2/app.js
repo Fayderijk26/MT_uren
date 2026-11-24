@@ -122,6 +122,7 @@ function show(action,id){
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();backToRequest();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='sickPaid'||action==='sickUnpaid'){save('sickDecide',{id,paid:action==='sickPaid'});return}
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='export'){exportMonthFile(id);return}
  if(action==='planExtra'){

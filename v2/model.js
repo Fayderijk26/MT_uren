@@ -1,6 +1,7 @@
 // Vaste tijden. Bezoekers: open tot close. Werkdag medewerkers (ook "hele dag" en een nieuwe dienst): start tot end.
 export const TIMES = {open:'09:00',close:'17:30',start:'08:30',end:'18:00'};
-export const today = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date());
+export const dayOf = when => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date(when));
+export const today = () => dayOf(Date.now());
 export const now = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'})
  .format(new Date());
 export function add(day,n){
@@ -197,13 +198,14 @@ export function monthSummary(db,month,day=today()){
    .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start));
   const status=s=>db.hours[s.id]?.status||(ended(s,day)?'missing':'future');
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
-  const sick=shifts.filter(s=>s.sick).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
   const leave=leaveItems(db,person.id,month).reduce((sum,d)=>sum+absentMinutes(d),0);
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
   const norm=normMinutes(db,person.id,month);
-  return {user:person.id,approved,sick,leave,pending,open,norm,diff:approved-norm};
+  return {user:person.id,approved,sick,sickWaiting,leave,pending,open,norm,diff:approved-norm};
  });
 }
 function closeMonth({db,actor,p}){
@@ -521,9 +523,8 @@ function savePerson({db,admin,p}){
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
-// Ziek melden per dienst (voorlopig, zie SPEC ronde 9a). Zelf: een eigen dienst die nog niet begonnen is.
-// Dagleiding van die dag en bedrijfsleider: ook namens iemand anders en achteraf. Geen goedkeuring nodig.
-const started=s=>s.date<today()||s.date===today()&&s.start<=now();
+// Ziek melden per dienst (SPEC 9a en 9d): alleen de dagleiding van die dag en de bedrijfsleider, ook achteraf.
+// Medewerkers melden zich niet zelf ziek; een leidinggevende kan zichzelf ziek melden voor een eigen dienst.
 const mayReportFor=(db,actor,s)=>actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id);
 export function sickProblem(db,actor,s){
  if(!s)return 'Deze dienst bestaat niet.';
@@ -534,8 +535,8 @@ export function sickProblem(db,actor,s){
  if(s.unplanned)return 'Een ongeplande dienst kun je niet ziek melden.';
  if(db.hours[s.id])return 'Voor deze dienst zijn al uren ingediend.';
  if(mayReportFor(db,actor,s))return '';
- if(s.user!==actor.id)return 'Je kunt deze dienst niet ziek melden.';
- return started(s)?'Je dienst is al begonnen. Bel de leiding: die kan je ziek melden.':'';
+ return s.user===actor.id?'Ziek melden doet de leiding. Bel de leidinggevende van de dag.'
+  :'Je kunt deze dienst niet ziek melden.';
 }
 export const maySick=(db,actor,s)=>!sickProblem(db,actor,s);
 export const mayUndoSick=(db,actor,s)=>!!s?.sick&&!closed(db,s.date)&&(actor.role==='admin'||s.sick.by===actor.id);
@@ -561,6 +562,17 @@ function undoSick({db,actor,s}){
  delete s.sick;
  if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+actor.name+' · '+s.start+'–'+s.end);
 }
+// Per ziek gemelde dienst beslist de bedrijfsleider: doorbetalen of wachtdag (SPEC 9d). Tot dan telt hij niet mee.
+export const sickPaid=s=>s.sick?.paid===true;
+export const sickOpen=s=>!!s.sick&&s.sick.paid===undefined;
+function decideSick({db,actor,admin,s,p}){
+ check(admin,'Alleen de bedrijfsleider beslist over doorbetalen bij ziekte.');
+ check(s?.sick,'Deze dienst is niet ziek gemeld.');
+ notClosed(db,s.date);
+ Object.assign(s.sick,{paid:p.paid===true||p.paid==='true',decidedBy:actor.id,decidedAt:new Date().toISOString()});
+}
+// Ziekmeldingen zonder besluit in een open maand: voor de bedrijfsleider.
+export const sickToDecide=db=>db.shifts.filter(s=>sickOpen(s)&&!closed(db,s.date)).sort(byDate);
 // Ziek gemelde diensten vanaf vandaag die deze persoon overziet: bedrijfsleider alles, dagleiding haar dagen.
 export const sickList=(db,actor,day=today())=>db.shifts.filter(s=>s.sick&&s.date>=day&&s.user!==actor.id
  &&(actor.role==='admin'||actor.role==='lead'&&leads(db,s.date).includes(actor.id))).sort(byDate);
@@ -632,6 +644,7 @@ const actions={
   sick: reportSick,
   sickMany: reportSickMany,
   sickUndo: undoSick,
+  sickDecide: decideSick,
   setActive,
   return: reviewHours,
   reopen: reopenHours,

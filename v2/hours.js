@@ -1,7 +1,7 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
  absentMinutes,tracksHours,maySick} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
- duration,h} from './view.js';
+ duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
 const dayList=shifts=>shifts.map(s=>dateLabel(s.date)).join(', ').replace(/, ([^,]*)$/,' en $1');
 // WhatsApp-herinnering voor één of meer diensten van dezelfde medewerker.
@@ -50,7 +50,7 @@ export function tabs(db,actor,page){
 }
 function ownHoursRow(db,s){
  const status=s.sick?'sick':db.hours[s.id]?.status||(ended(s)?'missing':busy(s)?'busy':'');
- const text=clock(db.hours[s.id]||s)+(s.sick?' · telt '+duration(absentMinutes(s)):'');
+ const text=clock(db.hours[s.id]||s)+(s.sick?' · '+sickStatus(s):'');
  const row=line(dateLabel(s.date),text,button('Bekijken','entry',s.id),status?chip(status):'');
  return '<div class="compact">'+row+'</div>';
 }
@@ -75,8 +75,10 @@ function summaryCard(db,actor,month){
  const todo=[missing&&count(missing,'ontbreekt nog','ontbreken nog'),returned&&count(returned,'aanpassen','aanpassen')]
   .filter(Boolean);
  const open=todo.length?'<p class="hourmissing">'+todo.join(' · ')+' · vul ze in bij Diensten</p>':'';
- const wait=r.pending?'<p class="hourwait">'+duration(r.pending)
-  +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'';
+ const wait=(r.pending?'<p class="hourwait">'+duration(r.pending)
+  +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'')
+  +(r.sickWaiting?'<p class="hourwait">'+duration(r.sickWaiting)
+  +' ziek wacht op besluit van de bedrijfsleider</p>':'');
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
   +field('Maand','month','month',month,'data-view="month"')+'</div>';
  return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'

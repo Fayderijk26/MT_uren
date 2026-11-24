@@ -22,10 +22,11 @@ test('Ziek telt de geplande tijd min de pauzeregel: boven 3 uur 15 minuten, vana
  assert.equal(absentMinutes({start:'14:00',end:'17:15'}),180);
 });
 
-test('Elise meldt zich ziek voor zaterdag: niet bij Nog in te vullen of ontbrekend, wel 7u 30m ziek',t=>{
+test('Iris meldt Elise ziek voor zaterdag en Eva betaalt door: niet bij Nog in te vullen of ontbrekend, wel 7u 30m ziek',t=>{
  thursday(t);
- let db=apply(pilotRoster(),'elise','sick',{id:saturday});
- assert.deepEqual(db.shifts.find(s=>s.id===saturday).sick.by,'elise');
+ let db=apply(pilotRoster(),'iris','sick',{id:saturday});
+ assert.deepEqual(db.shifts.find(s=>s.id===saturday).sick.by,'iris');
+ db=apply(db,'eva','sickDecide',{id:saturday,paid:true});
  t.mock.timers.setTime(Date.parse('2026-11-23T12:00:00+01:00'));
  assert.ok(!ownTodo(db,person(db,'elise')).some(s=>s.id===saturday));
  assert.ok(!missing(db,person(db,'eva')).some(m=>m.shift.id===saturday));
@@ -34,10 +35,10 @@ test('Elise meldt zich ziek voor zaterdag: niet bij Nog in te vullen of ontbreke
  assert.ok(!row.open.some(o=>o.shift.id===saturday));
 });
 
-test('Elise is al aan het werk: zelf ziek melden kan niet meer, Iris als dagleiding en Eva wel',t=>{
+test('Elise is al aan het werk: zelf ziek melden kan niet, Iris als dagleiding en Eva wel',t=>{
  thursday(t);
  const db=pilotRoster(),today='elise-2026-11-19';
- assert.throws(()=>apply(db,'elise','sick',{id:today}),/al begonnen/);
+ assert.throws(()=>apply(db,'elise','sick',{id:today}),/Bel de leidinggevende/);
  assert.ok(apply(db,'iris','sick',{id:today}).shifts.find(s=>s.id===today).sick);
  assert.ok(apply(db,'eva','sick',{id:today}).shifts.find(s=>s.id===today).sick);
 });
@@ -58,16 +59,16 @@ test('Iris meldt Elise ziek: Elise ziet een melding op Vandaag en de dienst als 
  assert.doesNotMatch(mine,/data-act="entry"/);
 });
 
-test('Eva en Iris zien op Vandaag wie zich ziek heeft gemeld, en het rooster toont Ziek gemeld',t=>{
+test('Eva en Iris zien op Vandaag wie ziek is gemeld, en het rooster toont Ziek gemeld',t=>{
  thursday(t);
- const db=apply(pilotRoster(),'elise','sick',{id:saturday});
+ const db=apply(pilotRoster(),'eva','sick',{id:saturday});
  for(const id of ['eva','iris'])
   assert.match(todayPage(db,person(db,id)).split('<h2>Ziek gemeld')[1]||'',/Elise B · za 21 nov/,id);
  assert.doesNotMatch(todayPage(db,person(db,'isis')),/<h2>Ziek gemeld/);
  assert.match(weekPage(db,{day:'2026-11-21'}),/10:00–18:00<\/b>(?:(?!<\/button>).)*Ziek gemeld/s);
 });
 
-test('Elise tikt op Ziek melden: er staat dat ze ook moet bellen met de leidinggevende van de dag',()=>{
+test('Wie zichzelf ziek meldt (een leidinggevende), ziet dat ze ook moet bellen met de leidinggevende van de dag',()=>{
  const db=pilotRoster(),s=db.shifts.find(x=>x.id===saturday);
  const call=/Ziek melden doe je ook telefonisch bij de leidinggevende van de dag\. Dit mag niet alleen via deze app\./;
  assert.match(sickAskBody(db,s,true),call);
@@ -80,7 +81,7 @@ test('Voor een ziek gemelde dienst kun je geen uren indienen en het rooster niet
  const db=apply(pilotRoster(),'eva','sick',{id:'elise-2026-11-19'});
  assert.throws(()=>apply(db,'elise','hours',{id:'elise-2026-11-19',start:'08:30',end:'11:00',pause:0}),/ziek gemeld/);
  const s=db.shifts.find(x=>x.id===saturday);
- const sat=apply(db,'elise','sick',{id:saturday});
+ const sat=apply(db,'eva','sick',{id:saturday});
  assert.throws(()=>apply(sat,'eva','draft',{...s,id:saturday,end:'17:00'}),/ziek gemeld/);
 });
 
@@ -88,7 +89,7 @@ test('Niet ziek melden bij stand-by, ingediende uren of als de dienst al ziek ge
  thursday(t);
  const db=pilotRoster();
  assert.throws(()=>apply(db,'eva','sick',{id:'elise-2026-11-16'}),/al uren/);
- const twice=apply(db,'elise','sick',{id:saturday});
+ const twice=apply(db,'eva','sick',{id:saturday});
  assert.throws(()=>apply(twice,'eva','sick',{id:saturday}),/al ziek gemeld/);
  db.shifts.find(s=>s.id===saturday).deadline='09:00';
  assert.throws(()=>apply(db,'eva','sick',{id:saturday}),/stand-by/);

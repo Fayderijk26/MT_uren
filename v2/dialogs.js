@@ -2,9 +2,10 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes} from './model.js';
+ minutes,dayOf} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
- duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField} from './view.js';
+ duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
+ sickDecision} from './view.js';
 import {dayContent} from './calendar.js';
 import {availability} from './week.js';
 import {closeMonthBody} from './month.js';
@@ -12,9 +13,10 @@ import {closeMonthBody} from './month.js';
 const shiftOf=(db,id)=>db.shifts.find(s=>s.id===id);
 const reason=(required=false)=>field(required?'Reden':'Toelichting (optioneel)','reason','text','',
  required?'required':'');
-// Ziek gemeld: wie het meldde en hoeveel uur het telt.
-export const sickText=(db,s)=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' · telt '
- +duration(absentMinutes(s))+'</p>';
+// Ziek gemeld: wie het meldde, wanneer, en of het meetelt. De bedrijfsleider ziet de knoppen voor het besluit.
+export const sickText=(db,s,actor)=>'<p>'+chip('sick')+' door '+h(name(db,s.sick.by))+' op '
+ +h(dateLabel(dayOf(s.sick.at)))+' · '+h(sickStatus(s))+'</p>'
+ +(actor&&!closed(db,s.date)&&sickDecision(db,actor,s)?'<div class="vactions">'+sickDecision(db,actor,s)+'</div>':'');
 
 // Een dag in Mijn rooster: wat er die dag staat, en vanaf vandaag Vrij vragen en Beschikbaarheid opgeven.
 function calendarDay(db,actor,day){
@@ -32,7 +34,7 @@ function ownShift(db,actor,id){
  const canEnter=shift.date<=today()&&!shift.deadline&&!shift.sick&&tracksHours(db,actor.id);
  const body='<p>'+h(dateLabel(shift.date)+' · '+clock(shift)+' · '+shift.area)+'</p>'
   +'<p>Aangegeven beschikbaarheid: '+h(availability(db,actor.id,shift.date))+'</p>'
-  +(shift.sick?sickText(db,shift):'')
+  +(shift.sick?sickText(db,shift,actor):'')
   +(canEnter?button('Gewerkte uren','entry',id):'')
   +sickButton(db,actor,shift);
  return {title:'Mijn dienst',body};
@@ -48,7 +50,7 @@ function shiftDetails(db,actor,id){
  let body='<p>'+status+' van <strong>'+h(row.start)+' tot '+h(row.end)+'</strong></p>'
   +'<p>Aangegeven beschikbaarheid: '+h(known==='Onbekend'?'Geen beschikbaarheid opgegeven':known)+'</p>';
  if(row.deadline)body+='<p><b class="sb">SB</b> · Bericht vóór '+h(row.deadline)+'</p>';
- if(row.sick)body+=sickText(db,row);
+ if(row.sick)body+=sickText(db,row,actor);
  if(!draft)body+=sickButton(db,actor,row);
  if(admin&&entry)body+=button('Uren bekijken','inspect',id);
  if(admin&&row.date>=today()){
@@ -82,7 +84,7 @@ function hoursDialog(db,actor,id,action){
  const editable=action==='entry'&&!shift.sick&&!closed(db,shift.date)&&(!entry||entry.status==='returned');
  let body='<p>'+h(name(db,shift.user)+' · '+dateLabel(shift.date))+'</p>'
   +'<p>Gepland '+clock(shift)+' · '+h(shift.area)+'</p>';
- if(shift.sick)body+=sickText(db,shift);
+ if(shift.sick)body+=sickText(db,shift,actor);
  if(entry)body+='<p>'+chip(entry.status)+' '+clock(entry)+' · '+entry.pause+' min pauze</p>';
  if(entry?.reason)body+='<p>'+h(entry.reason)+'</p>';
  if(closed(db,shift.date))body+='<p class="notice">Deze maand is afgesloten.</p>';

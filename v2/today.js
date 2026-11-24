@@ -1,7 +1,7 @@
-import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,absentMinutes,
+import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDecide,sickList,sickToDecide,
  tracksHours} from './model.js';
-import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,duration,
- leaveNames} from './view.js';
+import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,
+ leaveNames,sickStatus,sickDecision} from './view.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
@@ -47,9 +47,16 @@ function absentCard(db,actor){
 // Ziek gemeld, vandaag en later: voor de bedrijfsleider en de dagleiding van die dag.
 function sickCard(db,actor,day){
  const list=sickList(db,actor,day);
- const row=s=>line(name(db,s.user)+' · '+dateLabel(s.date),clock(s)+' · telt '+duration(absentMinutes(s))
+ const row=s=>line(name(db,s.user)+' · '+dateLabel(s.date),clock(s)+' · '+sickStatus(s)
   +' · gemeld door '+name(db,s.sick.by),sickButton(db,actor,s));
  return list.length?card('Ziek gemeld ('+list.length+')',list.map(row).join('')):'';
+}
+// Ziek: besluit nodig. Alleen de bedrijfsleider kiest per dienst Doorbetalen of Wachtdag (SPEC 9d).
+function sickDecideCard(db,actor){
+ const list=actor.role==='admin'?sickToDecide(db):[];
+ const row=s=>'<div class="compact">'+line(name(db,s.user)+' · '+dateLabel(s.date),
+  clock(s)+' · gemeld door '+name(db,s.sick.by),sickDecision(db,actor,s))+'</div>';
+ return list.length?card('Ziek: besluit nodig ('+list.length+')',list.map(row).join('')):'';
 }
 // 1. Wanneer heb ik dienst: vandaag, of anders de eerstvolgende.
 function myShift(db,actor,mine,day){
@@ -70,7 +77,7 @@ function todoCards(db,actor,mine,day){
   admin?button('Stand-by afhandelen','standby',s.id):'');
  if(standby.length)html+=card('Stand-by',standby.map(standbyRow).join(''));
  if(actor.role!=='employee'){
-  html+=absentCard(db,actor)+sickCard(db,actor,day);
+  html+=absentCard(db,actor)+sickDecideCard(db,actor)+sickCard(db,actor,day);
   const queue=toReview(db,actor);
   if(queue.length)html+=card('Uren goedkeuren ('+queue.length+')',queue.slice(0,3).map(s=>reviewRow(db,s)).join('')
    +button('Alle uren bekijken','page','reviews'));

@@ -37,7 +37,9 @@ function sylviaMonth(t){
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
  let db=apply(pilotRoster(),'sylvia','hours',{id:'sylvia-2026-11-17',start:'08:30',end:'18:00',pause:30});
  db=apply(db,'eva','approve',{id:'sylvia-2026-11-17'});
- for(const id of ['sylvia-2026-11-18','sylvia-2026-11-20'])db=apply(db,'eva','sick',{id});
+ for(const id of ['sylvia-2026-11-18','sylvia-2026-11-20']){
+  db=apply(db,'eva','sick',{id});db=apply(db,'eva','sickDecide',{id,paid:true});
+ }
  return apply(db,'sylvia','hours',{id:'sylvia-2026-11-22',start:'08:30',end:'18:00',pause:30});
 }
 const mine=db=>hoursPage(db,db.people.find(p=>p.id==='sylvia'),{page:'hours',month:'2026-11'});

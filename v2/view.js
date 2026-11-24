@@ -1,5 +1,5 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave,sickPaid,sickOpen,dayOf} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -103,6 +103,12 @@ export const requestStatus=r=>r.status==='pending'?'Wacht op akkoord':labels[r.s
 export const requestChip=r=>chip(r.status,requestStatus(r));
 
 // Ziek melden of de ziekmelding intrekken, als deze persoon dat mag (de regel staat in model.js).
+// Ziek gemeld: telt het mee? Het besluit is van de bedrijfsleider (SPEC 9d).
+export const sickStatus=s=>sickOpen(s)?'wacht op besluit':sickPaid(s)?'telt '+duration(absentMinutes(s))
+ :'telt niet mee (wachtdag)';
+// Doorbetalen of Wachtdag: voor de bedrijfsleider zolang er geen besluit is.
+export const sickDecision=(db,actor,s)=>actor.role==='admin'&&sickOpen(s)
+ ?button('Doorbetalen','sickPaid',s.id,true)+button('Wachtdag','sickUnpaid',s.id):'';
 export function sickButton(db,actor,s,label='Ziek melden'){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button(label,'sickAsk',s.id):'';
