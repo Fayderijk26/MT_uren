@@ -9,6 +9,7 @@ const {apply,monthSummary,saldo}=await import('../v2/model.js');
 const {hoursPage}=await import('../v2/hours.js');
 const {monthPage}=await import('../v2/month.js');
 const {dialogs}=await import('../v2/dialogs.js');
+const {peoplePage}=await import('../v2/people.js');
 
 const at=(t,iso)=>t.mock.timers.enable({apis:['Date'],now:new Date(iso)});
 const person=(db,id)=>db.people.find(p=>p.id===id);
@@ -98,5 +99,14 @@ test('Een oproepkracht (contract Uren) heeft geen norm: niet in het maandoverzic
  assert.doesNotMatch(isis,/data-act="norm"/);
  assert.match(isis,/<td>Isis N<\/td><td>0u<\/td><td>–<\/td><td>–<\/td><td>–<\/td>/);
  assert.throws(()=>apply(db,'eva','setNorm',{user:'isis',month:'2026-11',minutes:600,reason:'x'}),
-  /Een oproepkracht \(contract Uren\) heeft geen norm\./);
+  /Een oproepkracht heeft geen norm\./);
+});
+
+test('Er zijn twee soorten contract: Vast en Oproep (geen contract Uren meer in de teksten)',t=>{
+ const db=november(t),eva=person(db,'eva');
+ const form=dialogs.person(db,eva,'isis').body;
+ assert.match(form,/<option value="vast">Vast \(met maandnorm\)<\/option><option value="uren" selected>Oproep \(betaald per gewerkt uur\)<\/option>/);
+ assert.match(peoplePage(db,eva),/Medewerker · Oproep · 8 uur per week/);
+ assert.throws(()=>apply(db,'eva','setNorm',{user:'isis',month:'2026-11',minutes:600,reason:'x'}),
+  /Een oproepkracht heeft geen norm\./);
 });

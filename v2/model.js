@@ -232,7 +232,7 @@ const fixedDates=(db,r,from='',to='9999')=>{
 };
 export const leaveDays=(db,r,from)=>fixedDates(db,r,from).length;
 // Vakantiedagen over: startsaldo + per nieuw kalenderjaar de dagen per jaar, min goedgekeurd verlof, plus correcties
-// van de bedrijfsleider. Wat over is gaat mee naar het volgende jaar. null: niet ingesteld (bijvoorbeeld contract Uren).
+// van de bedrijfsleider. Wat over is gaat mee naar het volgende jaar. null: niet ingesteld (bijvoorbeeld een oproepkracht).
 export function vacationLeft(db,user,state='approved'){
  const p=db.people.find(x=>x.id===user);
  if(!p?.leaveYear||!mayPaidLeave(db,user))return null;
@@ -285,7 +285,7 @@ export function monthSummary(db,month,day=today()){
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const open=shifts.filter(s=>!s.sick&&['pending','returned','missing'].includes(status(s)))
    .map(s=>({shift:s,status:status(s)}));
-  // Alleen een vast contract heeft een norm; een oproepkracht (contract Uren) niet.
+  // Alleen een vast contract heeft een norm; een oproepkracht niet. (Oproep heet intern contract 'uren'.)
   const norm=person.contract==='vast'?normMinutes(db,person.id,month):null;
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave+special-norm:null;
@@ -347,7 +347,7 @@ function setNorm({db,actor,p}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan de norm aanpassen.');
  check(db.people.some(x=>x.id===p.user)&&/^\d{4}-(0[1-9]|1[0-2])$/.test(p.month),'Kies een medewerker en een maand.');
  notClosed(db,p.month);
- check(db.people.find(x=>x.id===p.user).contract==='vast','Een oproepkracht (contract Uren) heeft geen norm.');
+ check(db.people.find(x=>x.id===p.user).contract==='vast','Een oproepkracht heeft geen norm.');
  check(Number.isInteger(p.minutes)&&p.minutes>=0,'Vul een geldige norm in.');
  check(p.reason?.trim(),'Geef een reden voor de aangepaste norm.');
  db.normOverrides=db.normOverrides.filter(n=>!(n.user===p.user&&n.month===p.month));
@@ -672,7 +672,7 @@ function savePerson({db,admin,p}){
  check(!twin||last&&twin.lastName&&twin.lastName.toLowerCase()!==last.toLowerCase(),
   'Er bestaat al iemand met deze naam. Vul bij allebei een achternaam in; de app toont dan naam en achternaam.');
  check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
- check(['vast','uren'].includes(p.contract),'Kies het soort contract: vast of uren.');
+ check(['vast','uren'].includes(p.contract),'Kies het soort contract: vast of oproep.');
  check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
  check(/^[+0-9 ()-]{0,20}$/.test(phone),'Vul een geldig telefoonnummer in (alleen cijfers).');
  const areas=AREAS.filter(a=>[].concat(p.areas||[]).includes(a));
