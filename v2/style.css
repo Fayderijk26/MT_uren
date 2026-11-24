@@ -99,3 +99,7 @@ a.secondary{text-decoration:none}
 textarea{border-radius:8px;border:1px solid #cbd5c8;padding:10px 12px;font:inherit;resize:vertical;min-width:0}
 .blurbox{position:relative}.blurred{filter:blur(6px);pointer-events:none;user-select:none}
 .blurbox>button{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);white-space:nowrap}
+/* Ronde 15: publiceren in groepen. */
+.pubhead{font-size:16px;margin:16px 0 4px}
+.publist{margin:12px 0}.publist summary{font-weight:700;font-size:14px;cursor:pointer;color:var(--dark)}
+.pubrow{font-size:14px;margin:5px 0 5px 18px}

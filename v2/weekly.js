@@ -1,5 +1,5 @@
 // De Weekly (ronde 14): het bericht van de bedrijfsleider bij een gepubliceerde week. Alleen weergave.
-import {add,today,monday,weeklyFor,mustRead,weeklyReaders,displayName} from './model.js';
+import {add,weeklyFor,mustRead,weeklyReaders,displayName} from './model.js';
 import {h,button,dateLabel} from './view.js';
 
 // ISO-weeknummer (week 1 is de week met de eerste donderdag van het jaar).
@@ -41,9 +41,4 @@ export function weeklyCard(db,actor,week){
   +'<h3 class="weeklyhead">'+h(head)+'</h3>'
   +(unread?'<p class="weeklyhint">Lees eerst de weekly. Daarna zie je het rooster van deze week.</p>':'')
   +'<div class="weeklytext">'+body(w.text)+'</div>'+img+foot+'</section>';
-}
-// Weken met een weekly die deze persoon nog moet lezen (vanaf deze week).
-export function unreadWeeks(db,actor){
- return [...new Set((db.weeklies||[]).map(w=>w.week))].filter(week=>week>=monday(today())
-  &&mustRead(db,actor.id,week)).sort();
 }

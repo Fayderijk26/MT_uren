@@ -3,7 +3,7 @@
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
  minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays,dayTimes,dayInfo,closedPeople,ruleFor,weekday,
- weekTimes,weeklyFor} from './model.js';
+ weekTimes,weeklyFor,publishBlockers} from './model.js';
 import {weeklyCard,weeklyTitle} from './weekly.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
@@ -380,26 +380,43 @@ function weeklyEdit(db,actor,week){
 // Weekly lezen (vanaf Vandaag).
 const weekly=(db,actor,week)=>({title:'Weekly',body:weeklyCard(db,actor,week)});
 // Week publiceren: wat er ingepland wordt en welke vragen naar medewerkers gaan.
-function publishRow(db,s){
- const question=needsQuestion(db,s)||!available(db,s),base=db.shifts.find(x=>x.id===s.id)||fallbackShift(db,s);
- const plan=question?(base?'Blijft / wordt ingepland: '+clock(base):'Nog niet ingepland; wacht op toestemming')
-  :'Wordt ingepland: '+clock(s);
- return '<section class="publish-row"><strong>'+h(name(db,s.user)+' · '+dateLabel(s.date))+'</strong>'
-  +'<p>'+h('Beschikbaarheid: '+availability(db,s.user,s.date))+'</p><p>'+h(plan)+'</p>'
-  +(question?'<p class="offer-note">'+h('Vraag aan medewerker: werken '+clock(s))+'</p>':'')+'</section>';
+// Ronde 15: drie groepen. Eerst beslissen (open aanvragen), voorstel aan medewerker (botsing), wordt ingepland.
+const who=(db,s)=>name(db,s.user)+' · '+dateLabel(s.date);
+function blockRow(db,r){
+ const what=r.kind==='day'?'Beschikbaar '+clock(r):'vraagt vrij ('+requestLength(r)+')';
+ return line(who(db,r)+' · '+what,'Open aanvraag. Beslis eerst, dan kun je publiceren.',
+  button('Beoordelen','decision',r.id,true));
 }
+function questionRow(db,s){
+ const base=db.shifts.find(x=>x.id===s.id)||fallbackShift(db,s);
+ const told=availability(db,s.user,s.date),ok=db.requests.some(r=>r.kind==='day'&&r.status==='approved'
+  &&r.user===s.user&&r.date===s.date);
+ const why=ok?' (al goedgekeurd, daarom vragen we het '+name(db,s.user)+')':'';
+ return '<section class="publish-row"><strong>'+h(who(db,s)+' · ingepland '+clock(s))+'</strong>'
+  +'<p>'+h('Geeft aan: '+told.charAt(0).toLowerCase()+told.slice(1)+why)+'</p>'
+  +'<p class="offer-note">'+h(name(db,s.user)+' krijgt de vraag: kun je werken van '+s.start+' tot '+s.end+'?')+'</p>'
+  +'<p class="hint">'+h(base?'Tot het antwoord blijft '+clock(base)+' staan.':'Tot het antwoord staat er nog niets.')
+  +'</p></section>';
+}
+const plainRow=(db,s)=>'<p class="pubrow">'+h(who(db,s)+' · '+clock(s))+'</p>';
 function pubWeek(db,actor,week){
  const end=add(week,6),rows=db.drafts.filter(s=>s.date>=week&&s.date<=end);
  const waiting=db.offers.filter(o=>o.row.date>=week&&o.row.date<=end);
  const who=o=>o.turn==='admin'?'bedrijfsleider':name(db,o.row.user);
  const summary=rows.length+' conceptdienst(en) voor publicatie.'
   +waiting.map(o=>' '+clock(o.row)+' · Wacht op '+who(o)+'.').join('');
- const check=rows.some(s=>!available(db,s))
-  ?'<label><input type="checkbox" name="confirm" required> Ik heb de afwijkende beschikbaarheid gecontroleerd.'
-   +'</label>':'';
+ const ask=rows.filter(s=>needsQuestion(db,s)||!available(db,s)),plain=rows.filter(s=>!ask.includes(s));
+ const open=publishBlockers(db,week,end);
+ const group=(title,html)=>'<h3 class="pubhead">'+title+'</h3>'+html;
+ const check=ask.length?'<label class="check"><input type="checkbox" name="confirm" required> Ik heb de voorstellen'
+  +' gecontroleerd.</label>':'';
+ const lists=(open.length?group('Eerst beslissen ('+open.length+')',open.map(r=>blockRow(db,r)).join('')):'')
+  +(ask.length?group('Voorstel aan medewerker ('+ask.length+')',ask.map(s=>questionRow(db,s)).join('')):'')
+  +(plain.length?'<details class="publist"><summary>Wordt ingepland ('+plain.length+')</summary>'
+   +plain.map(s=>plainRow(db,s)).join('')+'</details>':'');
  const weekly=weeklyFor(db,week)?'<p class="notice">De weekly van deze week staat er al. Die blijft zoals hij is;'
   +' aanpassen kan onder het rooster.</p>':weeklyFields('weekly','');
- const body='<p>'+h(summary)+'</p>'+rows.map(s=>publishRow(db,s)).join('')+check+weekly
+ const body='<p>'+h(summary)+'</p>'+lists+check+weekly
   +'<input type="hidden" name="through" value="'+end+'">';
  return {title:'Rooster publiceren',body:form('publish',body,'Publiceren',week)};
 }

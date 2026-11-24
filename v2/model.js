@@ -604,6 +604,9 @@ function saveDraft({db,actor,admin,p,s}){
   const other=db.shifts.filter(t=>!db.drafts.some(d=>d.id===t.id)).concat(db.drafts);
   check(!other.some(t=>t.id!==id&&t.user===p.user&&t.date===p.date&&intersects(t,p)),
    'Deze dienst overlapt een andere dienst.');
+  // Open aanvraag voor deze dag (ronde 15): de bedrijfsleider beslist eerst.
+  check(!db.requests.some(r=>r.status==='pending'&&['leave','day'].includes(r.kind)&&r.user===p.user
+   &&r.date<=p.date&&r.through>=p.date),'Er staat een open aanvraag voor deze dag. Beslis daar eerst over.');
   const row={id,user:p.user,date:p.date,start:p.start,end:p.end,area:areaFor(db,p.user,p.area)};
   if(p.deadline)row.deadline=p.deadline;
   const before=prior?prior.before:s?JSON.stringify(s):null;
@@ -667,6 +670,13 @@ export function fallbackShift(db,row){
  return start<end?{...row,start,end}:null;
 }
 // Publiceren gaat per week (ma–zo). Alleen een losse aanpassing (onlyId) in een gepubliceerde week gaat per dienst.
+// Publiceren (ronde 15): open aanvragen (vrij of andere tijden) op een dag waarop iemand een concept heeft.
+// Daar beslist de bedrijfsleider eerst over.
+export function publishBlockers(db,from,through=add(from,6)){
+ const rows=db.drafts.filter(d=>d.date>=from&&d.date<=through);
+ return db.requests.filter(r=>r.status==='pending'&&['leave','day'].includes(r.kind)
+  &&rows.some(d=>d.user===r.user&&d.date>=r.date&&d.date<=r.through));
+}
 // Weekly (ronde 14): per gepubliceerde week een bericht van de bedrijfsleider. reads: per persoon de gelezen versie.
 export const weeklyFor=(db,week)=>(db.weeklies||[]).find(w=>w.week===week);
 const weekPublished=(db,week)=>(db.published||[]).some(d=>monday(d)===week);
@@ -709,6 +719,10 @@ function publishDrafts({db,actor,admin,p:input}){
  const p={...input,date:from,through:input.onlyId?input.through:add(from,6)};
   const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));
   check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
+  const open=p.onlyId?[]:publishBlockers(db,p.date,p.through);
+  check(!open.length,'Beslis eerst over de open aanvragen: '
+   +open.map(r=>displayName(db,r.user)+' ('+new Intl.DateTimeFormat('nl-NL',{weekday:'short',day:'numeric',
+    month:'short',timeZone:'UTC'}).format(new Date(r.date+'T12:00Z'))+')').join(', ')+'.');
   // Een hele week publiceren kan pas met een weekly (ronde 14). Bestaat die al, dan blijft hij zoals hij is.
   if(!p.onlyId&&!weeklyFor(db,from)){
    check(String(input.weekly||'').trim(),'Schrijf eerst de weekly voor deze week.');

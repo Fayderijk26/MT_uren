@@ -345,7 +345,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 
 **Ronde 14: Weekly bij publiceren** (gebouwd 24 november; `v2/weekly.js`, `weeklySave`/`weeklyRead` in `model.js`)
 - Besluiten eigenaar 24 november: Eva publiceert meestal één week, soms twee (dan publiceert ze twee keer). **Per week een eigen weekly.** Alleen het rooster bijwerken: de weekly blijft zoals hij is, niet opnieuw lezen. Alleen de weekly aanpassen: Eva kiest **opnieuw laten lezen** (het rooster is dan weer verborgen tot het lezen) of **alleen aanpassen** (zonder dat iemand het hoeft te zien). De bedrijfsleider hoeft hem zelf niet af te vinken. Een **afbeelding** mag erbij.
-- Gebouwd: bij Week publiceren een tekstvak (verplicht als de week nog geen weekly heeft) en een afbeelding. Een regel die met - begint wordt een opsomming. De afbeelding wordt in de browser verkleind (max. 1000 pixels breed, JPEG). Medewerkers en leidinggevenden zien bij Vandaag "Nieuwe weekly" en in Mijn rooster en het teamrooster eerst de weekly; de dagen van die week blijven leeg tot "Ik heb de weekly gelezen". Daarna staat de weekly onder het rooster. Eva ziet onder het teamrooster wie hem heeft gelezen en de knop Weekly aanpassen.
+- Gebouwd: bij Week publiceren een tekstvak (verplicht als de week nog geen weekly heeft) en een afbeelding. Een regel die met - begint wordt een opsomming. De afbeelding wordt in de browser verkleind (max. 1000 pixels breed, JPEG). Medewerkers en leidinggevenden zien in Mijn rooster en het teamrooster eerst de weekly; de dagen van die week blijven leeg tot "Ik heb de weekly gelezen". Daarna staat de weekly onder het rooster. Eva ziet onder het teamrooster wie hem heeft gelezen en de knop Weekly aanpassen.
 - Nieuwe lijst in `db`: `weeklies` met per week `{week (maandag), text, image, version, by, at, reads: {persoon: gelezen versie}}`.
 - Eerstvolgende dienst op Vandaag is wazig met de knop "Lees eerst de weekly" zolang de weekly van die week niet gelezen is (besluit eigenaar 24 november). De meldingen "Ingepland: …" bij Roosterwijzigingen blijven zoals ze zijn.
 - De afbeelding staat nu in de browseropslag (proef). Bij de echte database (ronde 8) gaat hij naar bestandsopslag.
@@ -357,6 +357,11 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - De bedrijfsleider ziet wie de Weekly heeft gelezen.
 - Reageren kan niet (besluit 1).
 - Nieuw: de Weekly per week (tekst, versie) en wie hem heeft gelezen.
+
+**Ronde 15: publiceren duidelijker** (gebouwd 24 november; `publishBlockers` in `model.js`)
+- Besluiten eigenaar 24 november: publiceren wacht op de beslissing over open aanvragen (andere tijden of vrij) op een dag waarop iemand in het concept staat. Een concept maken op een dag met een open aanvraag kan ook niet: eerst beslissen. Botst een dienst met de (goedgekeurde) beschikbaarheid, dan krijgt de medewerker een voorstel; bij een goedgekeurde aanvraag staat erbij "al goedgekeurd, daarom vragen we het de medewerker".
+- Het publiceervenster heeft drie groepen: **Eerst beslissen** (met Beoordelen), **Voorstel aan medewerker** (wat die aangaf en welke vraag die krijgt) en **Wordt ingepland** (dichtgeklapt, open te klappen).
+- Vandaag heeft geen kopje Nieuwe weekly meer; alleen de eerstvolgende dienst is wazig als die in de week van een ongelezen weekly valt.
 
 ## 7. Woordenlijst
 - **Concept:** diensten die nog niet zichtbaar zijn voor medewerkers. **Publiceren** maakt ze zichtbaar.

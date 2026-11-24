@@ -43,7 +43,7 @@ test('Elise ziet het rooster van die week pas na Ik heb de weekly gelezen',t=>{
  assert.match(html,/<img class="weeklyimg" src="data:image\/jpeg/);
  assert.match(html,/data-act="weeklyRead" data-id="2026-11-30"/);
  assert.doesNotMatch(html,/08:30–17:30 · Ingepland/,'rooster nog verborgen');
- assert.match(todayPage(db,elise),/Nieuwe weekly/);
+ assert.doesNotMatch(todayPage(db,elise),/Nieuwe weekly/,'geen apart kopje op Vandaag');
  db=apply(db,'elise','weeklyRead',{week});
  assert.ok(!mustRead(db,'elise',week));
  html=calendarPage(db,elise,view);
