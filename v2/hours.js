@@ -93,7 +93,7 @@ function summaryCard(db,actor,month){
  // Vast contract (SPEC 9f): norm en verschil van de maand, en het saldo van de afgesloten maanden.
  const plus=m=>(m>0?'+':'')+duration(m),own=saldo(db,actor.id);
  const balance=r.diff===null||r.diff===undefined||own===null?'':'<div class="hourparts hourbalance">'
-  +[['Norm',duration(r.norm)],['Verschil',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
+  +[['Norm',duration(r.norm)],[monthOver(month+'-01')?'Verschil':'Verschil tot nu toe',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
   .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'
   +'<p class="hourwait">Het saldo telt de afgesloten maanden.</p>';
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'

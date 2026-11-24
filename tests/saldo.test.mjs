@@ -59,6 +59,11 @@ test('Elise ziet bij Mijn uren de norm, het verschil van de maand en haar saldo'
  assert.doesNotMatch(hoursPage(db,person(db,'isis'),{page:'hours',month:'2026-11'}),/Saldo/,'contract Uren');
 });
 
+test('Zolang de maand loopt, staat er Verschil tot nu toe',t=>{
+ const db=november(t);
+ assert.match(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'}),/Verschil tot nu toe<\/span>/);
+});
+
 test('Eva zet het saldo van Elise op 0 met een reden; dat wordt vastgelegd',t=>{
  let db=close(t,november(t));
  assert.throws(()=>apply(db,'iris','saldoReset',{user:'elise',reason:'uitbetaald'}),/Alleen de bedrijfsleider/);
