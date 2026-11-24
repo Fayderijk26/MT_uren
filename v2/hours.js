@@ -1,5 +1,6 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
- absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo,vacationLeft} from './model.js';
+ absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo,vacationLeft,
+ normSoFar} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -93,11 +94,14 @@ function summaryCard(db,actor,month){
  // Vast contract (SPEC 9f): norm en verschil van de maand, en het saldo van de afgesloten maanden.
  const plus=m=>(m>0?'+':'')+duration(m),own=saldo(db,actor.id);
  const free=vacationLeft(db,actor.id),days=free===null?[]:[['Vakantiedagen over',String(free)]];
+ // Lopende maand: norm en verschil tot en met vandaag, met de hele maandnorm eronder.
+ const over=monthOver(month+'-01'),norm=over?r.norm:normSoFar(db,actor.id,month);
+ const diff=over?r.diff:r.diff+r.norm-norm,soFar=over?'':' tot nu toe';
+ const notes=[!over&&'Norm hele maand: '+duration(r.norm),r.sickUnpaid&&'Waarvan wachtdagen: −'+duration(r.sickUnpaid),
+  'Het saldo telt de afgesloten maanden.'].filter(Boolean).map(x=>'<p class="hourwait">'+x+'</p>').join('');
  const balance=r.diff===null||r.diff===undefined||own===null?'':'<div class="hourparts hourbalance">'
-  +[...days,['Norm',duration(r.norm)],
-   [monthOver(month+'-01')?'Verschil':'Verschil tot nu toe',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
-  .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'
-  +'<p class="hourwait">Het saldo telt de afgesloten maanden.</p>';
+  +[...days,['Norm'+soFar,duration(norm)],['Verschil'+soFar,plus(diff)],['Saldo plus- en minuren',plus(own)]]
+  .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'+notes;
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
   +field('Maand','month','month',month,'data-view="month"')+'</div>';
  return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'

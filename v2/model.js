@@ -186,6 +186,14 @@ export function normMinutes(db,user,month){
  const person=db.people.find(p=>p.id===user);
  return Math.round((person?.contractHours||0)*60*52/12);
 }
+// Norm tot nu toe: in de lopende maand de maandnorm naar rato van de kalenderdagen tot en met vandaag.
+// Een voorbije maand: de hele norm; een maand die nog moet komen: 0.
+export function normSoFar(db,user,month,day=today()){
+ const full=normMinutes(db,user,month),end=lastDay(month);
+ if(day>=end)return full;
+ if(day<month+'-01')return 0;
+ return Math.round(full*Number(day.slice(8))/Number(end.slice(8)));
+}
 // Pauzeregel (SPEC 9c), van begin tot eind: tot en met 3 uur geen pauze, daarboven 15 minuten, vanaf 6 uur 30.
 export const pauseFor=gross=>gross>=360?30:gross>180?15:0;
 // Minder dan 30 minuten pauze bij 6 uur of meer: een vraag, geen blokkade.
@@ -267,6 +275,7 @@ export function monthSummary(db,month,day=today()){
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
   const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const sickUnpaid=shifts.filter(s=>s.sick?.paid===false).reduce((sum,s)=>sum+absentMinutes(s),0);
   const count=type=>leaveItems(db,person.id,month,type).reduce((sum,d)=>sum+d.minutes,0);
   const leave=count('verlof'),unpaid=count('onbetaald'),overtime=count('overuren'),special=count('bijzonder');
   // Dagen gewerkt (SPEC 9h): losse dagen met goedgekeurde uren, ook als het maar een paar uur was.
@@ -277,7 +286,7 @@ export function monthSummary(db,month,day=today()){
   const norm=normMinutes(db,person.id,month);
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave+special-norm:null;
-  return {user:person.id,approved,sick,sickWaiting,leave,special,unpaid,overtime,days,pending,open,norm,diff};
+  return {user:person.id,approved,sick,sickWaiting,sickUnpaid,leave,special,unpaid,overtime,days,pending,open,norm,diff};
  });
 }
 // Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de

@@ -226,7 +226,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 **9f: maandnorm en lopend saldo** (gebouwd 24 november; `saldo` in `model.js`, lijst `saldoCorrections`. Het saldo telt de afgesloten maanden)
 - Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.
 - Het verschil (gewerkt + ziek dat meetelt + verlof, min de norm) gaat elke maand mee naar de volgende maand en naar het volgende jaar: een **lopend saldo** plus- en minuren.
-- De medewerker ziet zijn eigen saldo bij Mijn uren. Het saldo van anderen ziet alleen de bedrijfsleider (besluit eigenaar 24 november; leidinggevenden niet). Zolang de maand loopt staat er "Verschil tot nu toe".
+- De medewerker ziet zijn eigen saldo bij Mijn uren. Het saldo van anderen ziet alleen de bedrijfsleider (besluit eigenaar 24 november; leidinggevenden niet). Zolang de maand loopt staan er "Norm tot nu toe" (de maandnorm naar rato van de kalenderdagen tot en met vandaag) en "Verschil tot nu toe", met daaronder de norm van de hele maand en "Waarvan wachtdagen" (besluit eigenaar 24 november). Het maandoverzicht van de bedrijfsleider rekent nog met de hele norm.
 - Geen grens en geen toeslag. Het saldo wordt nooit vanzelf afgerekend: de bedrijfsleider zet het op 0 als het is uitbetaald of verrekend (met reden, vastgelegd). Aan het eind van het jaar bekijkt het bedrijf het saldo.
 - Hoe een verlofdag in het saldo telt: open punt (hoofdstuk 5).
 - Nieuw: een lijst met saldo-correcties (wie, wanneer, hoeveel, reden). Het saldo zelf wordt uitgerekend, niet opgeslagen.
