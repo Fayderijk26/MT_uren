@@ -1,4 +1,5 @@
-import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanWeek} from './model.js';
+import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanWeek,
+ displayName} from './model.js';
 import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
 export function availability(db,user,date){
@@ -52,7 +53,7 @@ const shown=(db,days)=>db.people.filter(p=>p.active!==false
 function dayView(db,v,readonly,pending){
  const day=v.day;
  const nav=toolbar(plan(db,v,readonly),add(day,-1),add(day,1),'dag');
- const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(p.name)+'</b><div class="dayslots">'
+ const rows=shown(db,[day]).map(p=>'<div class="dayrow"><b>'+h(displayName(db,p.id))+'</b><div class="dayslots">'
   +cell(db,p,day,readonly)+'</div></div>').join('');
  const week=Array.from({length:7},(_,i)=>add(monday(day),i));
  const publish=!readonly&&week.some(pending)?button('Week publiceren','pubWeek',monday(day),true):'';
@@ -66,7 +67,7 @@ function weekView(db,v,readonly,pending){
  let html=toolbar(left,add(first,-7),add(first,7),'week');
  html+='<div class="weekscroll"><table class="weekgrid"><thead><tr><th>Medewerker</th>'
   +days.map(d=>'<th class="'+current(d)+'">'+button(dateLabel(d),'day',d)+'</th>').join('')+'</tr></thead><tbody>';
- html+=shown(db,days).map(p=>'<tr><th scope="row">'+h(p.name)+'</th>'
+ html+=shown(db,days).map(p=>'<tr><th scope="row">'+h(displayName(db,p.id))+'</th>'
   +days.map(d=>'<td class="'+current(d)+'">'+cell(db,p,d,readonly)+'</td>').join('')+'</tr>').join('')
   +'</tbody></table></div>';
  const week=Array.from({length:7},(_,i)=>add(first,i));

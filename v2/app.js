@@ -3,7 +3,7 @@ import {calendarPage} from './calendar.js';
 import {ic} from '../ui.js';
 import {weekPage} from './week.js';
 import {needsQuestion,ruleFor,today,add,apply,TIMES,minutes,badges,pauseFor,pauseQuestion} from './model.js';
-import {h,button,clock,duration,badge,roleNames,areaChoice} from './view.js';
+import {h,button,clock,duration,badge,roleNames,areaChoice,name} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
 import {availabilityPage} from './availability.js';
@@ -80,7 +80,7 @@ function render(){
 }
 // Demo: kiezen als wie je de app bekijkt. Verdwijnt als er echt ingelogd wordt (ronde 8).
 function profilePicker(){
- const option=p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+p.name+' · '+roleNames[p.role]
+ const option=p=>'<option value="'+p.id+'" '+(p.id===actorId?'selected':'')+'>'+name(db,p.id)+' · '+roleNames[p.role]
   +'</option>';
  const people=db.people.filter(p=>p.active!==false||p.id===actorId);
  return '<label>Demoprofiel <select id="profile">'+people.map(option).join('')+'</select></label>';

@@ -1,5 +1,6 @@
 import {fmt,h} from '../ui.js';
-import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave,sickPaid,sickOpen,dayOf} from './model.js';
+import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave,sickPaid,sickOpen,dayOf,
+ displayName} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -64,7 +65,7 @@ export const times=(s={})=>'<div class="pair">'+field('Van','start','time',s.sta
  +field('Tot','end','time',s.end||'','required')+'</div>';
 export const form=(action,body,label,id='',primary=true)=>'<form data-op="'+action+'" data-id="'+h(id)+'">'+body
  +'<p role="alert" class="err"></p><button class="'+(primary?'primary':'secondary')+'">'+label+'</button></form>';
-export const name=(db,id)=>db.people.find(p=>p.id===id)?.name||'';
+export const name=(db,id)=>displayName(db,id);
 export const moment=iso=>new Intl.DateTimeFormat('nl-NL',
  {timeZone:'Europe/Amsterdam',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})
  .format(new Date(iso));

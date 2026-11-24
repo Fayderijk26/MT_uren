@@ -241,7 +241,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - **Bijzonder verlof:** een derde soort met een keuzelijst (bijvoorbeeld zwangerschapsverlof, of Anders met een reden). De bedrijfsleider beslist wat ermee gebeurt. Bij het tekstvak staat "Vermeld geen medische informatie." Welke soorten en keuzes: open punt.
 - Nieuwe velden: vakantiedagen per jaar en startsaldo bij een persoon; soort bijzonder verlof bij een aanvraag.
 
-**9h: maandoverzicht en twee exports** (gebouwd 24 november, zonder mail; `exportData` in `month.js`. De kolom Percentage blijft leeg tot dat besloten is. `name` blijft de naam in de app; de vier nieuwe velden zijn alleen voor de export)
+**9h: maandoverzicht en twee exports** (gebouwd 24 november, zonder mail; `exportData` in `month.js`. De kolom Percentage blijft leeg tot dat besloten is. `name` blijft de naam in de app; de vier nieuwe velden zijn voor de export. Hebben twee mensen dezelfde naam, dan toont de app overal naam en achternaam (`displayName`); de achternaam is dan bij allebei verplicht)
 - Uren als decimaal getal (6,50). Eén regel per persoon.
 - **Export voor de loonadministratie** (zoals het bedrijf nu in Excel werkt): personeelsnummer, achternaam met voorletters, voornaam, vast of oproep (bij vast een percentage, zie hoofdstuk 5), uren gewerkt, dagen gewerkt (aantal losse dagen met gewerkte uren, ook als het maar 3 uur was). Ziek en verlof staan in eigen kolommen, niet bij uren gewerkt.
 - **Uitgebreide export** voor de bedrijfsleiders: daarbij gewerkt, ziek, verlof, onbetaald vrij, totaal, norm, verschil en saldo. Later misschien: hoe vaak ziek, hoeveel extra beschikbaarheid, hoeveel vrij gevraagd.

@@ -212,10 +212,10 @@ const areaBoxes=own=>'<fieldset class="field areas"><span>Werkplek</span>'+AREAS
 function inactiveBox(db,actor,p){
  if(p.id===actor.id)return '';
  const future=futureShifts(db,p.id);
- if(future.length)return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' heeft nog '+future.length
+ if(future.length)return '<h3>Op inactief zetten</h3><p>'+h(name(db,p.id))+' heeft nog '+future.length
   +' dienst(en) in de toekomst. Haal die eerst weg of geef ze aan iemand anders:</p>'
   +future.map(s=>'<p>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>').join('');
- return '<h3>Op inactief zetten</h3><p>'+h(p.name)+' verdwijnt uit het rooster. Oude uren blijven bewaard.</p>'
+ return '<h3>Op inactief zetten</h3><p>'+h(name(db,p.id))+' verdwijnt uit het rooster. Oude uren blijven bewaard.</p>'
   +form('setActive','<input type="hidden" name="active" value="">','Op inactief zetten',p.id,false);
 }
 // Medewerker toevoegen (zonder id) of wijzigen.
@@ -272,7 +272,7 @@ function extraDecision(db,actor,id){
 // Conceptdienst maken of wijzigen. De schil vult daarna de beschikbaarheid in (#window).
 function draft(db,actor,id){
  const s=db.drafts.find(x=>x.id===id)||shiftOf(db,id),date=s?.date||id;
- const people=select('Medewerker','user',activePeople(db).map(p=>[p.id,p.name]),s?.user);
+ const people=select('Medewerker','user',activePeople(db).map(p=>[p.id,name(db,p.id)]),s?.user);
  const area='<div id="areapick">'+areaChoice(db,s?.user||activePeople(db)[0]?.id,s?.area)+'</div>';
  const body=people+field('Datum','date','date',date,'readonly')+'<p id="window"></p>'
   +times(s||{start:TIMES.start,end:TIMES.end})+area

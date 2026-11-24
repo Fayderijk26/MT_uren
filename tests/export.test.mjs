@@ -5,7 +5,8 @@ import fs from 'node:fs';
 // ui.js laadt bij het starten de iconen met fetch; in Node lezen we het bestand zelf.
 globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(url),'utf8'))});
 const {pilotRoster}=await import('../v2/pilot.js');
-const {apply}=await import('../v2/model.js');
+const {apply,displayName}=await import('../v2/model.js');
+const {weekPage}=await import('../v2/week.js');
 const {exportData,monthPage}=await import('../v2/month.js');
 const {dialogs}=await import('../v2/dialogs.js');
 
@@ -62,4 +63,18 @@ test('Eva vult bij een medewerker personeelsnummer, voornaam, achternaam en voor
  assert.deepEqual([next.staffNumber,next.lastName,next.initials],['2001','de Boer','E.M.']);
  assert.equal(exportData(apply(db,'eva','savePerson',p),'2026-11').pay.sheets[0].rows
   .find(r=>r[2]==='Elise')[1],'de Boer, E.M.');
+});
+
+test('Twee keer de naam Elise: de app toont overal naam en achternaam, ook in het rooster',t=>{
+ at(t,'2026-11-26T12:00:00+01:00');
+ let db=pilotRoster();
+ const nieuw={name:'Elise',role:'employee',contract:'uren',contractHours:8,areas:['Vloer'],firstName:'Elise'};
+ db=apply(db,'eva','savePerson',{id:'elise',name:'Elise',role:'employee',contract:'vast',contractHours:24,
+  areas:['Keuken'],staffNumber:'1004',firstName:'Elise',lastName:'Bakker',initials:'E.'});
+ assert.throws(()=>apply(db,'eva','savePerson',nieuw),/Vul bij allebei een achternaam in/);
+ db=apply(db,'eva','savePerson',{...nieuw,lastName:'Visser'});
+ assert.equal(displayName(db,'elise'),'Elise Bakker');
+ assert.equal(displayName(db,'isis'),'Isis N','unieke naam blijft zoals hij is');
+ assert.match(weekPage(db,{day:'2026-11-26'}),/Elise Bakker/);
+ assert.doesNotMatch(weekPage(db,{day:'2026-11-26'}),/>Elise</);
 });

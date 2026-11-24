@@ -254,7 +254,7 @@ function closeMonth({db,actor,p}){
  check(actor.role==='admin','Alleen de bedrijfsleider kan een maand afsluiten.');
  check(!db.closedMonths.some(c=>c.month===p.month),'Deze maand is al afgesloten.');
  check(mayCloseMonth(db,actor,p.month),'Een maand kan pas vanaf de laatste dag van de maand worden afgesloten.');
- const personName=id=>db.people.find(x=>x.id===id).name;
+ const personName=id=>displayName(db,id);
  const rows=monthSummary(db,p.month),who=list=>[...new Set(list.map(o=>personName(o.shift.user)))].join(', ');
  const open=rows.flatMap(r=>r.open),waiting=open.filter(o=>o.status==='pending');
  check(!waiting.length,'Er wachten nog uren op beoordeling bij: '+who(waiting)
@@ -566,6 +566,13 @@ function declineExtra({db,admin,p}){
 }
 
 // Medewerker toevoegen of wijzigen (alleen de bedrijfsleider). Er blijft altijd minstens één bedrijfsleider.
+// Naam in de app: bij twee mensen met dezelfde naam altijd naam en achternaam (besluit eigenaar 24 november).
+export function displayName(db,id){
+ const p=db.people.find(x=>x.id===id);
+ if(!p)return '';
+ const same=db.people.some(x=>x!==p&&x.name.toLowerCase()===p.name.toLowerCase());
+ return same&&p.lastName?p.name+' '+p.lastName:p.name;
+}
 function savePerson({db,admin,p}){
  check(admin,'Alleen de bedrijfsleider beheert medewerkers.');
  const name=String(p.name||'').trim(),hours=Number(p.contractHours),phone=String(p.phone||'').trim();
@@ -574,7 +581,11 @@ function savePerson({db,admin,p}){
  const old=p.id?db.people.find(x=>x.id===p.id):null;
  check(!p.id||old,'Deze medewerker bestaat niet.');
  check(name,'Vul een naam in.');
- check(!db.people.some(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase()),'Er bestaat al iemand met deze naam.');
+ // Dezelfde naam mag, als allebei een (verschillende) achternaam hebben; die toont de app dan erbij.
+ const twin=db.people.find(x=>x!==old&&x.name.toLowerCase()===name.toLowerCase());
+ const last=String(p.lastName||'').trim();
+ check(!twin||last&&twin.lastName&&twin.lastName.toLowerCase()!==last.toLowerCase(),
+  'Er bestaat al iemand met deze naam. Vul bij allebei een achternaam in; de app toont dan naam en achternaam.');
  check(['employee','lead','admin'].includes(p.role),'Kies een rol.');
  check(['vast','uren'].includes(p.contract),'Kies het soort contract: vast of uren.');
  check(String(p.contractHours).trim()!==''&&hours>=0&&hours<=40,'Vul contracturen in tussen 0 en 40.');
@@ -609,7 +620,7 @@ function reportSick({db,actor,s}){
  const problem=sickProblem(db,actor,s);
  check(!problem,problem);
  s.sick={by:actor.id,at:new Date().toISOString()};
- if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+actor.name+' · '+s.start+'–'+s.end);
+ if(s.user!==actor.id)announce(db,s,'Ziek gemeld door '+displayName(db,actor.id)+' · '+s.start+'–'+s.end);
 }
 // Meerdere dagen tegelijk ziek melden (bij Ontbreekt). Alles of niets: mag één dag niet, dan wordt niets gemeld.
 function reportSickMany({db,actor,p}){
@@ -625,7 +636,7 @@ function undoSick({db,actor,s}){
  check(s?.sick,'Deze dienst is niet ziek gemeld.');
  check(mayUndoSick(db,actor,s),'Alleen wie de ziekmelding deed of een bedrijfsleider kan hem intrekken.');
  delete s.sick;
- if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+actor.name+' · '+s.start+'–'+s.end);
+ if(s.user!==actor.id)announce(db,s,'Ziekmelding ingetrokken door '+displayName(db,actor.id)+' · '+s.start+'–'+s.end);
 }
 // Per ziek gemelde dienst beslist de bedrijfsleider: doorbetalen of wachtdag (SPEC 9d). Tot dan telt hij niet mee.
 export const sickPaid=s=>s.sick?.paid===true;
@@ -678,7 +689,7 @@ function answerOffer({db,actor,admin,p}){
   }
   // Antwoord van de bedrijfsleider gaat naar de medewerker; antwoord van de medewerker naar iedere bedrijfsleider.
   const to=o.turn==='admin'?[o.row.user]:activePeople(db).filter(x=>x.role==='admin').map(x=>x.id);
-  const answer=db.people.find(x=>x.id===o.row.user).name+' · '
+  const answer=displayName(db,o.row.user)+' · '
    +(p.answer==='yes'?'Voorstel geaccepteerd · '+o.row.start+'–'+o.row.end
    :o.fallback?'Voorstel afgewezen; dienst blijft '+o.fallback.start+'–'+o.fallback.end
    :'Voorstel afgewezen · '+o.row.start+'–'+o.row.end);
