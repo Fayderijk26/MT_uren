@@ -68,10 +68,10 @@ test('Eva en Iris zien op Vandaag wie ziek is gemeld, en het rooster toont Ziek 
  assert.match(weekPage(db,{day:'2026-11-21'}),/10:00–18:00<\/b>(?:(?!<\/button>).)*Ziek gemeld/s);
 });
 
-test('Venster Ziek melden: geen belmelding meer, wel dat de bedrijfsleider beslist over doorbetalen',()=>{
+test('Venster Ziek melden: geen belmelding, alleen hoeveel uur ziek gemeld wordt',()=>{
  const db=pilotRoster(),s=db.shifts.find(x=>x.id===saturday),body=sickAskBody(db,s);
  assert.doesNotMatch(body,/telefonisch/);
- assert.match(body,/7u 30m ziek\. De bedrijfsleider beslist of dit wordt doorbetaald\./);
+ assert.match(body,/<p>7u 30m ziek gemeld<\/p>/);
  assert.match(body,/data-op="sick"/);
 });
 
