@@ -2,7 +2,8 @@ import {pilotRoster,migratePilot} from './pilot.js';
 import {calendarPage} from './calendar.js';
 import {ic} from '../ui.js';
 import {weekPage} from './week.js';
-import {needsQuestion,ruleFor,today,add,apply,TIMES,minutes,badges,pauseFor,pauseQuestion} from './model.js';
+import {needsQuestion,ruleFor,today,add,apply,minutes,badges,pauseFor,pauseQuestion,dayTimes,
+ weekTimes} from './model.js';
 import {h,button,clock,duration,badge,roleNames,areaChoice,name} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
@@ -23,7 +24,7 @@ const read=()=>{
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];data.saldoCorrections??=[];
- data.leaveCorrections??=[];
+ data.leaveCorrections??=[];data.days??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
@@ -163,10 +164,10 @@ function suggestWindow(fill){
  modal.querySelector('h2').textContent=question?'Vragen om te werken':'Dienst inplannen';
  const whole=rule?.start==='00:00'&&rule?.end==='23:59';
  modal.querySelector('#window').textContent=!rule?'Geen beschikbaarheid opgegeven':rule.off?'Niet beschikbaar'
-  :whole?'Hele dag ('+TIMES.start+'–'+TIMES.end+')':'Beschikbaar '+clock(rule);
+  :whole?'Hele dag ('+clock(dayTimes(date))+')':'Beschikbaar '+clock(rule);
  if(fill&&rule&&!rule.off){
   f.elements.start.value=rule.start==='00:00'?'10:00':rule.start;
-  f.elements.end.value=rule.end==='23:59'?TIMES.end:rule.end;
+  f.elements.end.value=rule.end==='23:59'?dayTimes(date).end:rule.end;
  }
 }
 // Pauze kiezen: knop kleuren en het verborgen veld zetten. Zelf kiezen zet het meebewegen uit (SPEC 9c).
@@ -234,6 +235,11 @@ document.addEventListener('change',e=>{
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
 document.addEventListener('change',e=>{
  if(e.target.name==='whole')modal.querySelector('#extratimes').hidden=e.target.value==='whole';
+ // Dag instellen (ronde 12): alleen de tijden bij aangepaste openingstijden, alleen Doorbetalen bij dicht.
+ if(e.target.name==='status'&&modal.querySelector('#dayhours')){
+  modal.querySelector('#dayhours').hidden=e.target.value!=='hours';
+  modal.querySelector('#daypaid')?.toggleAttribute('hidden',e.target.value!=='closed');
+ }
  if(e.target.name==='special'&&modal.querySelector('#specialother')){
   const other=e.target.value==='anders',box=modal.querySelector('#specialother');
   box.hidden=!other;box.querySelector('input').required=other;
@@ -260,7 +266,9 @@ modal.addEventListener('submit',e=>{
   if(question){box.querySelector('p').textContent=question;box.hidden=false;return}
  }
  if(op==='draft')p.user=f.elements.user.value;
- if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
+ // Vanaf of tot: het andere einde is de standaard werkdag van die dag (bij vaste beschikbaarheid: die weekdag).
+ const std=op==='weekly'?weekTimes(p.weekday):dayTimes(p.date||today());
+ if(p.mode==='from')p.end=std.end;if(p.mode==='until')p.start=std.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=shiftChoices(p)}
  if(op==='publish'){p.date=p.id;p.confirm=Boolean(p.confirm)}
  if(op==='approveAll')p.ids=p.ids.split(',');
@@ -270,6 +278,7 @@ modal.addEventListener('submit',e=>{
  if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='saldoReset'||op==='leaveSet')p.user=p.id;
+ if(op==='setDay')p.date=p.id;
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

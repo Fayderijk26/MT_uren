@@ -55,10 +55,9 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
 Het gesprek met het bedrijf was op 24 november. De uitkomst staat in ronde 9 ("Uitkomst gesprek 24 november") en in de rondes 12 t/m 14. Wat nog open is:
 
-- **Verlof en saldo:** een verlofdag telt als 1 dag, niet in uren. Hoe telt een verlofdag dan mee in de plus- en minuren van een vast contract? Zonder regel lijkt iemand met verlof uren tekort te komen. Het bedrijf noemde eerder 8 uur per verlofdag. *Open punt, nog bespreken.*
 - **Later beginnen op een vaste dag** (bijv. 11:30 in plaats van 08:30): de medewerker past de beschikbaarheid eenmalig aan en de gemiste uren worden minuren. Hoe dat precies gaat, moet nog bedacht worden. *Open punt.*
 - **Bijzonder verlof:** welke soorten in de keuzelijst (genoemd: zwangerschapsverlof en Anders met reden) en wat de bedrijfsleider per soort kan kiezen. *Navragen.*
-- **Feestdagen en sluitingsdagen:** welke keuzes de bedrijfsleider heeft als een feestdag of sluitingsdag op iemands vaste dag valt, en welke feestdagen tellen. *Niet besproken.*
+- **Feestdagen:** de keuze bij een dichte dag is besloten (ronde 12). Open: moet de app feestdagen zelf voorstellen, of zet de bedrijfsleider ze steeds zelf dicht?
 - **Export:** wat het percentage bij een vast contract betekent (85% is waarschijnlijk 32 uur; hoeveel uur is dan 100%?). Of de export automatisch naar de loonadministratie gaat: voorlopig niet, alleen naar de bedrijfsleiders. *Navragen.*
 - **Herinnering extra beschikbaarheid** (eens per maand, voor medewerkers zonder vast contract): wel of niet? *Navragen.*
 - **Ziek bij oproepkrachten:** de bedrijfsleider heeft dezelfde keuze als bij vaste medewerkers ("denk ik"). *Bevestigen.*
@@ -317,11 +316,13 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
   - Melding bij een nieuwe Weekly (ronde 14).
   - Eventueel: maandelijkse herinnering extra beschikbaarheid voor medewerkers zonder vast contract (open punt, hoofdstuk 5).
 
-**Ronde 12: rooster — openingstijden, sluitingsdagen en standaardtijden** (nog niet gebouwd)
+**Ronde 12: rooster — openingstijden, sluitingsdagen en standaardtijden** (gebouwd 24 november; `setDay`, `dayTimes`, `closedPeople` in `model.js`, lijst `days`)
 - De bedrijfsleider kan per dag **aangepaste openingstijden** opgeven en een dag **dicht** zetten. Een dag die dicht is, is in het rooster bij iedereen lichtrood met de melding "Dicht".
 - Standaard werkdag doordeweeks 08:30–17:30, weekend 08:30–18:00 (besluit 13). Geldt voor een nieuwe dienst en voor "hele dag beschikbaar".
-- Tijdkeuzes lopen van 06:00 tot 22:00.
-- **Feestdag of sluitingsdag op iemands vaste dag** (vast contract): de bedrijfsleider kiest wat ermee gebeurt (bijvoorbeeld vrije dag, doorbetalen of overuren). Welke keuzes en welke feestdagen: open punt (hoofdstuk 5).
+- Tijdkeuzes: geen beperking, van 00:00 tot 23:45 per kwartier (besluit eigenaar 24 november; eerder 06:00–22:00).
+- **Feestdag of sluitingsdag op iemands vaste dag** (vast contract): bij het dicht zetten ziet de bedrijfsleider "Je zet nu deze dag dicht. Dit is een normale werkdag voor X en Y. Wil je hun uren gewoon doorbetalen of zijn dit min-uren?" (besluit eigenaar 24 november). Doorbetalen telt 8 uur per persoon (net als een verlofdag), min-uren telt 0. Eén keuze voor iedereen op die dag. Verlof op een dichte dag kost geen vakantiedag en telt niet dubbel.
+- Een dag met diensten kan niet dicht: eerst de diensten weghalen. Op een dichte dag kan niemand worden ingepland.
+- Medewerkers zien de dichte dag ook in Mijn rooster; bij Mijn uren staat "1 dag dicht, doorbetaald (8u 0m)".
 - Nieuw: een lijst met dagen met aangepaste tijden of dicht.
 
 **Ronde 13: vaste werkdagen en vrij vragen** (nog niet gebouwd)

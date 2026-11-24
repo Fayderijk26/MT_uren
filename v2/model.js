@@ -1,5 +1,7 @@
 // Vaste tijden. Bezoekers: open tot close. Werkdag medewerkers (ook "hele dag" en een nieuwe dienst): start tot end.
 export const TIMES = {open:'09:00',close:'17:30',start:'08:30',end:'18:00'};
+// Standaard werkdag (besluit 13, ronde 12): doordeweeks 08:30–17:30, in het weekend 08:30–18:00.
+export const weekTimes=day=>({start:TIMES.start,end:Number(day)>=6?'18:00':'17:30'});
 export const dayOf = when => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam'}).format(new Date(when));
 export const today = () => dayOf(Date.now());
 export const now = () => new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Amsterdam',hour:'2-digit',minute:'2-digit'})
@@ -186,6 +188,32 @@ export function normMinutes(db,user,month){
  const person=db.people.find(p=>p.id===user);
  return Math.round((person?.contractHours||0)*60*52/12);
 }
+// Aangepaste dagen (ronde 12): {date, status:'closed'|'hours', open, close, paid, by, at} in db.days.
+export const dayInfo=(db,date)=>db.days.find(d=>d.date===date);
+export const closedDay=(db,date)=>dayInfo(db,date)?.status==='closed';
+export const dayTimes=date=>weekTimes(weekday(date));
+// Wie heeft op die dag normaal een vaste werkdag (vast contract, uren bijhouden, actief)?
+export const closedPeople=(db,date)=>db.people.filter(p=>p.contract==='vast'&&p.active!==false&&tracksHours(db,p.id)
+ &&ruleDay(db,p.id,date)).map(p=>p.id);
+// Dag instellen: normaal, aangepaste openingstijden of dicht. Bij dicht kiest de bedrijfsleider of de mensen die er
+// normaal werken worden doorbetaald (8 uur) of dat het min-uren zijn. Een dag met diensten kan niet dicht.
+function setDay({db,admin,actor,p}){
+ check(admin,'Alleen de bedrijfsleider kan openingstijden aanpassen of een dag dicht zetten.');
+ check(/^\d{4}-\d{2}-\d{2}$/.test(p.date||''),'Kies een dag.');
+ notClosed(db,p.date);
+ check(['normal','hours','closed'].includes(p.status),'Kies normaal, aangepaste openingstijden of dicht.');
+ db.days=db.days.filter(d=>d.date!==p.date);
+ if(p.status==='normal')return;
+ const entry={date:p.date,status:p.status,by:actor.id,at:new Date().toISOString()};
+ if(p.status==='hours'){interval({start:p.open,end:p.close});Object.assign(entry,{open:p.open,close:p.close});}
+ if(p.status==='closed'){
+  check(!db.shifts.concat(db.drafts).some(s=>s.date===p.date),'Op deze dag staan nog diensten. Haal die eerst weg.');
+  check(!closedPeople(db,p.date).length||['ja','nee'].includes(p.paid),
+   'Kies of de uren worden doorbetaald of dat het min-uren zijn.');
+  entry.paid=p.paid==='ja';
+ }
+ db.days.push(entry);
+}
 // Norm tot nu toe: in de lopende maand de maandnorm naar rato van de kalenderdagen tot en met vandaag.
 // Een voorbije maand: de hele norm; een maand die nog moet komen: 0.
 export function normSoFar(db,user,month,day=today()){
@@ -224,7 +252,9 @@ function checkSpecial(p){
 }
 // Vakantiedagen (SPEC 9g): een verlofdag is 1 dag. Een dag telt als die persoon er een vaste werkdag heeft
 // (vaste beschikbaarheid, niet Niet beschikbaar), ook bij een deel van de dag.
-const fixedDay=(db,user,date)=>{const r=ruleFor({...db,extra:[]},{user,date});return !!r&&!r.off};
+// Vaste werkdag volgens de vaste beschikbaarheid. Een dag dat het park dicht is, telt niet als verlofdag (ronde 12).
+const ruleDay=(db,user,date)=>{const r=ruleFor({...db,extra:[]},{user,date});return !!r&&!r.off};
+const fixedDay=(db,user,date)=>ruleDay(db,user,date)&&!closedDay(db,date);
 const fixedDates=(db,r,from='',to='9999')=>{
  const out=[];
  for(let d=r.date>from?r.date:from;d<=r.through&&d<=to;d=add(d,1))if(fixedDay(db,r.user,d))out.push(d);
@@ -276,6 +306,10 @@ export function monthSummary(db,month,day=today()){
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
   const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
+  // Dichte dagen op een vaste werkdag (ronde 12): doorbetaald telt 8 uur, anders 0.
+  const shut=db.days.filter(d=>d.status==='closed'&&d.date.startsWith(month+'-')&&person.contract==='vast'
+   &&ruleDay(db,person.id,d.date));
+  const closedPaid=shut.filter(d=>d.paid).length*LEAVE_DAY_MINUTES,closedDays=shut.length;
   const waiting=shifts.filter(s=>s.sick?.paid===false),waitShifts=waiting.length;
   const sickUnpaid=waiting.reduce((sum,s)=>sum+absentMinutes(s),0);
   const count=type=>leaveItems(db,person.id,month,type).reduce((sum,d)=>sum+d.minutes,0);
@@ -288,9 +322,9 @@ export function monthSummary(db,month,day=today()){
   // Alleen een vast contract heeft een norm; een oproepkracht niet. (Oproep heet intern contract 'uren'.)
   const norm=person.contract==='vast'?normMinutes(db,person.id,month):null;
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
-  const diff=person.contract==='vast'?approved+sick+leave+special-norm:null;
-  return {user:person.id,approved,sick,sickWaiting,sickUnpaid,waitShifts,leave,special,unpaid,overtime,days,
-   pending,open,norm,diff};
+  const diff=person.contract==='vast'?approved+sick+leave+special+closedPaid-norm:null;
+  return {user:person.id,approved,sick,sickWaiting,sickUnpaid,waitShifts,closedPaid,closedDays,leave,special,
+   unpaid,overtime,days,pending,open,norm,diff};
  });
 }
 // Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
@@ -414,7 +448,8 @@ function recordAvailability({db,actor,op,p}){
   if(op==='extra'){
    check(!db.shifts.some(s=>s.user===actor.id&&s.date===p.date),'Je bent op deze dag al ingepland.');
    db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);
-   db.extra.push({user:actor.id,date:p.date,start:start||TIMES.start,end:end||TIMES.end});
+   const std=dayTimes(p.date);
+   db.extra.push({user:actor.id,date:p.date,start:start||std.start,end:end||std.end});
   }else{
    const through=p.through||p.date;
    check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
@@ -441,7 +476,7 @@ function recordAvailability({db,actor,op,p}){
 }
 
 export function weeklyConflicts(db,r){
- const outside=s=>r.off||s.start<(r.start||TIMES.start)||s.end>(r.end||TIMES.end);
+ const std=weekTimes(r.weekday),outside=s=>r.off||s.start<(r.start||std.start)||s.end>(r.end||std.end);
  return db.shifts.filter(s=>s.user===r.user&&s.date>=r.date&&weekday(s.date)===r.weekday&&outside(s));
 }
 function decideRequest({db,admin,p,r}){
@@ -455,7 +490,8 @@ function decideRequest({db,admin,p,r}){
    if(conflicts.length)announce(db,{user:r.user,date:r.date},
     'Nieuwe beschikbaarheid goedgekeurd. Deze diensten blijven staan: '+kept);
    db.rules=db.rules.filter(x=>!(x.user===r.user&&x.weekday===r.weekday&&x.date===r.date));
-   db.rules.push({...r,start:r.start||TIMES.start,end:r.end||TIMES.end});
+   const std=weekTimes(r.weekday);
+   db.rules.push({...r,start:r.start||std.start,end:r.end||std.end});
   }else if(p.accept){
    // De bedrijfsleider kan de soort aanpassen (voorlopig, zie SPEC ronde 9b). De gevraagde soort blijft in askedType.
    if(r.kind==='leave'&&p.type&&p.type!==r.type){
@@ -519,6 +555,7 @@ function resolveStandby({db,admin,s,p,op}){
 }
 function saveDraft({db,actor,admin,p,s}){
  check(admin&&db.people.some(x=>x.id===p.user)&&p.date>=today(),'Controleer de medewerker en datum.');interval(p);
+  check(!closedDay(db,p.date),'Het park is dicht op deze dag.');
   check(isActive(db,p.user),'Deze medewerker is inactief.');
   check(!s?.sick,'Deze dienst is ziek gemeld. Trek de ziekmelding eerst in.');
   const id=p.id||crypto.randomUUID(), prior=db.drafts.find(d=>d.id===id);
@@ -829,6 +866,7 @@ const actions={
   extra: recordAvailability,
   decide: decideRequest,
   draft: saveDraft,
+  setDay,
   publish: publishDrafts,
   offer: answerOffer,
   seen: markSeen,

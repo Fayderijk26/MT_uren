@@ -68,3 +68,10 @@ a.secondary{text-decoration:none}
 .hourstat.hourend{margin:14px 0 0;background:#e7f1ea;border-color:#b9d4c2}.hourend+.hournote{margin-top:4px}
 .hournote{margin:6px 0 0;font-size:13px;color:var(--muted)}.hourparts+.hournote{margin-top:10px}
 .hourstat:last-child{margin:14px 0 0}.cardhead h2{margin:0}.cardhead{margin-bottom:14px}
+
+/* Ronde 12: dichte dag lichtrood met Dicht, aangepaste openingstijden als label. */
+.dayclosed,.dayhours{display:inline-block;margin-left:6px;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700}
+.dayclosed{background:#fbe1dd;color:#8f2a1f}.dayhours{background:#fff6dd;color:#6b4d12}
+.weekgrid th.closed,.weekgrid td.closed,.dayrow.closed,.calendar-day.closed{background:#fdeeec}
+.cal-closed{color:#8f2a1f;font-weight:700}
+.dayhead{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.dayhead .daytitle{margin-right:auto}
