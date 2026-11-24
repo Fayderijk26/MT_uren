@@ -140,6 +140,17 @@ function freeRequests(db,s){
  return db.requests.filter(r=>r.kind==='leave'&&r.status!=='rejected'&&r.user===s.user
   &&freeWindows(r,s.date).some(w=>intersects(w,s)));
 }
+// Waarom een dienst een vraag aan de medewerker werd (voor de bedrijfsleider): geen vaste dag, vrij gevraagd of
+// buiten de beschikbaarheid. rule: de beschikbaarheid van die dag.
+export function offerReason(db,o){
+ const row={user:o.row.user,date:o.row.date,start:o.asked?.start||o.row.start,end:o.asked?.end||o.row.end};
+ const rule=ruleFor(db,row);
+ if(freeRequests(db,row).length)return {kind:'leave'};
+ // Geen regel voor deze weekdag, maar wel vaste dagen: dan is dit geen vaste werkdag.
+ if(!rule)return {kind:db.rules.some(r=>r.user===row.user)?'free':'unknown'};
+ if(rule.off)return {kind:rule.weekday?'free':'unavailable'};
+ return {kind:'outside',rule};
+}
 function validate(db){
  for(const [i,s] of db.shifts.entries()){
   interval(s);
@@ -917,7 +928,8 @@ function answerOffer({db,actor,admin,p}){
   check(['counter','yes','no'].includes(p.answer),'Kies een antwoord.');
   if(p.answer==='counter'){
    check(o.turn==='employee','Alleen de medewerker kan andere tijden voorstellen.');
-   interval(p);Object.assign(o.row,{start:p.start,end:p.end});o.turn='admin';return;
+   interval(p);o.asked??={start:o.row.start,end:o.row.end};
+   Object.assign(o.row,{start:p.start,end:p.end});o.turn='admin';return;
   }
   if(p.answer==='yes'){
    const old=db.shifts.find(s=>s.id===o.row.id);

@@ -30,11 +30,29 @@ test('Dienstvoorstel: Mieke ziet Dienst accepteren en Wijziging voorstellen; de 
 test('Mieke stelt 10:00–18:00 voor: Eva ziet het voorstel en kiest accepteren of afwijzen',t=>{
  let db=asked(t);const id=db.offers.at(-1).id;
  db=apply(db,'mieke','offer',{id,answer:'counter',start:'10:00',end:'18:00'});
- const body=dialogs.proposal(db,person(db,'eva'),id).body;
+ const {title,body}=dialogs.proposal(db,person(db,'eva'),id);
+ assert.equal(title,'Reactie op extra dienst');
+ assert.match(body,/Extra dienst: donderdag is geen vaste werkdag van Mieke\./);
+ assert.match(body,/Je vroeg 08:30–18:00\./);
  assert.match(body,/Mieke stelt andere tijden voor: 10:00–18:00\./);
  assert.match(body,/>Voorstel accepteren<\/button>/);
  assert.match(body,/>Afwijzen<\/button>/);
  assert.doesNotMatch(body,/Wijziging voorstellen/);
+});
+
+test('Reactie op een dienst buiten de beschikbaarheid: Eva ziet waarom het een vraag was',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
+ // Isis werkt vast op zaterdag; op 12 december is ze goedgekeurd beschikbaar vanaf 11:00.
+ let db=apply(pilotRoster(),'isis','extra',{date:'2026-12-12',start:'11:00',end:'18:00'});
+ db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
+ db.offers.push({id:'o1',row:{id:'s1',user:'isis',date:'2026-12-12',start:'08:30',end:'18:00',area:'Vloer'},
+  turn:'employee',before:null});
+ db=apply(db,'isis','offer',{id:'o1',answer:'counter',start:'10:00',end:'18:00'});
+ const {title,body}=dialogs.proposal(db,person(db,'eva'),'o1');
+ assert.equal(title,'Reactie op dienstvoorstel');
+ assert.match(body,/Buiten de beschikbaarheid van Isis N: beschikbaar vanaf 11:00\./);
+ db.offers[0].row.user='elise';db.offers[0].row.date='2026-12-15';
+ assert.match(dialogs.proposal(db,person(db,'eva'),'o1').body,/Extra dienst: dinsdag is geen vaste werkdag van Elise B\./);
 });
 
 test('De knop Lees eerst de weekly opent de weekly, niet het venster Vaste dagen wijzigen',t=>{

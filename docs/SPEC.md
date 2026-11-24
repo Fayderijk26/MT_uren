@@ -361,6 +361,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 **Ronde 15: publiceren duidelijker** (gebouwd 24 november; `publishBlockers` in `model.js`)
 - Besluiten eigenaar 24 november: publiceren wacht op de beslissing over open aanvragen (andere tijden of vrij) op een dag waarop iemand in het concept staat. Een concept maken op een dag met een open aanvraag kan ook niet: eerst beslissen. Botst een dienst met de (goedgekeurde) beschikbaarheid, dan krijgt de medewerker een voorstel; bij een goedgekeurde aanvraag staat erbij "al goedgekeurd, daarom vragen we het de medewerker".
 - Het publiceervenster heeft drie groepen: **Eerst beslissen** (met Beoordelen), **Voorstel aan medewerker** (wat die aangaf en welke vraag die krijgt) en **Wordt ingepland** (dichtgeklapt, open te klappen).
+- Dienstvoorstel: de medewerker kiest Dienst accepteren of Wijziging voorstellen (dan pas de tijden), of Ik kan niet. Reageert de medewerker met andere tijden, dan ziet de bedrijfsleider "Reactie op extra dienst" (geen vaste werkdag of geen beschikbaarheid) of "Reactie op dienstvoorstel", met de reden, wat er gevraagd was en wat de medewerker voorstelt. Nieuw veld bij een voorstel: `asked` (de oorspronkelijk gevraagde tijden).
 - Vandaag heeft geen kopje Nieuwe weekly meer; alleen de eerstvolgende dienst is wazig als die in de week van een ongelezen weekly valt.
 
 ## 7. Woordenlijst

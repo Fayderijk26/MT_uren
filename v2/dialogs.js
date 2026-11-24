@@ -3,7 +3,7 @@
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
  minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays,dayTimes,dayInfo,closedPeople,ruleFor,weekday,
- weekTimes,weeklyFor,publishBlockers} from './model.js';
+ weekTimes,weeklyFor,publishBlockers,offerReason} from './model.js';
 import {weeklyCard,weeklyTitle} from './weekly.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
@@ -445,9 +445,20 @@ function proposal(db,actor,id){
    +form('no','','Ik kan niet',id,false);
   return {title:'Dienstvoorstel',body};
  }
- const body=head+'<p>'+h(name(db,o.row.user)+' stelt andere tijden voor: '+clock(o.row)+'.')+'</p></div>'
-  +'<div class="proposalactions">'+form('yes','','Voorstel accepteren',id)+form('no','','Afwijzen',id,false)+'</div>';
- return {title:'Dienstvoorstel',body};
+ // De bedrijfsleider: waarom het een vraag was, wat er gevraagd was en wat de medewerker voorstelt.
+ const who=name(db,o.row.user),why=offerReason(db,o),day=weekNames[weekday(o.row.date)-1].toLowerCase();
+ const reason={unknown:'Extra dienst: '+who+' heeft voor deze dag geen beschikbaarheid opgegeven.',
+  free:'Extra dienst: '+day+' is geen vaste werkdag van '+who+'.',
+  unavailable:'Extra dienst: '+who+' gaf aan niet beschikbaar te zijn.',
+  leave:who+' had vrij gevraagd voor deze dag.',
+  outside:'Buiten de beschikbaarheid van '+who+': '+(why.rule?availability(db,o.row.user,o.row.date)
+   .toLowerCase():'')+'.'}[why.kind];
+ const asked=o.asked?'Je vroeg '+clock(o.asked)+'. ':'';
+ const body=head+'<p class="proposalwhy">'+h(reason)+'</p><p>'+h(asked+who+' stelt andere tijden voor: '+clock(o.row)+'.')
+  +'</p></div><div class="proposalactions">'+form('yes','','Voorstel accepteren',id)+form('no','','Afwijzen',id,false)
+  +'</div>';
+ const extra=['unknown','free','unavailable'].includes(why.kind);
+ return {title:extra?'Reactie op extra dienst':'Reactie op dienstvoorstel',body};
 }
 
 // Welke knop (data-act) welk venster opent.
