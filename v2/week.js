@@ -2,12 +2,18 @@ import {today,add,monday,ruleFor,freeWindows,TIMES,availabilityConflict,mayPlanW
  displayName,dayInfo,dayTimes} from './model.js';
 import {h,card,button,clock,dateLabel,areaMark,leaveShort} from './view.js';
 
+// Gevraagde andere tijden op een vaste werkdag (ronde 13): achter de vaste beschikbaarheid.
 export function availability(db,user,date){
+ const ask=db.requests.find(r=>r.kind==='day'&&r.user===user&&r.date===date&&r.status==='pending');
+ return availabilityNow(db,user,date)+(ask?' · '+clock(ask)+' gevraagd':'');
+}
+function availabilityNow(db,user,date){
  const leave=db.requests.find(r=>r.kind==='leave'&&r.user===user&&r.status!=='rejected'&&freeWindows(r,date).length);
  if(leave)return leaveShort(leave)+(leave.status==='pending'?' gevraagd':'')+(leave.start?' '+clock(leave):'');
  const rule=ruleFor(db,{user,date});
  if(!rule)return 'Onbekend';
- if(rule.off)return 'Vrij';
+ // Niet beschikbaar voor één dag (ronde 13) heeft geen weekdag; vaste vrije dag wel.
+ if(rule.off)return rule.weekday?'Vrij':'Niet beschikbaar';
  // Hele dag: van het begin tot minstens het einde van de standaard werkdag van die dag.
  const std=dayTimes(date),from=rule.start<=std.start,until=rule.end>=std.end;
  if(from)return until?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;

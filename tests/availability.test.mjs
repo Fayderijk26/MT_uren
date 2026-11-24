@@ -12,7 +12,7 @@ const person=(db,id)=>db.people.find(p=>p.id===id);
 
 test('Bedrijfsleider ziet bij Aanvragen de subkopjes Mijn aanvragen en Beoordelen, met de vrije dag van Isis',t=>{
  t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-19T12:00:00+01:00')});
- const db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',through:'2026-12-26',reason:'Kerst'});
+ const db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',through:'2026-12-26',reason:'Kerst',instead:'nee'});
  const mine=availabilityPage(db,person(db,'eva'),{page:'availability'});
  assert.match(mine,/data-id="requests"><span class="tabicon">Beoordelen<span class="badge"[^>]*>1</);
  const review=availabilityPage(db,person(db,'eva'),{page:'requests'});

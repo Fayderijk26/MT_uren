@@ -3,7 +3,7 @@ import {calendarPage} from './calendar.js';
 import {ic} from '../ui.js';
 import {weekPage} from './week.js';
 import {needsQuestion,ruleFor,today,add,apply,minutes,badges,pauseFor,pauseQuestion,dayTimes,
- weekTimes} from './model.js';
+ weekTimes,needsInstead} from './model.js';
 import {h,button,clock,duration,badge,roleNames,areaChoice,name} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
@@ -145,8 +145,21 @@ function lateNotice(){
  const late=el&&modal.querySelector('[name=date]').value<add(today(),21);
  if(el)el.textContent=late?'Je vraagt minder dan drie weken van tevoren vrij. Je aanvraag wordt wel verstuurd.':'';
 }
+// Oproepkracht vraagt vrij op een vaste dag (ronde 13): eerst de vraag tonen; daarna de andere dagen meesturen.
+function askInstead(p){
+ const box=modal.querySelector('#instead');
+ for(const k of Object.keys(p))if(/^(idate|istart|iend)\d$/.test(k)||k==='insteadAsk')delete p[k];
+ if(!box||!needsInstead(db,actorId,p.date,p.through||p.date))return true;
+ if(box.hidden){box.hidden=false;box.scrollIntoView({block:'center'});return false}
+ const ask=box.querySelector('[name=insteadAsk]').value,v=n=>box.querySelector('[name='+n+']').value;
+ if(ask==='nee')p.instead='nee';
+ if(ask==='ja')p.instead=[0,1,2].filter(i=>v('idate'+i))
+  .map(i=>({date:v('idate'+i),start:v('istart'+i),end:v('iend'+i)}));
+ return true;
+}
 function toggleTimes(){
  const mode=modal.querySelector('[name=mode]').value;
+ modal.querySelector('#wish')?.toggleAttribute('hidden',['all','off'].includes(mode));
  for(const [n,show] of [['start',['from','range'].includes(mode)],['end',['until','range'].includes(mode)]]){
   const el=modal.querySelector('[name='+n+']');el.closest('label').hidden=!show;el.required=show;el.disabled=!show;
  }
@@ -240,6 +253,7 @@ document.addEventListener('change',e=>{
   modal.querySelector('#dayhours').hidden=e.target.value!=='hours';
   modal.querySelector('#daypaid')?.toggleAttribute('hidden',e.target.value!=='closed');
  }
+ if(e.target.name==='insteadAsk')modal.querySelector('#insteadrows').hidden=e.target.value!=='ja';
  if(e.target.name==='special'&&modal.querySelector('#specialother')){
   const other=e.target.value==='anders',box=modal.querySelector('#specialother');
   box.hidden=!other;box.querySelector('input').required=other;
@@ -275,13 +289,15 @@ modal.addEventListener('submit',e=>{
  if(op==='sickMany')p.ids=new FormData(f).getAll('ids');
  if(op==='planFromRules')p.week=p.id;
  if(op==='setActive')p.active=p.active==='true';
- if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
+ if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no';
+  p.fixed=new FormData(f).getAll('fixed')}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
  if(op==='saldoReset'||op==='leaveSet')p.user=p.id;
  if(op==='setDay')p.date=p.id;
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}
+ if(op==='leave'&&!askInstead(p))return;
  save(op,p);
 });
 window.addEventListener('storage',render);render();
