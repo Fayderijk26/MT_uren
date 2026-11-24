@@ -431,7 +431,8 @@ function proposal(db,actor,id){
    +' kunt werken.';
   const body='<p>'+h(dateLabel(o.row.date))+'</p><p>'+h(ask)+'</p>'
    +'<p>'+h('Je dienst blijft '+clock(o.fallback)+' totdat je accepteert.')+'</p>'
-   +form('yes','','Ja, '+clock(o.row),id)+form('no','','Nee, behoud '+clock(o.fallback),id);
+   +'<div class="proposalactions">'+form('yes','','Ja, '+clock(o.row),id)
+   +form('no','','Nee, behoud '+clock(o.fallback),id,false)+'</div>';
   return {title:'Roosterwijziging',body};
  }
  // De medewerker: accepteren, of een wijziging voorstellen (de tijden komen pas na die knop in beeld).
@@ -441,8 +442,8 @@ function proposal(db,actor,id){
  if(o.turn==='employee'){
   const body=head+'<p>'+h(askText(db,o))+'</p></div>'
    +'<div class="proposalactions">'+form('yes','','Dienst accepteren',id)+button('Wijziging voorstellen','reveal','counter')
-   +'</div><div id="counter" hidden>'+form('counter',times(o.row),'Deze tijden voorstellen',id)+'</div>'
-   +form('no','','Ik kan niet',id,false);
+   +form('no','','Ik kan niet',id,false)+'</div><div id="counter" hidden>'
+   +form('counter',times(o.row),'Deze tijden voorstellen',id)+'</div>';
   return {title:'Dienstvoorstel',body};
  }
  // De bedrijfsleider: waarom het een vraag was, wat er gevraagd was en wat de medewerker voorstelt.

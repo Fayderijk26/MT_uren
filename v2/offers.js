@@ -8,10 +8,9 @@ export const isExtra=(db,o)=>EXTRA.includes(offerReason(db,o).kind);
 // Voor de medewerker: wie vraagt wat.
 export function askText(db,o){
  const by=o.requestedBy?name(db,o.requestedBy):'De bedrijfsleider',kind=offerReason(db,o).kind;
- if(EXTRA.includes(kind))return by+' vraagt of je deze extra dienst kunt werken.';
- if(kind==='leave')return 'Je had vrij gevraagd voor deze dag. '+by+' vraagt of je toch kunt werken.';
- return 'Dit is buiten je beschikbaarheid ('+availability(db,o.row.user,o.row.date).toLowerCase()+'). '+by
-  +' vraagt of je deze tijden kunt werken.';
+ if(EXTRA.includes(kind))return by+' vraagt of je deze dienst kunt werken.';
+ if(kind==='leave')return 'Je had vrij gevraagd. '+by+' vraagt of je toch wilt werken.';
+ return 'Dit is buiten je aangegeven beschikbaarheid. '+by+' vraagt of je wilt werken.';
 }
 // Voor de bedrijfsleider: de reden in één zin.
 export function reasonText(db,o){
@@ -23,7 +22,9 @@ export function reasonText(db,o){
   outside:'Buiten de beschikbaarheid van '+who+': '+availability(db,o.row.user,o.row.date).toLowerCase()+'.'}[why.kind];
 }
 // Regel op Vandaag en bij Aanvragen.
+const KIND={leave:'Op je vrije dag',outside:'Andere tijden gevraagd'};
 export function offerTitle(db,o,admin){
- const day=(isExtra(db,o)?'Extra dienst · ':'')+dateLabel(o.row.date);
+ const kind=offerReason(db,o).kind;
+ const day=(isExtra(db,o)?'Extra dienst':KIND[kind])+' · '+dateLabel(o.row.date);
  return admin?day+' · '+name(db,o.row.user):day;
 }
