@@ -179,14 +179,17 @@ function decision(db,actor,id){
  const r=db.requests.find(x=>x.id===id),leave=r.kind==='leave';
  const effects=r.kind==='weekly'?weeklyEffects(db,r):leave?leaveEffects(db,r):'';
  const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
- const zero=leave&&r.type==='verlof'&&!affected(db,r).length
-  ?'<p class="notice">Er staan nog geen diensten in deze periode: dit verlof telt nu 0 uur.</p>':'';
+ const zero=leave&&r.type==='overuren'&&!affected(db,r).length
+  ?'<p class="notice">Er staan nog geen diensten in deze periode: dit telt nu 0 uur.</p>':'';
+ const own=leave&&r.type==='overuren'?saldo(db,r.user):null;
+ const plus=own===null?'':'<p>Saldo plus- en minuren van '+h(name(db,r.user))+': '+(own>0?'+':'')+duration(own)
+  +'</p>';
  // Vakantiedagen (SPEC 9g): wat deze aanvraag kost en wat er nog over is.
  const left=leave&&r.type==='verlof'?vacationLeft(db,r.user):null;
  const cost=left===null?'':'<p>Telt '+leaveDays(db,r)+' vakantiedagen. '+h(name(db,r.user))
   +' heeft er nog '+left+'.</p>';
  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero
-  +cost;
+  +cost+plus;
  const type=leave?leaveTypeField(db,r.user,r.type,r.special):'';
  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
   +button('Aanvraag afwijzen','askReject',id)+'</div>';

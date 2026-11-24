@@ -62,8 +62,8 @@ function ownHoursRow(db,actor,s){
  const row=line(dateLabel(s.date),text,button('Bekijken','entry',s.id),label);
  return '<div class="compact">'+row+'</div>';
 }
-// Verlofdag: het deel van de dienst dat verviel, en hoeveel het telt.
-const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),clock(d)+' · telt '+duration(absentMinutes(d)),'',
+// Verlofdag: telt altijd 8 uur (SPEC 9g).
+const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),'Verlofdag · telt '+duration(d.minutes),'',
  chip('leave'))+'</div>';
 // Mijn uren: het totaal dat vastligt (goedgekeurd, ziek, verlof) met een balk; wat nog wacht staat eronder apart.
 // De getallen komen uit monthSummary, dezelfde als in het maandoverzicht van de bedrijfsleider.

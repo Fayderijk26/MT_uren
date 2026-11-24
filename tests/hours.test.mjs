@@ -72,9 +72,9 @@ test('Onder Diensten staan ook ziek gemelde diensten en verlofdagen, met hoeveel
   choices:{[shift.id]:{before:JSON.stringify(shift),value:'none'}}});
  t.mock.timers.setTime(Date.parse('2026-11-23T12:00:00+01:00'));
  const list=between(mine(db),'<h2>Diensten','</section>');
- assert.match(list,/wo 25 nov<\/b><small>08:30–18:00 · telt 9u 0m<\/small>[\s\S]*?chip-leave">Verlof \(betaald\)/);
+ assert.match(list,/wo 25 nov<\/b><small>Verlofdag · telt 8u 0m<\/small>[\s\S]*?chip-leave">Verlof \(betaald\)/);
  assert.match(list,/vr 20 nov<\/b><small>10:00–18:00 · telt 7u 30m<\/small>[\s\S]*?chip-off">Ziek gemeld/);
- assert.match(between(mine(db),'<h2>Mijn uren','</section>'),/Verlof<\/span><b>9u 0m<\/b>/);
+ assert.match(between(mine(db),'<h2>Mijn uren','</section>'),/Verlof<\/span><b>8u 0m<\/b>/);
  assert.match(list,/data-act="unplanned"/);
 });
 

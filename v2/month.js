@@ -81,7 +81,7 @@ export function exportData(db,month){
  const payRow=r=>{const p=who(r.user);return [p.staffNumber||'',[p.lastName,p.initials].filter(Boolean).join(', '),
   p.firstName||'',vast(r)?'Vast':'Oproep','',hours(r.approved),r.days,hours(r.sick),hours(r.leave)]};
  const fullRow=r=>{const own=saldo(db,r.user);return [who(r.user).staffNumber||'',name(db,r.user),
-  vast(r)?'Vast':'Oproep',...[r.approved,r.sick,r.leave,r.unpaid,r.approved+r.sick+r.leave].map(hours),
+  vast(r)?'Vast':'Oproep',...[r.approved,r.sick,r.leave,r.unpaid,r.overtime,r.approved+r.sick+r.leave].map(hours),
   ...(vast(r)?[r.norm,r.diff,own].map(hours):['','',''])]};
  const shifts=db.shifts.filter(s=>s.date.startsWith(month+'-')&&db.hours[s.id]?.status==='approved')
   .sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))
@@ -92,8 +92,9 @@ export function exportData(db,month){
   head:['Personeelsnummer','Achternaam en voorletters','Voornaam','Vast of oproep','Percentage','Uren gewerkt',
    'Dagen gewerkt','Ziek (uren)','Verlof (uren)'],rows:rows.map(payRow)}]};
  const full={file:'MonkeyTown-uitgebreid-'+month,metadata,sheets:[{name:'Maandoverzicht',
-  head:['Personeelsnummer','Naam','Contract','Gewerkt','Ziek','Verlof','Onbetaald vrij','Totaal','Norm','Verschil',
-   'Saldo'],rows:rows.map(fullRow)},{name:'Diensten',
+  head:['Personeelsnummer','Naam','Contract','Gewerkt','Ziek','Verlof','Onbetaald vrij','Overuren ingezet','Totaal',
+   'Norm','Verschil',
+'Saldo'],rows:rows.map(fullRow)},{name:'Diensten',
   head:['Personeelsnummer','Naam','Datum','Begin','Einde','Pauze','Netto gewerkt'],rows:shifts}]};
  return {pay,full};
 }

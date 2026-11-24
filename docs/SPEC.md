@@ -233,7 +233,13 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 
 **9g: vakantiedagen in dagen** (gebouwd 24 november; `leaveDays`, `vacationLeft` in `model.js`, lijst `leaveCorrections`)
 - Besluiten eigenaar 24 november: een verlofdag telt als de dag een vaste werkdag is in de vaste beschikbaarheid (keuze 1A); vakantiedagen gaan in hele dagen, plus- en minuren in uren (eerder of langer werken). Wat over is gaat mee naar het volgende jaar; de bedrijfsleider kan het saldo aanpassen (nieuw aantal, met reden, vastgelegd). Bijzonder verlof: zwangerschapsverlof, ouderschapsverlof, rouwverlof, kort verzuim, anders (met reden).
-- Gekozen bij het bouwen (te bevestigen): een deel van de dag telt als 1 vakantiedag; bijzonder verlof kan iedereen vragen en telt niet mee in de uren van de maand; zonder ingevulde vakantiedagen controleert de app niets.
+- Een verlofdag telt altijd **8 uur** in de uren van de maand, ook zonder geplande dienst (besluit eigenaar 24 november). Betaald verlof gaat in hele dagen.
+- **Nog te overleggen, te kiezen in de testfase met proefgebruikers:**
+  - **Overuren inzetten** als vierde soort vrij (alleen vast contract). Telt niet als verlof: de uren van de vervallen diensten gaan van het saldo plus- en minuren af. De bedrijfsleider ziet bij beoordelen het saldo en keurt goed of af. Staat er nog geen dienst, dan telt het 0 uur.
+  - Een deel van de dag vrij kan alleen als overuren inzetten of onbetaald vrij, niet als betaald verlof.
+- Bijzonder verlof keurt de bedrijfsleider goed of af, zoals elke aanvraag.
+- Gekozen bij het bouwen (te bevestigen): bijzonder verlof kan iedereen vragen en telt niet mee in de uren van de maand; zonder ingevulde vakantiedagen controleert de app niets.
+- Medewerkers en leidinggevenden met een vast contract zien hun eigen saldo plus- en minuren en vakantiedagen bij Mijn uren.
 - Verlof telt in **dagen**: 1 verlofdag is 1 dag, ongeacht de uren. Bijvoorbeeld: 32 uur per week heeft 21 vakantiedagen per jaar.
 - Bij het aanmaken van een medewerker vult de bedrijfsleider het **aantal vakantiedagen per jaar** en een **startsaldo** in. Het verlofjaar is het kalenderjaar.
 - De app houdt het saldo bij (opgenomen en over). Aan het eind van het jaar wordt het gelijkgetrokken met de loonadministratie.

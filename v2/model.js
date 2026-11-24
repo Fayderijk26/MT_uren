@@ -200,8 +200,13 @@ export function absentMinutes(s){
  return planned-pauseFor(planned);
 }
 // Verlof (betaald) alleen bij een vast contract; onbetaald vrij en bijzonder verlof kan iedereen vragen.
-export const LEAVE_TYPES=['verlof','onbetaald','bijzonder'];
-const PICK_TYPE='Kies verlof, onbetaald vrij of bijzonder verlof.';
+// Overuren inzetten (SPEC 9g, nog te overleggen): vrij dat van het saldo plus- en minuren afgaat; alleen bij vast.
+export const LEAVE_TYPES=['verlof','overuren','onbetaald','bijzonder'];
+const PICK_TYPE='Kies verlof, overuren inzetten, onbetaald vrij of bijzonder verlof.';
+const VAST_ONLY='Overuren inzetten kan alleen bij een vast contract. Kies onbetaald vrij.';
+const WHOLE='Betaald verlof gaat in hele dagen. Kies voor een deel van de dag overuren inzetten of onbetaald vrij.';
+// Een verlofdag telt altijd 8 uur in de uren van de maand (besluit eigenaar 24 november).
+export const LEAVE_DAY_MINUTES=480;
 // Bijzonder verlof (SPEC 9g): de soort uit een keuzelijst; bij Anders een reden. Gaat niet van de vakantiedagen af.
 export const SPECIAL_TYPES=['zwangerschapsverlof','ouderschapsverlof','rouwverlof','kort verzuim','anders'];
 function checkSpecial(p){
@@ -211,11 +216,12 @@ function checkSpecial(p){
 // Vakantiedagen (SPEC 9g): een verlofdag is 1 dag. Een dag telt als die persoon er een vaste werkdag heeft
 // (vaste beschikbaarheid, niet Niet beschikbaar), ook bij een deel van de dag.
 const fixedDay=(db,user,date)=>{const r=ruleFor({...db,extra:[]},{user,date});return !!r&&!r.off};
-export function leaveDays(db,r,from=''){
- let n=0;
- for(let d=r.date>from?r.date:from;d<=r.through;d=add(d,1))if(fixedDay(db,r.user,d))n++;
- return n;
-}
+const fixedDates=(db,r,from='',to='9999')=>{
+ const out=[];
+ for(let d=r.date>from?r.date:from;d<=r.through&&d<=to;d=add(d,1))if(fixedDay(db,r.user,d))out.push(d);
+ return out;
+};
+export const leaveDays=(db,r,from)=>fixedDates(db,r,from).length;
 // Vakantiedagen over: startsaldo + per nieuw kalenderjaar de dagen per jaar, min goedgekeurd verlof, plus correcties
 // van de bedrijfsleider. Wat over is gaat mee naar het volgende jaar. null: niet ingesteld (bijvoorbeeld contract Uren).
 export function vacationLeft(db,user,state='approved'){
@@ -239,10 +245,15 @@ function setVacation({db,actor,admin,p}){
 }
 const PAID_ONLY='Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.';
 export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
-// Verlof in een maand: de vervallen (delen van) diensten van goedgekeurde aanvragen van deze soort.
-export const leaveItems=(db,user,month,type='verlof')=>db.requests
- .filter(r=>r.kind==='leave'&&(r.type||'onbetaald')===type&&r.status==='approved'&&r.user===user)
- .flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'));
+// Vrij in een maand, per soort, met minutes: hoeveel het telt. Verlof: elke vaste werkdag 8 uur.
+// Andere soorten: de vervallen (delen van) diensten.
+export function leaveItems(db,user,month,type='verlof'){
+ const asked=db.requests.filter(r=>r.kind==='leave'&&(r.type||'onbetaald')===type&&r.status==='approved'&&r.user===user);
+ if(type==='verlof')return asked.flatMap(r=>fixedDates(db,r,month+'-01',lastDay(month)))
+  .map(date=>({date,minutes:LEAVE_DAY_MINUTES,day:true}));
+ return asked.flatMap(r=>r.dropped||[]).filter(d=>d.date.startsWith(month+'-'))
+  .map(d=>({...d,minutes:absentMinutes(d)}));
+}
 // Per persoon: goedgekeurde minuten, ziek, verlof, wacht op beoordeling, open diensten
 // (wacht, aanpassen of ontbreekt), norm en verschil.
 export function monthSummary(db,month,day=today()){
@@ -254,8 +265,8 @@ export function monthSummary(db,month,day=today()){
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
   const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
-  const leave=leaveItems(db,person.id,month).reduce((sum,d)=>sum+absentMinutes(d),0);
-  const unpaid=leaveItems(db,person.id,month,'onbetaald').reduce((sum,d)=>sum+absentMinutes(d),0);
+  const count=type=>leaveItems(db,person.id,month,type).reduce((sum,d)=>sum+d.minutes,0);
+  const leave=count('verlof'),unpaid=count('onbetaald'),overtime=count('overuren');
   // Dagen gewerkt (SPEC 9h): losse dagen met goedgekeurde uren, ook als het maar een paar uur was.
   const days=new Set(shifts.filter(s=>status(s)==='approved'&&net(db.hours[s.id])>0).map(s=>s.date)).size;
   const pending=shifts.filter(s=>status(s)==='pending').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
@@ -264,7 +275,7 @@ export function monthSummary(db,month,day=today()){
   const norm=normMinutes(db,person.id,month);
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave-norm:null;
-  return {user:person.id,approved,sick,sickWaiting,leave,unpaid,days,pending,open,norm,diff};
+  return {user:person.id,approved,sick,sickWaiting,leave,unpaid,overtime,days,pending,open,norm,diff};
  });
 }
 // Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
@@ -393,11 +404,13 @@ function recordAvailability({db,actor,op,p}){
    if(op==='leave'){
     check(LEAVE_TYPES.includes(type),PICK_TYPE);
     check(type!=='verlof'||mayPaidLeave(db,actor.id),PAID_ONLY);
+    check(type!=='overuren'||mayPaidLeave(db,actor.id),VAST_ONLY);
+    check(type!=='verlof'||!start,WHOLE);
     if(type==='bijzonder')checkSpecial(p);
     const left=type==='verlof'?vacationLeft(db,actor.id,['approved','pending']):null;
     const want=leaveDays(db,{user:actor.id,date:p.date,through});
     check(left===null||want<=left,'Je hebt nog '+dayWord(left)+' over (na je open aanvragen). Je vraagt er '+want
-     +'. Kies minder dagen of onbetaald vrij.');
+     +'. Kies minder dagen, overuren inzetten of onbetaald vrij.');
    }
    const overlaps=r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date
     &&(!start||!r.start||intersects(r,p));
@@ -434,6 +447,8 @@ function decideRequest({db,admin,p,r}){
     if(p.type==='bijzonder')r.special=p.special;
    }
    check(r.type!=='verlof'||mayPaidLeave(db,r.user),PAID_ONLY);
+   check(r.type!=='overuren'||mayPaidLeave(db,r.user),VAST_ONLY);
+   check(r.type!=='verlof'||!r.start,WHOLE);
    const left=r.type==='verlof'?vacationLeft(db,r.user):null,cost=r.kind==='leave'?leaveDays(db,r):0;
    check(left===null||cost<=left,displayName(db,r.user)+' heeft nog '+dayWord(left)+'; deze aanvraag is '+cost
     +'. Kies onbetaald vrij of pas het saldo vakantiedagen aan.');

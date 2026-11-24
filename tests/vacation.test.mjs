@@ -40,7 +40,7 @@ test('Betaald verlof kan tot het saldo op is; daarna alleen onbetaald vrij',t=>{
  person(db,'elise').leaveStartBalance=4;
  db=ask(db);
  assert.throws(()=>ask(db,{date:'2026-12-21',through:'2026-12-27',type:'verlof'}),
-  /Je hebt nog 1 vakantiedag over \(na je open aanvragen\)\. Je vraagt er 3\. Kies minder dagen of onbetaald vrij\./);
+  /Je hebt nog 1 vakantiedag over \(na je open aanvragen\)\. Je vraagt er 3\. Kies minder dagen, overuren inzetten of onbetaald vrij\./);
  assert.ok(ask(db,{date:'2026-12-21',through:'2026-12-27',type:'onbetaald'}));
 });
 
@@ -109,4 +109,14 @@ test('Vrij vragen toont de keuzelijst bijzonder verlof met: vermeld geen medisch
  assert.match(body,/<div id="special" hidden>/);
  for(const s of ['Zwangerschapsverlof','Ouderschapsverlof','Rouwverlof','Kort verzuim','Anders'])assert.match(body,new RegExp(s));
  assert.match(body,/Vermeld geen medische informatie\./);
+});
+
+test('Overuren inzetten: een vierde soort bij vast contract; Eva ziet het saldo plus- en minuren bij beoordelen',t=>{
+ monday(t);
+ const db=pilotRoster(),elise=person(db,'elise');
+ assert.match(dialogs.leave(db,elise,'2026-12-14').body,/<option value="overuren">Overuren inzetten<\/option>/);
+ assert.doesNotMatch(dialogs.leave(db,person(db,'isis'),'2026-12-14').body,/value="overuren"/);
+ const next=ask(db,{...week,type:'overuren'});
+ assert.match(dialogs.decision(next,person(db,'eva'),last(next).id).body,/Saldo plus- en minuren van Elise B: 0u 0m/);
+ assert.equal(vacationLeft(next,'elise'),16,'gaat niet van de vakantiedagen af');
 });

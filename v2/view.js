@@ -79,13 +79,14 @@ export function approvalText(db,e){
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 // Soort vrij: oude aanvragen zonder soort zijn onbetaald vrij.
-export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij',bijzonder:'Bijzonder verlof'};
+export const leaveNames={verlof:'Verlof (betaald)',overuren:'Overuren inzetten',onbetaald:'Onbetaald vrij',
+ bijzonder:'Bijzonder verlof'};
 const specialName=s=>s[0].toUpperCase()+s.slice(1);
 export const leaveName=r=>(leaveNames[r.type]||leaveNames.onbetaald)+(r.special?' ('+r.special+')':'');
 // Keuze Soort bij vrij vragen en beoordelen. Vast contract: Verlof (betaald) vooraf gekozen. Uren: alleen onbetaald.
 // Bijzonder verlof: een keuzelijst die verschijnt zodra die soort is gekozen (SPEC 9g).
 export function leaveTypeField(db,user,current,special=''){
- const paid=mayPaidLeave(db,user),types=paid?['verlof','onbetaald','bijzonder']:['onbetaald','bijzonder'];
+ const paid=mayPaidLeave(db,user),types=paid?['verlof','overuren','onbetaald','bijzonder']:['onbetaald','bijzonder'];
  const pick=types.includes(current)?current:types[0];
  const option=t=>'<option value="'+t+'"'+(t===pick?' selected':'')+'>'+h(leaveNames[t])+'</option>';
  const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
@@ -98,7 +99,7 @@ export function leaveTypeField(db,user,current,special=''){
   +'</select></label>'+hint+box;
 }
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
-export const leaveShort=r=>r.type==='verlof'?'Verlof':r.type==='bijzonder'?'Bijzonder verlof':'Vrij';
+export const leaveShort=r=>({verlof:'Verlof',bijzonder:'Bijzonder verlof',overuren:'Overuren'})[r.type]||'Vrij';
 export const requestName=r=>r.kind==='weekly'
  ?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
  :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')
