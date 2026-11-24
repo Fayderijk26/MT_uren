@@ -441,7 +441,7 @@ function proposal(db,actor,id){
   +h(clock(o.row)+' · '+o.row.area+standby)+'</p>';
  if(o.turn==='employee'){
   const body=head+'<p>'+h(askText(db,o))+'</p></div>'
-   +'<div class="proposalactions">'+form('yes','','Dienst accepteren',id)+button('Wijziging voorstellen','reveal','counter')
+   +'<div class="proposalactions">'+form('yes','','Accepteren',id)+button('Wijzigen','reveal','counter')
    +form('no','','Ik kan niet',id,false)+'</div><div id="counter" hidden>'
    +form('counter',times(o.row),'Deze tijden voorstellen',id)+'</div>';
   return {title:'Dienstvoorstel',body};
