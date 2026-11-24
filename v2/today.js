@@ -2,6 +2,7 @@ import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDec
  tracksHours} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,
  leaveNames,sickStatus,sickDecision} from './view.js';
+import {unreadWeeks,weeklyTitle} from './weekly.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
@@ -69,6 +70,10 @@ function todoCards(db,actor,mine,day){
  const admin=actor.role==='admin';
  const open=ownTodo(db,actor,day).filter(s=>s.date!==day); // vandaag staat al bovenaan
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,actor,s)).join('')):'';
+ // Weekly nog niet gelezen (ronde 14): bovenaan, met een knop om hem te lezen.
+ const weeklies=unreadWeeks(db,actor);
+ if(weeklies.length)html=card('Nieuwe weekly',weeklies.map(w=>line(weeklyTitle(w),
+  'Lees de weekly. Daarna zie je het rooster van deze week.',button('Lezen','weekly',w,true))).join(''))+html;
  const offers=offersFor(db,actor);
  if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>offerRow(db,o)).join(''));
  const standby=db.shifts.filter(s=>s.deadline&&(admin?s.date<=day:s.user===actor.id&&s.date>=day));

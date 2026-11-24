@@ -667,12 +667,53 @@ export function fallbackShift(db,row){
  return start<end?{...row,start,end}:null;
 }
 // Publiceren gaat per week (ma–zo). Alleen een losse aanpassing (onlyId) in een gepubliceerde week gaat per dienst.
+// Weekly (ronde 14): per gepubliceerde week een bericht van de bedrijfsleider. reads: per persoon de gelezen versie.
+export const weeklyFor=(db,week)=>(db.weeklies||[]).find(w=>w.week===week);
+const weekPublished=(db,week)=>(db.published||[]).some(d=>monday(d)===week);
+// Medewerkers en leidinggevenden zien het rooster van die week pas na lezen; de bedrijfsleider hoeft niet.
+export function mustRead(db,user,date){
+ const w=weeklyFor(db,monday(date)),p=db.people.find(x=>x.id===user);
+ return !!w&&!!p&&p.role!=='admin'&&weekPublished(db,w.week)&&(w.reads[user]||0)<w.version;
+}
+export const weeklyReaders=db=>activePeople(db).filter(p=>p.role!=='admin');
+function writeWeekly(db,actor,week,p,reread){
+ const text=String(p.text??'').trim();
+ check(text,'Schrijf de weekly.');
+ check(text.length<=4000,'De weekly is te lang. Houd hem kort.');
+ if(p.image){
+  check(/^data:image\/(png|jpeg|webp|gif);base64,/.test(p.image),'Kies een afbeelding (foto of plaatje).');
+  check(p.image.length<=700000,'De afbeelding is te groot. Kies een kleinere.');
+ }
+ db.weeklies??=[];
+ let w=weeklyFor(db,week);
+ if(!w)db.weeklies.push(w={week,text,image:'',version:1,reads:{}});
+ else if(reread)w.version++;
+ Object.assign(w,{text,by:actor.id,at:new Date().toISOString()});
+ if(p.image!==undefined)w.image=p.image;
+}
+function saveWeekly({db,actor,admin,p}){
+ check(admin,'Alleen voor de bedrijfsleider.');
+ check(/^\d{4}-\d{2}-\d{2}$/.test(p.week||'')&&monday(p.week)===p.week,'Kies een week.');
+ if(weeklyFor(db,p.week)&&weekPublished(db,p.week))
+  check(['ja','nee'].includes(p.reread),'Kies of iedereen de weekly opnieuw moet lezen.');
+ writeWeekly(db,actor,p.week,p,p.reread==='ja');
+}
+function readWeekly({db,actor,p}){
+ const w=weeklyFor(db,p.week);
+ check(w,'Er is geen weekly voor deze week.');
+ w.reads[actor.id]=w.version;
+}
 function publishDrafts({db,actor,admin,p:input}){
  check(admin,'Alleen voor de bedrijfsleider.');
  const from=input.onlyId?input.date:monday(input.date);
  const p={...input,date:from,through:input.onlyId?input.through:add(from,6)};
   const chosen=db.drafts.filter(d=>d.date>=p.date&&d.date<=p.through&&(!p.onlyId||d.id===p.onlyId));
   check(chosen.length||db.offers.some(o=>o.row.date>=p.date&&o.row.date<=p.through),'Geen diensten in deze periode.');
+  // Een hele week publiceren kan pas met een weekly (ronde 14). Bestaat die al, dan blijft hij zoals hij is.
+  if(!p.onlyId&&!weeklyFor(db,from)){
+   check(String(input.weekly||'').trim(),'Schrijf eerst de weekly voor deze week.');
+   writeWeekly(db,actor,from,{text:input.weekly,image:input.image||''},false);
+  }
   db.published??=[];
   for(let d=p.date;d<=p.through;d=add(d,1))if(!db.published.includes(d))db.published.push(d);
   for(const {before,accepted,...row} of chosen){
@@ -926,6 +967,8 @@ const actions={
   draft: saveDraft,
   setDay,
   publish: publishDrafts,
+  weeklySave: saveWeekly,
+  weeklyRead: readWeekly,
   offer: answerOffer,
   seen: markSeen,
   planExtra,

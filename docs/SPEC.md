@@ -343,7 +343,12 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - **Beschikbaarheid is een wens, geen garantie.** Bij het opgeven staat: "Let op: je wordt niet standaard van 08:30 tot 18:00 ingepland. Dit is alleen je beschikbaarheid." Past iemand de tijden aan: "Let op: je wordt niet meteen op deze tijd ingepland. We proberen rekening te houden met je wensen."
 - **Later beginnen op een vaste dag** (besluit eigenaar 24 november): geen verlof. De medewerker geeft voor die dag "Beschikbaar vanaf 10:00" op (Extra beschikbaar, één dag). Gewerkte uren tellen gewoon; minder werken op de ene dag en meer op een andere compenseert elkaar via het saldo. Pas een hele dag vrij is een verlofdag.
 
-**Ronde 14: Weekly bij publiceren** (nog niet gebouwd)
+**Ronde 14: Weekly bij publiceren** (gebouwd 24 november; `v2/weekly.js`, `weeklySave`/`weeklyRead` in `model.js`)
+- Besluiten eigenaar 24 november: Eva publiceert meestal één week, soms twee (dan publiceert ze twee keer). **Per week een eigen weekly.** Alleen het rooster bijwerken: de weekly blijft zoals hij is, niet opnieuw lezen. Alleen de weekly aanpassen: Eva kiest **opnieuw laten lezen** (het rooster is dan weer verborgen tot het lezen) of **alleen aanpassen** (zonder dat iemand het hoeft te zien). De bedrijfsleider hoeft hem zelf niet af te vinken. Een **afbeelding** mag erbij.
+- Gebouwd: bij Week publiceren een tekstvak (verplicht als de week nog geen weekly heeft) en een afbeelding. Een regel die met - begint wordt een opsomming. De afbeelding wordt in de browser verkleind (max. 1000 pixels breed, JPEG). Medewerkers en leidinggevenden zien bij Vandaag "Nieuwe weekly" en in Mijn rooster en het teamrooster eerst de weekly; de dagen van die week blijven leeg tot "Ik heb de weekly gelezen". Daarna staat de weekly onder het rooster. Eva ziet onder het teamrooster wie hem heeft gelezen en de knop Weekly aanpassen.
+- Nieuwe lijst in `db`: `weeklies` met per week `{week (maandag), text, image, version, by, at, reads: {persoon: gelezen versie}}`.
+- Nog niet afgeschermd: meldingen "Ingepland: …" bij Roosterwijzigingen en de kaart Eerstvolgende dienst op Vandaag laten de dienst al zien vóór het lezen. Zo laten of ook verbergen? *Navragen.*
+- De afbeelding staat nu in de browseropslag (proef). Bij de echte database (ronde 8) gaat hij naar bestandsopslag.
 - Bij het publiceren van een week schrijft de bedrijfsleider een **Weekly**: punten die die week aandacht nodig hebben.
 - De Weekly is **verplicht** bij elke week die gepubliceerd wordt (besluit eigenaar 24 november).
 - Bij medewerkers en leidinggevenden staat de Weekly **over het rooster van die week**. Het rooster van die week is pas zichtbaar na de knop **"Ik heb de weekly gelezen"**.

@@ -1,4 +1,5 @@
-import {today,add,monday,weekday,ruleFor,dayTimes,closedDay} from './model.js';
+import {today,add,monday,weekday,ruleFor,dayTimes,closedDay,mustRead,weeklyFor} from './model.js';
+import {weeklyCard} from './weekly.js';
 import {h,button,card,clock,dateLabel,requestStatus,weekNames,leaveShort} from './view.js';
 
 // Wat er op een dag voor iemand staat: diensten, beschikbaarheid, aanvragen en voorstellen.
@@ -38,6 +39,12 @@ export function calendarPage(db,actor,view){
  for(const day of weekNames)grid+='<div class="weekday">'+day.slice(0,2)+'</div>';
  for(let d=start;d<end;d=add(d,1)){
   const kind=(closedDay(db,d)?'closed ':'')+(d===today()?'current':'')+(d.slice(0,7)!==date.slice(0,7)?' adjacent':'');
+  // Weekly nog niet gelezen (ronde 14): de dagen van die week blijven leeg.
+  if(mustRead(db,actor.id,d)){
+   grid+='<div class="calendar-day hidden '+kind+'"><b>'+Number(d.slice(8))+'</b><span class="cal-unknown">Eerst de'
+    +' weekly lezen</span></div>';
+   continue;
+  }
   const items=dayContent(db,actor.id,d).map(i=>'<span class="cal-'+i.kind+'">'+h(i.text)+'</span>').join('');
   grid+='<button class="calendar-day '+kind+'" data-act="calendarDay" data-id="'+d+'"><b>'+Number(d.slice(8))+'</b>'
    +items+'</button>';
@@ -54,6 +61,11 @@ export function calendarPage(db,actor,view){
   +mode('Maand','month',!week)+'</div>';
  const nav='<div class="calendar-navigation" role="group" aria-label="Periode kiezen">'+arrow('-1','Vorige','‹')
   +button('Vandaag','calendarMove','0')+arrow('1','Volgende','›')+'</div>';
+ // Weekly's van de getoonde weken: nog te lezen bovenaan, gelezen onder het rooster.
+ const weeks=[];for(let w=start;w<end;w=add(w,7))if(weeklyFor(db,w))weeks.push(w);
+ const unread=weeks.filter(w=>mustRead(db,actor.id,w));
+ const top=unread.map(w=>weeklyCard(db,actor,w)).join('');
+ const below=weeks.filter(w=>!unread.includes(w)).map(w=>weeklyCard(db,actor,w)).join('');
  return card('Mijn rooster','<div class="calendar-toolbar">'+modes+nav+'</div><h3 class="calendar-period">'+h(title)
-  +'</h3>'+grid);
+  +'</h3>'+top+grid+below);
 }

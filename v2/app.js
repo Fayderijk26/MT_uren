@@ -24,7 +24,7 @@ const read=()=>{
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];data.saldoCorrections??=[];
- data.leaveCorrections??=[];data.days??=[];
+ data.leaveCorrections??=[];data.days??=[];data.weeklies??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
@@ -69,7 +69,7 @@ function render(){
  const page=view.page;
  const admin=actor.role==='admin',staff=actor.role!=='employee';
  const body=page==='mine'?calendarPage(db,actor,view)
-  :page==='team'&&staff?rosterTabs(actor,'team')+weekPage(db,view,!admin)
+  :page==='team'&&staff?rosterTabs(actor,'team')+weekPage(db,view,!admin,actor)
   :page==='people'&&admin?peoplePage(db,actor)
   :page==='today'?todayPage(db,actor)
   :['mine','team'].includes(page)?rosterPage(db,actor,view)
@@ -124,6 +124,7 @@ function show(action,id){
  if(action==='page'){view.page=id;render();window.scrollTo(0,0);return}
  if(action==='close'){modal.close();backToRequest();return}
  if(action==='approve'||action==='seen'){save(action,{id});return}
+ if(action==='weeklyRead'){save('weeklyRead',{week:id});return}
  if(action==='sickPaid'||action==='sickUnpaid'){save('sickDecide',{id,paid:action==='sickPaid'});return}
  if(action==='reactivate'){save('setActive',{id,active:true});return}
  if(action==='export'){exportMonthFile(view.month,id);return}
@@ -144,6 +145,23 @@ function lateNotice(){
  const el=modal.querySelector('#late');
  const late=el&&modal.querySelector('[name=date]').value<add(today(),21);
  if(el)el.textContent=late?'Je vraagt minder dan drie weken van tevoren vrij. Je aanvraag wordt wel verstuurd.':'';
+}
+// Weekly-afbeelding (ronde 14): verkleinen tot maximaal 1000 pixels breed, als JPEG, zodat hij klein blijft.
+function shrinkImage(input){
+ const file=input.files[0],target=input.form.elements.image;
+ target.value='';
+ if(!file)return;
+ input.dataset.busy='1';
+ const img=new Image(),url=URL.createObjectURL(file);
+ img.onload=()=>{
+  const scale=Math.min(1,1000/img.width),c=document.createElement('canvas');
+  c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+  c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  target.value=c.toDataURL('image/jpeg',0.75);URL.revokeObjectURL(url);delete input.dataset.busy;
+ };
+ img.onerror=()=>{delete input.dataset.busy;input.value='';open('Afbeelding','<p>Dit bestand kan niet worden gelezen.'
+  +' Kies een foto of plaatje.</p>')};
+ img.src=url;
 }
 // Oproepkracht vraagt vrij op een vaste dag (ronde 13): eerst de vraag tonen; daarna de andere dagen meesturen.
 function askInstead(p){
@@ -253,6 +271,7 @@ document.addEventListener('change',e=>{
   modal.querySelector('#dayhours').hidden=e.target.value!=='hours';
   modal.querySelector('#daypaid')?.toggleAttribute('hidden',e.target.value!=='closed');
  }
+ if(e.target.name==='imagefile')shrinkImage(e.target);
  if(e.target.name==='insteadAsk')modal.querySelector('#insteadrows').hidden=e.target.value!=='ja';
  if(e.target.name==='special'&&modal.querySelector('#specialother')){
   const other=e.target.value==='anders',box=modal.querySelector('#specialother');
@@ -274,6 +293,14 @@ const shiftChoices=p=>Object.fromEntries(Object.keys(p).filter(k=>k.startsWith('
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
  delete p.pauseOther;
+ // Weekly (ronde 14): de verkleinde afbeelding staat in image; leeg = niets veranderen, tenzij weghalen.
+ if('imagefile' in p){
+  delete p.imagefile;
+  if(p.noImage)p.image='';else if(!p.image)delete p.image;
+  delete p.noImage;
+ }
+ if(op==='weeklySave')p.week=p.id;
+ if(f.elements.imagefile?.dataset.busy){open('Even geduld','<p>De afbeelding wordt nog verwerkt.</p>');return}
  if('pauseOk' in p){
   const question=p.pauseOk?'':pauseQuestion(p.start,p.end,p.pause);delete p.pauseOk;
   const box=modal.querySelector('#pausecheck');
