@@ -7,6 +7,7 @@ globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(u
 const {pilotRoster}=await import('../v2/pilot.js');
 const {apply}=await import('../v2/model.js');
 const {dialogs}=await import('../v2/dialogs.js');
+const {todayPage}=await import('../v2/today.js');
 
 const person=(db,id)=>db.people.find(p=>p.id===id);
 // Maandag 23 november. Mieke heeft geen vaste beschikbaarheid: Eva vraagt of ze do 3 december kan werken.
@@ -20,7 +21,10 @@ test('Dienstvoorstel: Mieke ziet Dienst accepteren en Wijziging voorstellen; de 
  const body=dialogs.proposal(db,person(db,'mieke'),o.id).body;
  assert.match(body,/<p class="proposalday">do 3 dec<\/p>/);
  assert.match(body,/08:30–18:00 · Vloer/);
- assert.match(body,/Eva G\. vraagt of je deze dienst kunt werken\./);
+ assert.match(body,/Eva G\. vraagt of je deze extra dienst kunt werken\./);
+ const today=todayPage(db,person(db,'mieke'));
+ assert.match(today,/<h2>Vraag om te werken<\/h2>/);
+ assert.match(today,/<b>Extra dienst · do 3 dec<\/b><small>08:30–18:00 · Vloer · Eva G\. vraagt of je deze extra dienst kunt werken\.<\/small>/);
  assert.match(body,/>Dienst accepteren<\/button>/);
  assert.match(body,/data-act="reveal" data-id="counter">Wijziging voorstellen<\/button>/);
  assert.match(body,/<div id="counter" hidden>.*>Deze tijden voorstellen<\/button>/s);
@@ -47,10 +51,13 @@ test('Reactie op een dienst buiten de beschikbaarheid: Eva ziet waarom het een v
  db=apply(db,'eva','decide',{id:db.requests.at(-1).id,accept:true});
  db.offers.push({id:'o1',row:{id:'s1',user:'isis',date:'2026-12-12',start:'08:30',end:'18:00',area:'Vloer'},
   turn:'employee',before:null});
+ assert.match(dialogs.proposal(db,person(db,'isis'),'o1').body,
+  /Dit is buiten je beschikbaarheid \(beschikbaar vanaf 11:00\)\. De bedrijfsleider vraagt of je deze tijden kunt werken\./);
  db=apply(db,'isis','offer',{id:'o1',answer:'counter',start:'10:00',end:'18:00'});
  const {title,body}=dialogs.proposal(db,person(db,'eva'),'o1');
  assert.equal(title,'Reactie op dienstvoorstel');
  assert.match(body,/Buiten de beschikbaarheid van Isis N: beschikbaar vanaf 11:00\./);
+ assert.match(todayPage(db,person(db,'eva')),/<h2>Reactie op voorstel<\/h2>/);
  db.offers[0].row.user='elise';db.offers[0].row.date='2026-12-15';
  assert.match(dialogs.proposal(db,person(db,'eva'),'o1').body,/Extra dienst: dinsdag is geen vaste werkdag van Elise B\./);
 });
