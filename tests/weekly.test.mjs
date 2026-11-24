@@ -43,7 +43,7 @@ test('Elise ziet het rooster van die week pas na Ik heb de weekly gelezen',t=>{
  assert.match(html,/<img class="weeklyimg" src="data:image\/jpeg/);
  assert.match(html,/data-act="weeklyRead" data-id="2026-11-30"/);
  assert.doesNotMatch(html,/08:30–17:30 · Ingepland/,'rooster nog verborgen');
- assert.match(todayPage(db,elise),/Nieuwe weekly/);
+ assert.doesNotMatch(todayPage(db,elise),/Nieuwe weekly/,'geen apart kopje op Vandaag');
  db=apply(db,'elise','weeklyRead',{week});
  assert.ok(!mustRead(db,'elise',week));
  html=calendarPage(db,elise,view);
@@ -111,7 +111,7 @@ test('Eerstvolgende dienst is wazig met Lees eerst de weekly, tot Elise hem heef
  db.shifts=db.shifts.filter(s=>!(s.user==='elise'&&s.date>='2026-11-23'&&s.date<week));
  const page=()=>todayPage(db,person(db,'elise')).split('Eerstvolgende dienst')[1]||'';
  assert.match(page(),/<div class="blurred" aria-hidden="true">/);
- assert.match(page(),/data-act="weekly" data-id="2026-11-30">Lees eerst de weekly</);
+ assert.match(page(),/data-act="weeklyView" data-id="2026-11-30">Lees eerst de weekly</);
  db=apply(db,'elise','weeklyRead',{week});
  assert.doesNotMatch(page(),/blurred/);
 });

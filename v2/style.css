@@ -99,3 +99,15 @@ a.secondary{text-decoration:none}
 textarea{border-radius:8px;border:1px solid #cbd5c8;padding:10px 12px;font:inherit;resize:vertical;min-width:0}
 .blurbox{position:relative}.blurred{filter:blur(6px);pointer-events:none;user-select:none}
 .blurbox>button{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);white-space:nowrap}
+/* Ronde 15: publiceren in groepen. */
+.pubhead{font-size:16px;margin:16px 0 4px}
+.publist{margin:12px 0}.publist summary{font-weight:700;font-size:14px;cursor:pointer;color:var(--dark)}
+.pubrow{font-size:14px;margin:5px 0 5px 18px}
+/* Dienstvoorstel: de dienst groot, daaronder de knoppen naast elkaar. */
+.proposal{background:var(--cream);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:14px}
+.proposalday{font-size:13px;font-weight:700;color:var(--muted)}.proposalday::first-letter{text-transform:uppercase}
+.proposaltime{font-size:22px;font-weight:750;color:#1c392b;margin:2px 0 8px}
+.proposalactions{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px}
+.proposalactions>form,.proposalactions>button,.proposalactions>form>button{margin:0}.proposalactions form .err{display:none}
+.proposalactions form .err:not(:empty){display:block}#counter{margin-top:6px}
+.proposalwhy{font-size:13px;font-weight:650;color:#8b571c;background:#fdf0d9;border-radius:8px;padding:6px 10px;margin:4px 0 8px}

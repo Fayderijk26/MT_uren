@@ -2,7 +2,7 @@ import {today,leads,ownTodo,toReview,offersFor,teamMissing,busy,ended,extraToDec
  tracksHours,mustRead,monday} from './model.js';
 import {card,line,name,clock,dateLabel,button,sortDate,requestName,requestChip,requestLength,chip,h,sickButton,
  leaveNames,sickStatus,sickDecision} from './view.js';
-import {unreadWeeks,weeklyTitle} from './weekly.js';
+import {askText,reasonText,offerTitle} from './offers.js';
 import {reviewRow,missingRow,missingByPerson} from './hours.js';
 // Eigen dienst: status als label; knop om in te vullen, aan te passen of te bekijken, en Ziek melden.
 export function ownRow(db,actor,s){
@@ -27,9 +27,12 @@ export function requestRow(db,r){
 export const extraRow=(db,e)=>line(name(db,e.user)+' · '+dateLabel(e.date),clock(e),
  button('Wat wil je hiermee doen?','extraDecision',e.user+'|'+e.date,true));
 // Voorstel voor het rooster dat iemand moet beantwoorden.
-export const offerRow=(db,o)=>line(dateLabel(o.row.date)+' · '+name(db,o.row.user),
- o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row),
- button('Voorstel bekijken','proposal',o.id));
+// Een dienstvoorstel: bij de medewerker met de vraag erbij, bij de bedrijfsleider met de reden (ronde 15).
+export function offerRow(db,o,admin=o.turn==='admin'){
+ const times=o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row)+' · '+o.row.area;
+ return line(offerTitle(db,o,admin),times+' · '+(admin?reasonText(db,o):askText(db,o)),
+  button('Voorstel bekijken','proposal',o.id));
+}
 // Eigen aanvraag op Vandaag: wacht nog op akkoord, of het besluit tot je op Gezien tikt.
 function ownRequestRow(r){
  if(r.status==='pending')return line(requestName(r),'','',requestChip(r));
@@ -64,7 +67,7 @@ function sickDecideCard(db,actor){
 function nextLine(db,actor,s){
  if(!mustRead(db,actor.id,s.date))return shiftLine(db,actor,s);
  return '<div class="blurbox"><div class="blurred" aria-hidden="true">'+shiftLine(db,actor,s)+'</div>'
-  +button('Lees eerst de weekly','weekly',monday(s.date),true)+'</div>';
+  +button('Lees eerst de weekly','weeklyView',monday(s.date),true)+'</div>';
 }
 function myShift(db,actor,mine,day){
  const current=mine.filter(s=>s.date===day),next=mine.find(s=>s.date>day);
@@ -76,12 +79,8 @@ function todoCards(db,actor,mine,day){
  const admin=actor.role==='admin';
  const open=ownTodo(db,actor,day).filter(s=>s.date!==day); // vandaag staat al bovenaan
  let html=open.length?card('Nog in te vullen',open.map(s=>ownRow(db,actor,s)).join('')):'';
- // Weekly nog niet gelezen (ronde 14): bovenaan, met een knop om hem te lezen.
- const weeklies=unreadWeeks(db,actor);
- if(weeklies.length)html=card('Nieuwe weekly',weeklies.map(w=>line(weeklyTitle(w),
-  'Lees de weekly. Daarna zie je het rooster van deze week.',button('Lezen','weekly',w,true))).join(''))+html;
  const offers=offersFor(db,actor);
- if(offers.length)html+=card('Roosterwijzigingen beoordelen',offers.map(o=>offerRow(db,o)).join(''));
+ if(offers.length)html+=card(admin?'Reactie op voorstel':'Vraag om te werken',offers.map(o=>offerRow(db,o)).join(''));
  const standby=db.shifts.filter(s=>s.deadline&&(admin?s.date<=day:s.user===actor.id&&s.date>=day));
  const standbyRow=s=>line(admin?name(db,s.user)+' wacht op bericht':dateLabel(s.date),
   'Bericht vóór '+s.deadline+(admin?'':' · Dan hoor je of je werkt.'),
