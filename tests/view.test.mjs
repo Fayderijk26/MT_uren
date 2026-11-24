@@ -6,7 +6,7 @@ import fs from 'node:fs';
 globalThis.fetch=async url=>({json:async()=>JSON.parse(fs.readFileSync(new URL(url),'utf8'))});
 const {pauseField}=await import('../v2/view.js');
 
-const chosen=html=>[...html.matchAll(/class="primary"[^>]*data-id="([^"]*)"/g)].map(m=>m[1]);
+const chosen=html=>[...html.matchAll(/class="primary" data-act="pause" data-id="([^"]*)"/g)].map(m=>m[1]);
 
 test('Pauze: kopje en knoppen, het veld "Pauze in minuten" alleen na Anders',()=>{
  const html=pauseField('');
@@ -18,10 +18,11 @@ test('Pauze: kopje en knoppen, het veld "Pauze in minuten" alleen na Anders',()=
  assert.deepEqual(chosen(html),[]);
 });
 
-test('Nieuwe uren of ongeplande dienst: pauze staat vooraf op 30 min; ingevulde uren houden hun pauze',()=>{
- const html=pauseField();
- assert.deepEqual(chosen(html),['30']);
- assert.match(html,/name="pause" value="30"/);
+test('Pauze vooraf: met auto volgt hij de tijden; ingevulde uren houden hun eigen pauze',()=>{
+ const html=pauseField(15,true);
+ assert.deepEqual(chosen(html),['15']);
+ assert.match(html,/name="pause" value="15" data-auto="1"/);
+ assert.match(pauseField(0),/name="pause" value="0">/);
  assert.deepEqual(chosen(pauseField(0)),['0']);
 });
 

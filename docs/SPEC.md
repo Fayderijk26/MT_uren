@@ -24,7 +24,7 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 
 ## 3. Wat de app nu doet (gebouwd)
 - **Rooster:** de bedrijfsleider maakt concept-diensten en publiceert ze per dag. Medewerkers zien alleen gepubliceerde diensten. Diensten mogen aansluiten maar niet overlappen.
-- **Uren:** een medewerker vult begin, eind en pauze in (pauzeknoppen 0, 15, 30, 45, 60 minuten; bij nieuwe uren staat 30 minuten vooraf gekozen). De leiding keurt goed of vraagt aanpassen, met een reden. Goedgekeurde uren zijn vergrendeld. Afwijkingen van het rooster zijn zichtbaar ("Volgens rooster" als het klopt).
+- **Uren:** een medewerker vult begin, eind en pauze in (pauzeknoppen 0, 15, 30, 45, 60 minuten; bij nieuwe uren staat de pauze vooraf volgens de pauzeregel, zie 9c). De leiding keurt goed of vraagt aanpassen, met een reden. Goedgekeurde uren zijn vergrendeld. Afwijkingen van het rooster zijn zichtbaar ("Volgens rooster" als het klopt).
 - **Ongeplande dienst:** een medewerker kan een extra gewerkte dienst met uren indienen. De leiding keurt goed of wijst af, met reden.
 - **Stand-by:** een stand-bydienst heeft een uiterste tijd voor een besluit en wordt eenmalig afgehandeld (oproepen of vrijgeven).
 - **Vrij vragen:** voor een dag of periode. De bedrijfsleider keurt goed of wijst af. Bij bestaande diensten in die periode wordt bij goedkeuren gekozen wat ermee gebeurt. Te late aanvragen (minder dan drie weken vooruit) worden niet geblokkeerd maar gemarkeerd voor de bedrijfsleider.
@@ -60,7 +60,6 @@ Het gesprek met het bedrijf was op 24 november. De uitkomst staat in ronde 9 ("U
 - **Bijzonder verlof:** welke soorten in de keuzelijst (genoemd: zwangerschapsverlof en Anders met reden) en wat de bedrijfsleider per soort kan kiezen. *Navragen.*
 - **Feestdagen en sluitingsdagen:** welke keuzes de bedrijfsleider heeft als een feestdag of sluitingsdag op iemands vaste dag valt, en welke feestdagen tellen. *Niet besproken.*
 - **Export:** wat het percentage bij een vast contract betekent (85% is waarschijnlijk 32 uur; hoeveel uur is dan 100%?). Of de export automatisch naar de loonadministratie gaat: voorlopig niet, alleen naar de bedrijfsleiders. *Navragen.*
-- **Weekly:** is hij verplicht bij elke gepubliceerde week, en wat is geblokkeerd tot hij gelezen is (alleen het rooster van die week, of ook Vandaag en uren invullen)? *Navragen.*
 - **Herinnering extra beschikbaarheid** (eens per maand, voor medewerkers zonder vast contract): wel of niet? *Navragen.*
 - **Ziek bij oproepkrachten:** de bedrijfsleider heeft dezelfde keuze als bij vaste medewerkers ("denk ik"). *Bevestigen.*
 - **Niet besproken, blijft zoals het nu is:** cao, toeslagen, vinkje jonger dan 18, privacygegevens en bewaartermijn, welke meldingen, accounts (wordt besproken bij ronde 8), loonpercentage bij ziekte (beslist de loonadministratie).
@@ -201,12 +200,12 @@ Kan vóór ronde 8 gebouwd worden: het zijn regels in `model.js`, dus het werkt 
 **Uitkomst gesprek met het bedrijf (24 november)**
 Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde is één pull request, met akkoord van de eigenaar vooraf. Open punten staan in hoofdstuk 5. Komt er een nieuw veld, dan staat het hier; de precieze naam wordt bij het plan van die ronde bevestigd.
 
-**9c: pauzeregel** (nog niet gebouwd)
+**9c: pauzeregel** (gebouwd 24 november; `pauseFor` en `pauseQuestion` in `model.js`)
 - Gerekend van begin tot eind van de dienst: **tot en met 3 uur** geen pauze, **meer dan 3 uur** 15 minuten, **6 uur of meer** 30 minuten. Voorbeeld: 08:30–14:30 is 6 uur en telt 5u 30m.
 - Bij nieuwe uren staat de pauze volgens deze regel vooraf gekozen (nu altijd 30 minuten).
 - Kiest iemand bij 6 uur of meer een kortere pauze, dan vraagt de app: "Let op: officieel heb je recht op 30 min pauze. Klopt het dat je maar 15 min pauze hebt gehad?" Het blijft een vraag, geen blokkade.
 - Ziekte-uren gebruiken dezelfde regel (nu: 30 minuten bij meer dan 3 uur).
-- *Nog bevestigen bij het plan:* verandert de vooraf gekozen pauze mee als iemand de tijden aanpast? Voorstel: ja, zolang de pauze niet zelf is aangeklikt.
+- De vooraf gekozen pauze verandert mee als iemand de tijden aanpast, zolang de pauze niet zelf is aangeklikt.
 
 **9d: ziek melden door de leiding, besluit door de bedrijfsleider** (nog niet gebouwd)
 - **Medewerkers melden zich niet meer zelf ziek** in de app. De knop gaat weg. Ze bellen de leiding.
@@ -222,7 +221,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Daarna ziet de bedrijfsleider een overzicht van diensten zonder uren. Per dienst: zelf invullen of leeg laten. Een lege dienst blijft zichtbaar bij die maand: "Gepland op …, niet ingevuld, niet meegeteld".
 - **Afsluiten kan niet zolang er uren wachten op beoordeling.** De bedrijfsleider keurt ze eerst goed of laat ze goedkeuren (nu is dat alleen een waarschuwing).
 - De bedrijfsleider mag al op de laatste dag afsluiten. Dan **moet** de bedrijfsleider eerst de uren invullen van iedereen die die dag nog ingepland staat.
-- *Nog bevestigen bij het plan:* uren waarvoor "Aanpassen vragen" open staat na 23:59 — die kan alleen de bedrijfsleider nog afhandelen.
+- Uren waarvoor "Aanpassen vragen" na 23:59 nog open staat, kan alleen de bedrijfsleider nog afhandelen.
 
 **9f: maandnorm en lopend saldo** (nog niet gebouwd)
 - Norm: contracturen per week × 52 ÷ 12 (besluit 7). Niet bij contract Uren en niet bij Uren bijhouden: nee.
@@ -310,17 +309,24 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - *Waarom:* het bedrijf wil niet dat medewerkers te makkelijk vrij vragen.
 - Bij het aanmaken van een medewerker vult de bedrijfsleider de **vaste werkdagen** in (de vaste beschikbaarheid wordt echt vast). De medewerker kan een wijziging vragen; de bedrijfsleider beslist (zoals nu).
 - **Vast contract:** vrij vragen kan alleen voor een vaste werkdag; die dag gaat van het verlofsaldo af (9g). Op andere dagen geeft de medewerker **Niet beschikbaar** of **Extra beschikbaar** op. Niet beschikbaar staat alleen in het rooster van de bedrijfsleider; geen melding en geen goedkeuring.
-- **Oproepkrachten** hebben ook een vaste beschikbaarheid (vaak een weekenddag). Vraagt een oproepkracht die dag vrij, dan volgt een pop-up met een uitnodigende tekst om een of meer andere dagen extra beschikbaar te zijn, al is het maar een paar uur. De oproepkracht kiest zelf de dagen (niet per se in het weekend), met de knop "Ja, beschikbaar 08:30–18:00" en de mogelijkheid de tijden aan te passen. De precieze tekst wordt bij het plan voorgelegd.
+- **Oproepkrachten** hebben ook een vaste beschikbaarheid (vaak een weekenddag). Vraagt een oproepkracht vrij voor een vaste dag, dan vraagt de app: **"Kan je een andere dag van de week toevallig wel werken?"** (besluit eigenaar 24 november).
+  - **Ja:** de oproepkracht kiest welke dag en vult die in. Dat wordt extra beschikbaarheid. *Bij het plan bevestigen:* ook de tijden, en kan het meer dan één dag zijn?
+  - **Nee:** er wordt niets extra opgegeven.
+  - Daarna wordt de vrij-aanvraag verstuurd en ziet de oproepkracht dat de aanvraag wacht op goedkeuring.
+  - De bedrijfsleider ziet bij de aanvraag: "Vraagt vrij voor zaterdag …/…" en of er een andere dag is opgegeven. Bij wel: "Heeft in plaats daarvan aangegeven zondag …/… te kunnen werken. Wil je deze vrije dag goedkeuren?"
+  - De extra beschikbaarheid staat gewoon in het rooster van de bedrijfsleider (zoals extra beschikbaarheid nu).
+  - Bij de oproepkracht staat die dag als **"Aangegeven beschikbaarheid"** met de opgegeven tijden. Pas na inplannen en publiceren staat hij definitief in het rooster.
 - **Beschikbaarheid is een wens, geen garantie.** Bij het opgeven staat: "Let op: je wordt niet standaard van 08:30 tot 18:00 ingepland. Dit is alleen je beschikbaarheid." Past iemand de tijden aan: "Let op: je wordt niet meteen op deze tijd ingepland. We proberen rekening te houden met je wensen."
 - Later beginnen op een vaste dag (eenmalig de beschikbaarheid aanpassen, minuren bij vast contract): open punt (hoofdstuk 5).
 
 **Ronde 14: Weekly bij publiceren** (nog niet gebouwd)
 - Bij het publiceren van een week schrijft de bedrijfsleider een **Weekly**: punten die die week aandacht nodig hebben.
-- Medewerkers en leidinggevenden zien het rooster van die week pas na de knop **"Ik heb de weekly gelezen"**.
+- De Weekly is **verplicht** bij elke week die gepubliceerd wordt (besluit eigenaar 24 november).
+- Bij medewerkers en leidinggevenden staat de Weekly **over het rooster van die week**. Het rooster van die week is pas zichtbaar na de knop **"Ik heb de weekly gelezen"**.
+- Daarna blijft de Weekly terug te lezen: hij staat **onder het rooster van die week**. Bij de bedrijfsleider ook, met de knop om hem aan te passen.
 - Past de bedrijfsleider de Weekly aan, dan kan die het vinkje **"Opnieuw laten lezen"** aanzetten; dan moet iedereen opnieuw bevestigen. Zonder vinkje (bijvoorbeeld een tikfout) niet.
 - De bedrijfsleider ziet wie de Weekly heeft gelezen.
 - Reageren kan niet (besluit 1).
-- Open: verplicht bij elke week, en wat er precies geblokkeerd is (hoofdstuk 5).
 - Nieuw: de Weekly per week (tekst, versie) en wie hem heeft gelezen.
 
 ## 7. Woordenlijst

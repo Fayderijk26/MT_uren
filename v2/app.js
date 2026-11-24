@@ -2,7 +2,7 @@ import {pilotRoster,migratePilot} from './pilot.js';
 import {calendarPage} from './calendar.js';
 import {ic} from '../ui.js';
 import {weekPage} from './week.js';
-import {needsQuestion,ruleFor,today,add,apply,TIMES,minutes,badges} from './model.js';
+import {needsQuestion,ruleFor,today,add,apply,TIMES,minutes,badges,pauseFor,pauseQuestion} from './model.js';
 import {h,button,clock,duration,badge,roleNames,areaChoice} from './view.js';
 import {todayPage} from './today.js';
 import {peoplePage,rosterTabs} from './people.js';
@@ -106,14 +106,9 @@ function show(action,id){
   if(dialog){open(dialog.title,dialog.body);afterOpen[action]?.(id)}
   return;
  }
- if(action==='pause'){
-  const other=modal.querySelector('[name=pauseOther]');
-  modal.querySelector('#pauseother').hidden=id!=='other';
-  modal.querySelector('[name=pause]').value=id==='other'?other.value:id;
-  if(id==='other')other.focus();
-  modal.querySelectorAll('[data-act=pause]').forEach(b=>{b.classList.toggle('primary',b.dataset.id===id);
-   b.classList.toggle('secondary',b.dataset.id!==id)});
-  showNet();return;
+ if(action==='pause'){choosePause(id);return}
+ if(action==='pauseOk'){
+  const f=modal.querySelector('#pausecheck').closest('form');f.elements.pauseOk.value='1';f.requestSubmit();return;
  }
  if(action==='askChange'||action==='askReject'){
   const box=modal.querySelector('#'+action);box.hidden=false;box.querySelector('[name=reason]').focus();return;
@@ -172,8 +167,27 @@ function suggestWindow(fill){
   f.elements.end.value=rule.end==='23:59'?TIMES.end:rule.end;
  }
 }
-// Regel met netto uren onder de pauze, bijgewerkt bij elke keuze.
+// Pauze kiezen: knop kleuren en het verborgen veld zetten. Zelf kiezen zet het meebewegen uit (SPEC 9c).
+function choosePause(id,byHand=true){
+ const field=modal.querySelector('[name=pause]'),other=modal.querySelector('[name=pauseOther]');
+ modal.querySelector('#pauseother').hidden=id!=='other';
+ field.value=id==='other'?other.value:id;
+ if(byHand){delete field.dataset.auto;if(id==='other')other.focus()}
+ modal.querySelectorAll('[data-act=pause]').forEach(b=>{b.classList.toggle('primary',b.dataset.id===id);
+  b.classList.toggle('secondary',b.dataset.id!==id)});
+ showNet();
+}
+// Nieuwe tijden: de pauze volgt de pauzeregel, zolang er niet zelf een pauze is gekozen.
+function followPause(){
+ const field=modal.querySelector('[name=pause][data-auto]');if(!field)return;
+ const {start,end}=field.form.elements;
+ if(start.value&&end.value&&end.value>start.value)
+  choosePause(String(pauseFor(minutes(end.value)-minutes(start.value))),false);
+}
+// Regel met netto uren onder de pauze, bijgewerkt bij elke keuze. Een wijziging haalt de pauzevraag weg.
 function showNet(){
+ const check=modal.querySelector('#pausecheck');
+ if(check){check.hidden=true;check.closest('form').elements.pauseOk.value=''}
  const el=modal.querySelector('#net');if(!el)return;
  const f=el.closest('form'),[start,end,pause]=['start','end','pause'].map(n=>f.elements[n].value);
  if(!start||!end||pause===''||end<=start){el.textContent='Netto: kies begin, eind en pauze.';return}
@@ -213,7 +227,7 @@ document.addEventListener('change',e=>{
  if(el.name==='mode')toggleTimes();
  if(el.name==='user'){pickArea();suggestWindow(true)}
  if(time&&modal.querySelector('#window'))suggestWindow(false);
- if(time)showNet();
+ if(time){followPause();showNet()}
 });
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
 document.addEventListener('change',e=>{
@@ -229,6 +243,11 @@ const shiftChoices=p=>Object.fromEntries(Object.keys(p).filter(k=>k.startsWith('
 modal.addEventListener('submit',e=>{
  e.preventDefault();const f=e.target,p=Object.fromEntries(new FormData(f));let op=f.dataset.op;p.id=f.dataset.id;
  delete p.pauseOther;
+ if('pauseOk' in p){
+  const question=p.pauseOk?'':pauseQuestion(p.start,p.end,p.pause);delete p.pauseOk;
+  const box=modal.querySelector('#pausecheck');
+  if(question){box.querySelector('p').textContent=question;box.hidden=false;return}
+ }
  if(op==='draft')p.user=f.elements.user.value;
  if(p.mode==='from')p.end=TIMES.end;if(p.mode==='until')p.start=TIMES.start;p.off=p.mode==='off';
  if(op==='accept'||op==='reject'){p.accept=op==='accept';op='decide';p.choices=shiftChoices(p)}
