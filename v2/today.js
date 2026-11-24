@@ -28,10 +28,12 @@ export const extraRow=(db,e)=>line(name(db,e.user)+' · '+dateLabel(e.date),cloc
  button('Wat wil je hiermee doen?','extraDecision',e.user+'|'+e.date,true));
 // Voorstel voor het rooster dat iemand moet beantwoorden.
 // Een dienstvoorstel: bij de medewerker met de vraag erbij, bij de bedrijfsleider met de reden (ronde 15).
+// Drie regels: soort en datum, de tijden, de reden.
 export function offerRow(db,o,admin=o.turn==='admin'){
  const times=o.fallback?'Ingepland '+clock(o.fallback)+' · Gevraagd '+clock(o.row):clock(o.row)+' · '+o.row.area;
- return line(offerTitle(db,o,admin),times+' · '+(admin?reasonText(db,o):askText(db,o)),
-  button('Voorstel bekijken','proposal',o.id));
+ return '<article class="vrow"><div><b>'+h(offerTitle(db,o,admin))+'</b><small>'+h(times)+'</small><small>'
+  +h(admin?reasonText(db,o):askText(db,o))+'</small></div><div class="vactions">'
+  +button('Voorstel bekijken','proposal',o.id)+'</div></article>';
 }
 // Eigen aanvraag op Vandaag: wacht nog op akkoord, of het besluit tot je op Gezien tikt.
 function ownRequestRow(r){
