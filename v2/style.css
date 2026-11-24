@@ -97,3 +97,5 @@ a.secondary{text-decoration:none}
 .weekly .primary,.weekly .secondary{margin-top:6px}
 .calendar-day.hidden{opacity:.55;background:repeating-linear-gradient(45deg,#f6f7f2,#f6f7f2 6px,#eef0e9 6px,#eef0e9 12px)}
 textarea{border-radius:8px;border:1px solid #cbd5c8;padding:10px 12px;font:inherit;resize:vertical;min-width:0}
+.blurbox{position:relative}.blurred{filter:blur(6px);pointer-events:none;user-select:none}
+.blurbox>button{position:absolute;inset:50% auto auto 50%;transform:translate(-50%,-50%);white-space:nowrap}

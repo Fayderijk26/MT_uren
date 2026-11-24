@@ -104,3 +104,14 @@ test('Per week een eigen weekly; een afbeelding mag erbij, maar niet te groot',t
   /Kies een afbeelding/);
  assert.equal(weeklyFor(apply(db,'eva','weeklySave',{week,text,reread:'nee',image:''}),week).image,'');
 });
+
+test('Eerstvolgende dienst is wazig met Lees eerst de weekly, tot Elise hem heeft gelezen',t=>{
+ let db=publish(planned(t),{weekly:text});
+ // Alleen de dienst van 30 november komt nog: haal haar diensten van deze week weg.
+ db.shifts=db.shifts.filter(s=>!(s.user==='elise'&&s.date>='2026-11-23'&&s.date<week));
+ const page=()=>todayPage(db,person(db,'elise')).split('Eerstvolgende dienst')[1]||'';
+ assert.match(page(),/<div class="blurred" aria-hidden="true">/);
+ assert.match(page(),/data-act="weekly" data-id="2026-11-30">Lees eerst de weekly</);
+ db=apply(db,'elise','weeklyRead',{week});
+ assert.doesNotMatch(page(),/blurred/);
+});
