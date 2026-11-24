@@ -113,10 +113,10 @@ export function sickButton(db,actor,s,label='Ziek melden'){
  if(mayUndoSick(db,actor,s))return button('Ziekmelding intrekken','sickUndoAsk',s.id);
  return maySick(db,actor,s)?button(label,'sickAsk',s.id):'';
 }
-// Venster Ziek melden: wie, welke dienst en hoeveel uur. Of het meetelt, beslist de bedrijfsleider (SPEC 9d).
+// Venster Ziek melden: wie, welke dienst en hoeveel uur.
 export function sickAskBody(db,s){
  const what='<p><b>'+h(name(db,s.user))+'</b><br>'+h(dateLabel(s.date)+' · '+clock(s))+'</p>';
- return what+'<p>'+h(duration(absentMinutes(s)))+' ziek. De bedrijfsleider beslist of dit wordt doorbetaald.</p>'
+ return what+'<p>'+h(duration(absentMinutes(s)))+' ziek gemeld</p>'
   +form('sick','','Ziek melden',s.id);
 }
 // Werkplek kiezen: alleen bij wie op vloer én keuken werkt. Bij één werkplek kiest de app die zelf.
