@@ -1,6 +1,6 @@
 import {fmt,h} from '../ui.js';
 import {minutes,areasOf,maySick,mayUndoSick,absentMinutes,mayPaidLeave,sickPaid,sickOpen,dayOf,
- displayName} from './model.js';
+ displayName,SPECIAL_TYPES} from './model.js';
 export {h};
 export const dateLabel=d=>fmt(d,{weekday:'short',day:'numeric',month:'short'});
 export const clock=s=>s.start+'–'+s.end;
@@ -79,19 +79,26 @@ export function approvalText(db,e){
 export const sortDate=(a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start);
 export const weekNames=['Maandag','Dinsdag','Woensdag','Donderdag','Vrijdag','Zaterdag','Zondag'];
 // Soort vrij: oude aanvragen zonder soort zijn onbetaald vrij.
-export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij'};
-export const leaveName=r=>leaveNames[r.type]||leaveNames.onbetaald;
+export const leaveNames={verlof:'Verlof (betaald)',onbetaald:'Onbetaald vrij',bijzonder:'Bijzonder verlof'};
+const specialName=s=>s[0].toUpperCase()+s.slice(1);
+export const leaveName=r=>(leaveNames[r.type]||leaveNames.onbetaald)+(r.special?' ('+r.special+')':'');
 // Keuze Soort bij vrij vragen en beoordelen. Vast contract: Verlof (betaald) vooraf gekozen. Uren: alleen onbetaald.
-export function leaveTypeField(db,user,current){
- const paid=mayPaidLeave(db,user),types=paid?['verlof','onbetaald']:['onbetaald'];
+// Bijzonder verlof: een keuzelijst die verschijnt zodra die soort is gekozen (SPEC 9g).
+export function leaveTypeField(db,user,current,special=''){
+ const paid=mayPaidLeave(db,user),types=paid?['verlof','onbetaald','bijzonder']:['onbetaald','bijzonder'];
  const pick=types.includes(current)?current:types[0];
  const option=t=>'<option value="'+t+'"'+(t===pick?' selected':'')+'>'+h(leaveNames[t])+'</option>';
  const hint=paid?'':'<p class="hint">Betaald verlof kan alleen bij een vast contract.</p>';
+ const kinds=SPECIAL_TYPES.map(s=>'<option value="'+s+'"'+(s===special?' selected':'')+'>'+h(specialName(s))
+  +'</option>').join('');
+ const box='<div id="special"'+(pick==='bijzonder'?'':' hidden')+'><label class="field"><span>Welk bijzonder verlof?'
+  +'</span><select name="special"><option value="">Kies…</option>'+kinds+'</select></label>'
+  +'<p class="hint">Bij Anders: geef een reden. Vermeld geen medische informatie.</p></div>';
  return '<label class="field"><span>Soort</span><select name="type" required>'+types.map(option).join('')
-  +'</select></label>'+hint;
+  +'</select></label>'+hint+box;
 }
 // Kort, voor rooster en kalender: "Verlof" of "Vrij".
-export const leaveShort=r=>r.type==='verlof'?'Verlof':'Vrij';
+export const leaveShort=r=>r.type==='verlof'?'Verlof':r.type==='bijzonder'?'Bijzonder verlof':'Vrij';
 export const requestName=r=>r.kind==='weekly'
  ?weekNames[r.weekday-1]+' · '+(r.off?'Vrij':r.start?clock(r):'Hele dag beschikbaar')
  :dateLabel(r.date)+(r.through!==r.date?' t/m '+dateLabel(r.through):'')+(r.start?' · '+clock(r):' · Hele dag')

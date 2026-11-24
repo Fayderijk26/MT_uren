@@ -199,8 +199,44 @@ export function absentMinutes(s){
  const planned=minutes(s.end)-minutes(s.start);
  return planned-pauseFor(planned);
 }
-// Verlof (betaald) alleen bij een vast contract; onbetaald vrij kan iedereen vragen.
-export const LEAVE_TYPES=['verlof','onbetaald'];
+// Verlof (betaald) alleen bij een vast contract; onbetaald vrij en bijzonder verlof kan iedereen vragen.
+export const LEAVE_TYPES=['verlof','onbetaald','bijzonder'];
+const PICK_TYPE='Kies verlof, onbetaald vrij of bijzonder verlof.';
+// Bijzonder verlof (SPEC 9g): de soort uit een keuzelijst; bij Anders een reden. Gaat niet van de vakantiedagen af.
+export const SPECIAL_TYPES=['zwangerschapsverlof','ouderschapsverlof','rouwverlof','kort verzuim','anders'];
+function checkSpecial(p){
+ check(SPECIAL_TYPES.includes(p.special),'Kies welk bijzonder verlof.');
+ check(p.special!=='anders'||p.reason?.trim(),'Geef bij Anders een reden.');
+}
+// Vakantiedagen (SPEC 9g): een verlofdag is 1 dag. Een dag telt als die persoon er een vaste werkdag heeft
+// (vaste beschikbaarheid, niet Niet beschikbaar), ook bij een deel van de dag.
+const fixedDay=(db,user,date)=>{const r=ruleFor({...db,extra:[]},{user,date});return !!r&&!r.off};
+export function leaveDays(db,r,from=''){
+ let n=0;
+ for(let d=r.date>from?r.date:from;d<=r.through;d=add(d,1))if(fixedDay(db,r.user,d))n++;
+ return n;
+}
+// Vakantiedagen over: startsaldo + per nieuw kalenderjaar de dagen per jaar, min goedgekeurd verlof, plus correcties
+// van de bedrijfsleider. Wat over is gaat mee naar het volgende jaar. null: niet ingesteld (bijvoorbeeld contract Uren).
+export function vacationLeft(db,user,state='approved'){
+ const p=db.people.find(x=>x.id===user);
+ if(!p?.leaveYear||!mayPaidLeave(db,user))return null;
+ const years=Number(today().slice(0,4))-Number(p.leaveYear);
+ const taken=db.requests.filter(r=>r.kind==='leave'&&r.type==='verlof'&&r.user===user
+  &&[].concat(state).includes(r.status)).reduce((sum,r)=>sum+leaveDays(db,r,p.leaveYear+'-01-01'),0);
+ const fixes=db.leaveCorrections.filter(c=>c.user===user).reduce((sum,c)=>sum+c.days,0);
+ return p.leaveStartBalance+p.vacationDays*years-taken+fixes;
+}
+const dayWord=n=>n===1?'1 vakantiedag':n+' vakantiedagen';
+// Saldo vakantiedagen aanpassen (de bedrijfsleider, met reden): p.days is het nieuwe saldo. Wordt vastgelegd.
+function setVacation({db,actor,admin,p}){
+ check(admin,'Alleen de bedrijfsleider kan vakantiedagen aanpassen.');
+ const now=vacationLeft(db,p.user),days=Number(p.days);
+ check(now!==null,'Voor deze medewerker zijn geen vakantiedagen ingesteld.');
+ check(String(p.days).trim()!==''&&Number.isFinite(days)&&days*2===Math.round(days*2),'Vul een aantal dagen in.');
+ check(p.reason?.trim(),'Geef een reden.');
+ db.leaveCorrections.push({user:p.user,days:days-now,reason:p.reason.trim(),by:actor.id,at:new Date().toISOString()});
+}
 const PAID_ONLY='Betaald verlof kan alleen bij een vast contract. Kies onbetaald vrij.';
 export const mayPaidLeave=(db,user)=>db.people.find(p=>p.id===user)?.contract==='vast';
 // Verlof in een maand: de vervallen (delen van) diensten van goedgekeurde aanvragen van deze soort.
@@ -355,8 +391,13 @@ function recordAvailability({db,actor,op,p}){
    check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
    const type=op==='leave'?p.type||'onbetaald':undefined;
    if(op==='leave'){
-    check(LEAVE_TYPES.includes(type),'Kies verlof of onbetaald vrij.');
+    check(LEAVE_TYPES.includes(type),PICK_TYPE);
     check(type!=='verlof'||mayPaidLeave(db,actor.id),PAID_ONLY);
+    if(type==='bijzonder')checkSpecial(p);
+    const left=type==='verlof'?vacationLeft(db,actor.id,['approved','pending']):null;
+    const want=leaveDays(db,{user:actor.id,date:p.date,through});
+    check(left===null||want<=left,'Je hebt nog '+dayWord(left)+' over (na je open aanvragen). Je vraagt er '+want
+     +'. Kies minder dagen of onbetaald vrij.');
    }
    const overlaps=r=>r.user===actor.id&&r.kind==='leave'&&r.status!=='rejected'&&r.date<=through&&r.through>=p.date
     &&(!start||!r.start||intersects(r,p));
@@ -364,6 +405,7 @@ function recordAvailability({db,actor,op,p}){
    db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,
     weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
    if(type)db.requests.at(-1).type=type;
+   if(type==='bijzonder')db.requests.at(-1).special=p.special;
   };
 }
 
@@ -386,10 +428,15 @@ function decideRequest({db,admin,p,r}){
   }else if(p.accept){
    // De bedrijfsleider kan de soort aanpassen (voorlopig, zie SPEC ronde 9b). De gevraagde soort blijft in askedType.
    if(r.kind==='leave'&&p.type&&p.type!==r.type){
-    check(LEAVE_TYPES.includes(p.type),'Kies verlof of onbetaald vrij.');
+    check(LEAVE_TYPES.includes(p.type),PICK_TYPE);
+    if(p.type==='bijzonder')checkSpecial(p);
     r.askedType=r.type||'onbetaald';r.type=p.type;
+    if(p.type==='bijzonder')r.special=p.special;
    }
    check(r.type!=='verlof'||mayPaidLeave(db,r.user),PAID_ONLY);
+   const left=r.type==='verlof'?vacationLeft(db,r.user):null,cost=r.kind==='leave'?leaveDays(db,r):0;
+   check(left===null||cost<=left,displayName(db,r.user)+' heeft nog '+dayWord(left)+'; deze aanvraag is '+cost
+    +'. Kies onbetaald vrij of pas het saldo vakantiedagen aan.');
    check(!closed(db,r.date)&&!closed(db,r.through),'Deze maand is afgesloten.');
    r.dropped=[];
    for(const old of affected(db,r)){
@@ -594,8 +641,18 @@ function savePerson({db,admin,p}){
  check(areas.length,'Kies minstens één werkplek.');
  const admins=db.people.filter(x=>x.role==='admin'&&x.active!==false&&x!==old);
  check(p.role==='admin'||admins.length,'Er moet minstens één bedrijfsleider blijven.');
+ // Vakantiedagen per jaar en startsaldo (SPEC 9g), alleen bij een vast contract. Het startsaldo geldt voor het jaar
+ // waarin het voor het eerst is ingevuld.
+ const vacation={};
+ if(p.contract==='vast'&&String(p.vacationDays??'').trim()!==''){
+  vacation.vacationDays=Number(p.vacationDays);
+  vacation.leaveStartBalance=Number(String(p.leaveStartBalance??'').trim()||p.vacationDays);
+  check([vacation.vacationDays,vacation.leaveStartBalance].every(n=>Number.isFinite(n)&&n>=0&&n<=100),
+   'Vul de vakantiedagen in als een aantal dagen (0 of meer).');
+  vacation.leaveYear=old?.leaveYear||today().slice(0,4);
+ }
  const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false,
-  ...pay};
+  ...pay,...vacation};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
 }
 
@@ -722,6 +779,7 @@ const actions={
   sickUndo: undoSick,
   sickDecide: decideSick,
   saldoReset: resetSaldo,
+  leaveSet: setVacation,
   setActive,
   return: reviewHours,
   reopen: reopenHours,

@@ -1,5 +1,5 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
- absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo} from './model.js';
+ absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo,vacationLeft} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -92,8 +92,10 @@ function summaryCard(db,actor,month){
   +' ziek wacht op besluit van de bedrijfsleider</p>':'');
  // Vast contract (SPEC 9f): norm en verschil van de maand, en het saldo van de afgesloten maanden.
  const plus=m=>(m>0?'+':'')+duration(m),own=saldo(db,actor.id);
+ const free=vacationLeft(db,actor.id),days=free===null?[]:[['Vakantiedagen over',String(free)]];
  const balance=r.diff===null||r.diff===undefined||own===null?'':'<div class="hourparts hourbalance">'
-  +[['Norm',duration(r.norm)],[monthOver(month+'-01')?'Verschil':'Verschil tot nu toe',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
+  +[...days,['Norm',duration(r.norm)],
+   [monthOver(month+'-01')?'Verschil':'Verschil tot nu toe',plus(r.diff)],['Saldo plus- en minuren',plus(own)]]
   .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'
   +'<p class="hourwait">Het saldo telt de afgesloten maanden.</p>';
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'

@@ -23,6 +23,7 @@ const read=()=>{
  migratePilot(data);
  // Oudere demogegevens: nieuwe lijsten en contracturen uit de proefdata aanvullen.
  data.normOverrides??=[];data.closedMonths??=[];data.monthReopens??=[];data.saldoCorrections??=[];
+ data.leaveCorrections??=[];
  for(const p of data.people){
   p.contractHours??=pilotRoster().people.find(x=>x.id===p.id)?.contractHours;
   p.contract??=pilotRoster().people.find(x=>x.id===p.id)?.contract||(p.contractHours>0?'vast':'uren');
@@ -233,6 +234,8 @@ document.addEventListener('change',e=>{
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
 document.addEventListener('change',e=>{
  if(e.target.name==='whole')modal.querySelector('#extratimes').hidden=e.target.value==='whole';
+ if(e.target.name==='type'&&modal.querySelector('#special'))
+  modal.querySelector('#special').hidden=e.target.value!=='bijzonder';
 });
 document.addEventListener('input',e=>{
  if(e.target.name!=='pauseOther')return;
@@ -259,7 +262,7 @@ modal.addEventListener('submit',e=>{
  if(op==='setActive')p.active=p.active==='true';
  if(op==='savePerson'){p.areas=new FormData(f).getAll('areas');p.tracksHours=p.tracksHours!=='no'}
  if(op==='planExtra'||op==='declineExtra')[p.user,p.date]=p.id.split('|');
- if(op==='saldoReset')p.user=p.id;
+ if(op==='saldoReset'||op==='leaveSet')p.user=p.id;
  if(op==='setNorm'){p.user=p.id;p.month=view.month;p.minutes=Math.round(Number(p.hours)*60)}
  if(op==='closeMonth'||op==='reopenMonth'){p.month=p.id;p.confirm=Boolean(p.confirm)}
  if(['yes','no','counter'].includes(op)){p.answer=op;op='offer'}

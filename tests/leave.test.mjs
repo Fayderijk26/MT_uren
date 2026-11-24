@@ -119,6 +119,6 @@ test('Eva kan een aanvraag van Isis (contract Uren) niet als betaald verlof goed
  const db=apply(pilotRoster(),'isis','leave',{date:'2026-12-24',type:'onbetaald'});
  const id=db.requests.at(-1).id;
  assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'verlof'}),/vast contract/);
- assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'vakantie'}),/Kies verlof of onbetaald/);
+ assert.throws(()=>apply(db,'eva','decide',{id,accept:true,type:'vakantie'}),/Kies verlof, onbetaald vrij of bijzonder verlof/);
  assert.equal(apply(db,'eva','decide',{id,accept:true,type:'onbetaald'}).requests.at(-1).askedType,undefined);
 });

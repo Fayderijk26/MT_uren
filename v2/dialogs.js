@@ -2,7 +2,7 @@
 // of null als er niets te tonen is. Ze maken alleen HTML: de regels staan in model.js, de schil in app.js.
 import {weeklyConflicts,needsQuestion,today,add,available,affected,remaining,TIMES,mayReopen,warnings,closed,
  asPlanned,activePeople,futureShifts,AREAS,absentMinutes,tracksHours,fallbackShift,sickable,pauseFor,
- minutes,dayOf,mayEnter,missing,saldo} from './model.js';
+ minutes,dayOf,mayEnter,missing,saldo,vacationLeft,leaveDays} from './model.js';
 import {h,button,form,field,pauseField,select,times,clock,dateLabel,name,weekNames,requestName,approvalText,
  duration,chip,requestLength,line,roleNames,areaChoice,sickButton,sickAskBody,leaveTypeField,sickStatus,
  sickDecision} from './view.js';
@@ -181,8 +181,13 @@ function decision(db,actor,id){
  const what=requestName(r)+(requestLength(r)?' · '+requestLength(r):'');
  const zero=leave&&r.type==='verlof'&&!affected(db,r).length
   ?'<p class="notice">Er staan nog geen diensten in deze periode: dit verlof telt nu 0 uur.</p>':'';
- const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero;
- const type=leave?leaveTypeField(db,r.user,r.type):'';
+ // Vakantiedagen (SPEC 9g): wat deze aanvraag kost en wat er nog over is.
+ const left=leave&&r.type==='verlof'?vacationLeft(db,r.user):null;
+ const cost=left===null?'':'<p>Telt '+leaveDays(db,r)+' vakantiedagen. '+h(name(db,r.user))
+  +' heeft er nog '+left+'.</p>';
+ const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero
+  +cost;
+ const type=leave?leaveTypeField(db,r.user,r.type,r.special):'';
  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
   +button('Aanvraag afwijzen','askReject',id)+'</div>';
  const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
@@ -194,6 +199,8 @@ const availabilityTitles={leave:'Vrij vragen',weekly:'Vaste beschikbaarheid wijz
 function availabilityDialog(db,actor,day,action){
  let body=field(action==='weekly'?'Geldig vanaf':'Datum','date','date',day||today(),'required min="'+today()+'"');
  if(action==='weekly')body+=select('Weekdag','weekday',weekNames.map((n,i)=>[i+1,n]));
+ const left=action==='leave'?vacationLeft(db,actor.id,['approved','pending']):null;
+ if(left!==null)body+='<p>Je hebt nog '+left+' vakantiedagen.</p>';
  if(action==='leave')body+=leaveTypeField(db,actor.id)+field('Tot en met (bij meerdere dagen)','through','date');
  const modes=action==='leave'?[['all','Hele dag vrij'],['range','Deel van de dag']]
   :[['all','Hele dag ('+TIMES.start+'–'+TIMES.end+')'],['from','Beschikbaar vanaf'],['until','Beschikbaar tot'],
@@ -219,6 +226,14 @@ function inactiveBox(db,actor,p){
   +form('setActive','<input type="hidden" name="active" value="">','Op inactief zetten',p.id,false);
 }
 // Medewerker toevoegen (zonder id) of wijzigen.
+// Saldo vakantiedagen van één medewerker; de bedrijfsleider zet het op een nieuw aantal met reden (SPEC 9g).
+function vacationBox(db,id){
+ const left=vacationLeft(db,id);
+ if(left===null)return '';
+ const set=field('Nieuw saldo (dagen)','days','number',left,'required step="0.5"')+reason(true);
+ return '<h3>Vakantiedagen</h3><p>Vakantiedagen over: <b>'+left+'</b></p>'
+  +'<p class="hint">Wat over is, gaat mee naar het volgende jaar.</p>'+form('leaveSet',set,'Saldo aanpassen',id);
+}
 function person(db,actor,id){
  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contract:'vast',contractHours:'',phone:''};
  const body=field('Naam','name','text',p.name,'required')
@@ -232,11 +247,14 @@ function person(db,actor,id){
   +field('Telefoonnummer (niet verplicht)','phone','tel',p.phone||'','inputmode="tel"')
   +'<p class="hint">Alleen leiding en bedrijfsleider zien het nummer. Het wordt gebruikt voor Herinner.</p>'
   +areaBoxes(p.areas||['Vloer'])
+  +'<p class="hint">Vakantiedagen (alleen bij vast contract). Startsaldo: wat er dit jaar nog over is.</p>'
+  +field('Vakantiedagen per jaar','vacationDays','number',p.vacationDays??'','min="0" step="0.5"')
+  +field('Startsaldo vakantiedagen','leaveStartBalance','number',p.leaveStartBalance??'','min="0" step="0.5"')
   +'<p class="hint">Voor de export naar de loonadministratie:</p>'
   +[['Personeelsnummer','staffNumber'],['Voornaam','firstName'],['Achternaam','lastName'],['Voorletters','initials']]
    .map(([label,key])=>field(label,key,'text',p[key]||'')).join('');
  const title=id?'Medewerker wijzigen':'Medewerker toevoegen';
- return {title,body:form('savePerson',body,'Opslaan',id)+(id?inactiveBox(db,actor,p):'')};
+ return {title,body:form('savePerson',body,'Opslaan',id)+(id?vacationBox(db,id)+inactiveBox(db,actor,p):'')};
 }
 
 // Concept uit vaste beschikbaarheid voor de week vanaf maandag 'week'.
