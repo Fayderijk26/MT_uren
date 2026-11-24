@@ -94,7 +94,7 @@ test('Bijzonder verlof: kies een soort, bij Anders een reden; het gaat niet van 
  monday(t);
  let db=pilotRoster();
  assert.throws(()=>ask(db,{...week,type:'bijzonder'}),/Kies welk bijzonder verlof/);
- assert.throws(()=>ask(db,{...week,type:'bijzonder',special:'anders'}),/reden/);
+ assert.throws(()=>ask(db,{...week,type:'bijzonder',special:'anders'}),/reden voor het bijzonder verlof/);
  db=ask(db,{...week,type:'bijzonder',special:'rouwverlof'});
  assert.equal(last(db).special,'rouwverlof');
  db=apply(db,'eva','decide',{id:last(db).id,accept:true,choices:{},paid:'ja'});

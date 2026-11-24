@@ -61,4 +61,10 @@ a.secondary{text-decoration:none}
 @media(max-width:600px){.hourparts{gap:6px}.hourparts>div{padding:8px}.hourparts span{font-size:11px;align-items:flex-start}
 .hourparts span .dot{margin-top:3px}.hourparts b{font-size:15px}.hourtotal{font-size:30px}}
 .hourmissing{margin:14px 0 0;padding:10px 12px;border-radius:10px;background:#fbe1dd;color:#8f2a1f;font-size:13px;font-weight:600}
-.hourmissing+.hourwait{margin-top:8px}.cardhead h2{margin:0}.cardhead{margin-bottom:14px}
+.hourmissing+.hourwait{margin-top:8px}
+/* Mijn uren: saldo begin en einde van de maand, en kleine regels met norm en wachtdagen. */
+.hourstat{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:0 0 14px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--cream)}
+.hourstat span{font-size:13px;color:#4f6155;font-weight:650}.hourstat b{font-size:18px;font-variant-numeric:tabular-nums}
+.hourstat.hourend{margin:14px 0 0;background:#e7f1ea;border-color:#b9d4c2}.hourend+.hournote{margin-top:4px}
+.hournote{margin:6px 0 0;font-size:13px;color:var(--muted)}.hourparts+.hournote{margin-top:10px}
+.hourstat:last-child{margin:14px 0 0}.cardhead h2{margin:0}.cardhead{margin-bottom:14px}

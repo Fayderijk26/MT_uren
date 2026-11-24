@@ -48,20 +48,24 @@ test('Het saldo telt de afgesloten maanden: na afsluiten gaat het verschil van n
  assert.equal(saldo(db,'elise'),diff);
 });
 
-test('Elise ziet bij Mijn uren de norm, het verschil van de maand en haar saldo',t=>{
+test('Elise ziet bij Mijn uren het saldo aan het begin, de norm in het klein en het nieuwe saldo aan het eind',t=>{
  let db=november(t);
  const diff=row(db,'elise').diff;
  db=close(t,db);
  const html=hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'});
- assert.match(html,/Norm<\/span><b>104u 0m<\/b>/);
- assert.match(html,new RegExp('Verschil<\\/span><b>−'+Math.floor(-diff/60)+'u '+(-diff%60)+'m<\\/b>'));
- assert.match(html,/Saldo plus- en minuren<\/span><b>−/);
+ assert.match(html,/Saldo begin november<\/span><b>0u 0m<\/b>/);
+ assert.match(html,/Norm november: 104u 0m/);
+ assert.match(html,new RegExp('Saldo einde november<\\/span><b>−'+Math.floor(-diff/60)+'u '+(-diff%60)+'m<\\/b>'));
+ assert.doesNotMatch(html,/nog niet afgesloten/);
+ t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
+ assert.match(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-12'}),
+  new RegExp('Saldo begin december<\\/span><b>−'+Math.floor(-diff/60)+'u'),'het saldo gaat mee naar december');
  assert.doesNotMatch(hoursPage(db,person(db,'isis'),{page:'hours',month:'2026-11'}),/Saldo/,'contract Uren');
 });
 
-test('Zolang de maand loopt, staat er Verschil tot nu toe',t=>{
+test('Zolang de maand loopt, staat er nog geen saldo einde maand',t=>{
  const db=november(t);
- assert.match(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'}),/Verschil tot nu toe<\/span>/);
+ assert.doesNotMatch(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'}),/Saldo einde/);
 });
 
 test('Eva zet het saldo van Elise op 0 met een reden; dat wordt vastgelegd',t=>{

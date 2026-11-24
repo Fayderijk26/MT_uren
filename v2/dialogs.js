@@ -190,7 +190,7 @@ function decision(db,actor,id){
   +' heeft er nog '+left+'.</p>';
  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero
   +cost+plus;
- const type=leave?leaveTypeField(db,r.user,r.type,r.special,true):'';
+ const type=leave?leaveTypeField(db,r.user,r.type,r.special,true,r.specialReason):'';
  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
   +button('Aanvraag afwijzen','askReject',id)+'</div>';
  const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';

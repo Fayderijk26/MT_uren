@@ -27,20 +27,20 @@ test('Norm tot nu toe: de maandnorm naar rato van de dagen tot en met vandaag',t
  assert.equal(normSoFar(db,'sylvia','2026-12'),0,'maand die nog moet komen');
 });
 
-test('Sylvia ziet Norm tot nu toe, het echte verschil tot nu toe en hoeveel daarvan wachtdagen zijn',t=>{
+test('Sylvia ziet in het klein de norm, hoe ze er tot nu toe voor staat en haar wachtdagen',t=>{
  const db=sylvia(t),r=monthSummary(db,'2026-11').find(x=>x.user==='sylvia');
  assert.equal(r.sickUnpaid,18*60,"twee diensten van 08:30–18:00, elk 9u");
  const html=hoursPage(db,person(db,'sylvia'),{page:'hours',month:'2026-11'});
- assert.match(html,/Norm tot nu toe<\/span><b>110u 56m<\/b>/);
- assert.match(html,/Verschil tot nu toe<\/span><b>−94u 26m<\/b>/);
- assert.match(html,/Waarvan wachtdagen: −18u 0m/);
- assert.match(html,/Norm hele maand: 138u 40m/);
+ assert.match(html,/Norm november: 138u 40m/);
+ assert.match(html,/Tot nu toe: 16u 30m van 110u 56m \(−94u 26m\)/);
+ assert.match(html,/2 wachtdagen tellen niet mee \(18u 0m\)/);
 });
 
-test('Na de maand: gewoon Norm en Verschil van de hele maand',t=>{
+test('Na de maand: saldo einde november, nog niet afgesloten',t=>{
  const db=sylvia(t);
  t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
  const html=hoursPage(db,person(db,'sylvia'),{page:'hours',month:'2026-11'});
- assert.match(html,/Norm<\/span><b>138u 40m<\/b>/);
- assert.match(html,/Verschil<\/span><b>−122u 10m<\/b>/);
+ assert.match(html,/Saldo einde november<\/span><b>−122u 10m<\/b>/);
+ assert.match(html,/Nog niet afgesloten: dit kan nog veranderen\./);
+ assert.doesNotMatch(html,/Tot nu toe/);
 });

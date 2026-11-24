@@ -217,9 +217,10 @@ const WHOLE='Betaald verlof gaat in hele dagen. Kies voor een deel van de dag ov
 export const LEAVE_DAY_MINUTES=480;
 // Bijzonder verlof (SPEC 9g): de soort uit een keuzelijst; bij Anders een reden. Gaat niet van de vakantiedagen af.
 export const SPECIAL_TYPES=['zwangerschapsverlof','ouderschapsverlof','rouwverlof','kort verzuim','anders'];
+const specialReason=p=>p.special==='anders'?p.specialReason.trim():'';
 function checkSpecial(p){
  check(SPECIAL_TYPES.includes(p.special),'Kies welk bijzonder verlof.');
- check(p.special!=='anders'||p.reason?.trim(),'Geef bij Anders een reden.');
+ check(p.special!=='anders'||p.specialReason?.trim(),'Geef een reden voor het bijzonder verlof.');
 }
 // Vakantiedagen (SPEC 9g): een verlofdag is 1 dag. Een dag telt als die persoon er een vaste werkdag heeft
 // (vaste beschikbaarheid, niet Niet beschikbaar), ook bij een deel van de dag.
@@ -275,7 +276,8 @@ export function monthSummary(db,month,day=today()){
   const approved=shifts.filter(s=>status(s)==='approved').reduce((sum,s)=>sum+net(db.hours[s.id]),0);
   const sick=shifts.filter(sickPaid).reduce((sum,s)=>sum+absentMinutes(s),0);
   const sickWaiting=shifts.filter(sickOpen).reduce((sum,s)=>sum+absentMinutes(s),0);
-  const sickUnpaid=shifts.filter(s=>s.sick?.paid===false).reduce((sum,s)=>sum+absentMinutes(s),0);
+  const waiting=shifts.filter(s=>s.sick?.paid===false),waitShifts=waiting.length;
+  const sickUnpaid=waiting.reduce((sum,s)=>sum+absentMinutes(s),0);
   const count=type=>leaveItems(db,person.id,month,type).reduce((sum,d)=>sum+d.minutes,0);
   const leave=count('verlof'),unpaid=count('onbetaald'),overtime=count('overuren'),special=count('bijzonder');
   // Dagen gewerkt (SPEC 9h): losse dagen met goedgekeurde uren, ook als het maar een paar uur was.
@@ -286,15 +288,18 @@ export function monthSummary(db,month,day=today()){
   const norm=normMinutes(db,person.id,month);
   // Verschil (SPEC 9f): alleen bij een vast contract. Gewerkt + ziek (doorbetaald) + verlof, min de norm.
   const diff=person.contract==='vast'?approved+sick+leave+special-norm:null;
-  return {user:person.id,approved,sick,sickWaiting,sickUnpaid,leave,special,unpaid,overtime,days,pending,open,norm,diff};
+  return {user:person.id,approved,sick,sickWaiting,sickUnpaid,waitShifts,leave,special,unpaid,overtime,days,
+   pending,open,norm,diff};
  });
 }
 // Lopend saldo plus- en minuren (SPEC 9f): de verschillen van de afgesloten maanden plus de correcties van de
 // bedrijfsleider. Een maand telt mee zodra hij is afgesloten. Alleen bij een vast contract.
-export function saldo(db,user){
+// before: alleen maanden en correcties vóór die maand (saldo aan het begin van de maand).
+export function saldo(db,user,before='9999-12'){
  if(db.people.find(p=>p.id===user)?.contract!=='vast'||!tracksHours(db,user))return null;
- const months=db.closedMonths.map(c=>monthSummary(db,c.month).find(r=>r.user===user)?.diff||0);
- const fixes=db.saldoCorrections.filter(c=>c.user===user).map(c=>c.minutes);
+ const months=db.closedMonths.filter(c=>c.month<before)
+  .map(c=>monthSummary(db,c.month).find(r=>r.user===user)?.diff||0);
+ const fixes=db.saldoCorrections.filter(c=>c.user===user&&dayOf(c.at).slice(0,7)<before).map(c=>c.minutes);
  return months.concat(fixes).reduce((a,b)=>a+b,0);
 }
 // Saldo op 0 zetten als het is uitbetaald of verrekend: alleen de bedrijfsleider, met reden. Wordt vastgelegd.
@@ -429,7 +434,7 @@ function recordAvailability({db,actor,op,p}){
    db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,
     weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
    if(type)db.requests.at(-1).type=type;
-   if(type==='bijzonder')db.requests.at(-1).special=p.special;
+   if(type==='bijzonder')Object.assign(db.requests.at(-1),{special:p.special,specialReason:specialReason(p)});
   };
 }
 
@@ -455,7 +460,7 @@ function decideRequest({db,admin,p,r}){
     check(LEAVE_TYPES.includes(p.type),PICK_TYPE);
     if(p.type==='bijzonder')checkSpecial(p);
     r.askedType=r.type||'onbetaald';r.type=p.type;
-    if(p.type==='bijzonder')r.special=p.special;
+    if(p.type==='bijzonder')Object.assign(r,{special:p.special,specialReason:specialReason(p)});
    }
    check(r.type!=='verlof'||mayPaidLeave(db,r.user),PAID_ONLY);
    check(r.type!=='overuren'||mayPaidLeave(db,r.user),VAST_ONLY);
