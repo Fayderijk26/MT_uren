@@ -59,6 +59,10 @@ Het gesprek met het bedrijf was op 24 november. De uitkomst staat in ronde 9 ("U
 - **Export:** wat het percentage bij een vast contract betekent (85% is waarschijnlijk 32 uur; hoeveel uur is dan 100%?). Of de export automatisch naar de loonadministratie gaat: voorlopig niet, alleen naar de bedrijfsleiders. *Navragen.*
 - **Herinnering extra beschikbaarheid** (eens per maand, voor medewerkers zonder vast contract): wel of niet? *Navragen.*
 - **Ziek bij oproepkrachten** (besloten 24 november): de bedrijfsleider kiest Doorbetalen of Wachtdag, net als bij vast. Gaat iemand ziek naar huis, dan vult die de gewerkte uren in (van … tot …) en wordt niet geregistreerd dat die ziek was.
+- **Feestjes (ronde 16):** hoeveel feestjes kan één feestjesmedewerker aan (dus vanaf hoeveel feestjes moet er een extra bij)? Moet die medewerker de hele dag werken, of tellen alleen de uren rond de feestjes? Waarschuwing of blokkade bij te weinig? Mogen medewerkers zelf het aantal feestjes zien? *Navragen.*
+- **Toiletlijst (ronde 17):** op welke tijden zijn de drie rondes? Moet die persoon op dat moment werken? Kiest de app helemaal zelf, of kan de dagleiding het aanpassen? Moet een ronde worden afgevinkt? Telt de dagleiding zelf mee? Wat is "vakantie" hier: de vakantieweken uit ronde 18? *Navragen.*
+- **Vakantieweken (ronde 18):** maximaal 2 of 3 dagen niet kunnen, per week of per hele vakantie? Geldt dit ook voor vaste medewerkers op hun niet-vaste dagen? Welke tijden telt "beschikbaar" als niets is opgegeven (de hele dag)? *Navragen.*
+- **Notities "Extra":** wat betekent elk punt, en hoort het in deze app? *Navragen.*
 - **Niet besproken, blijft zoals het nu is:** cao, toeslagen, vinkje jonger dan 18, privacygegevens en bewaartermijn, welke meldingen, accounts (wordt besproken bij ronde 8), loonpercentage bij ziekte (beslist de loonadministratie).
 
 ## 6. Nog te bouwen, in rondes
@@ -363,6 +367,30 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Het publiceervenster heeft drie groepen: **Eerst beslissen** (met Beoordelen), **Voorstel aan medewerker** (wat die aangaf en welke vraag die krijgt) en **Wordt ingepland** (dichtgeklapt, open te klappen).
 - Dienstvoorstel: de medewerker kiest Dienst accepteren of Wijziging voorstellen (dan pas de tijden), of Ik kan niet. Reageert de medewerker met andere tijden, dan ziet de bedrijfsleider "Reactie op extra dienst" (geen vaste werkdag of geen beschikbaarheid) of "Reactie op dienstvoorstel", met de reden, wat er gevraagd was en wat de medewerker voorstelt. Nieuw veld bij een voorstel: `asked` (de oorspronkelijk gevraagde tijden). De medewerker ziet op Vandaag het kopje **Vraag om te werken** met bijvoorbeeld "Extra dienst · do 3 dec" en "Eva G. vraagt of je deze extra dienst kunt werken." (of: buiten je beschikbaarheid, of: je had vrij gevraagd). De bedrijfsleider ziet het kopje **Reactie op voorstel** met de reden.
 - Vandaag heeft geen kopje Nieuwe weekly meer; alleen de eerstvolgende dienst is wazig als die in de week van een ongelezen weekly valt.
+
+**Volgorde na ronde 15** (besluit eigenaar 24 november): eerst rondes 16 t/m 18, daarna ronde 8 (echte database). Alles hieronder is **nog niet gebouwd** en heeft open vragen; eerst beantwoorden, dan bouwen.
+
+**Ronde 16: feestjes in het rooster** (nog niet gebouwd)
+- Per dag het **aantal feestjes**. De bedrijfsleider en leidinggevenden vullen het in en passen het aan. Het staat klein onder de datum in het teamrooster (alleen voor leiding en bedrijfsleider).
+- Bij een medewerker een vinkje **Kan feestjes doen** (de bedrijfsleider zet het).
+- Bij het maken van het rooster een waarschuwing als er te weinig feestjesmensen zijn ingepland. Voorbeeld van de eigenaar: 10 feestjes → minimaal 2 à 3 medewerkers die feestjes kunnen doen.
+- Op Vandaag bij de leiding: "Vandaag 10 feestjes. Kunnen feestjes doen: A, B en C."
+- Later misschien een koppeling met het reserveringssysteem (alleen als dat systeem dat toelaat).
+- Nieuw (voorstel): bij een persoon `parties` (ja/nee); een lijst `parties` met per datum het aantal.
+- *Open vragen:* zie hoofdstuk 5, "Feestjes".
+
+**Ronde 17: dagleiding en toiletlijst** (nog niet gebouwd)
+- Bij de dagleiding op Vandaag: "Vandaag werken: A, B, C, D en E."
+- In het **weekend en in vakanties** een **toiletlijst**: de wc's worden 3 keer per dag schoongemaakt. Voor elke ronde kiest de app iemand die die dag werkt, **niet iemand die in de keuken staat**, en de app wisselt af zodat niet steeds dezelfde mensen het doen.
+- *Open vragen:* zie hoofdstuk 5, "Toiletlijst".
+
+**Ronde 18: vakantieweken** (nog niet gebouwd)
+- De bedrijfsleider zet **vakantieweken** in de app (bijvoorbeeld de kerstvakantie).
+- In een vakantieweek geldt voor oproepkrachten: **niets opgegeven betekent beschikbaar**. Ze geven aan welke dagen ze echt niet kunnen, **maximaal 2 à 3 dagen**. Meer vrij kan alleen met een vrij-aanvraag, **21 dagen van tevoren**.
+- **Herinnering een maand van tevoren**: "Week … en … zijn vakantie. We kunnen alle handjes gebruiken. Geef aan wanneer je niet kunt werken." In de app op Vandaag; als mail of pushmelding pas na ronde 8 en 11.
+- *Open vragen:* zie hoofdstuk 5, "Vakantieweken".
+
+**Notities "Extra"** (24 november, nog uit te werken met de eigenaar): 2 feestjes per kwartier binnen; etenstijden automatisch maken; planning medewerkers maken; welk pakket en pakketten voor volwassenen; lasergametijden; apen verwen(?). *Wat hiermee bedoeld wordt: navragen (hoofdstuk 5).*
 
 ## 7. Woordenlijst
 - **Concept:** diensten die nog niet zichtbaar zijn voor medewerkers. **Publiceren** maakt ze zichtbaar.
