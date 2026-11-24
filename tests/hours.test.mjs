@@ -56,7 +56,7 @@ test('Maandoverzicht rekent ook uit wat nog wacht op beoordeling',t=>{
 test('Sylvia ziet bij Mijn uren het totaal: goedgekeurd plus ziek plus verlof, wat wacht staat apart',t=>{
  const html=mine(sylviaMonth(t)),summary=between(html,'<h2>Mijn uren','</section>');
  assert.match(summary,/<b class="hourtotal">25u 30m<\/b>/);
- for(const [label,value] of [['Goedgekeurd','9u 0m'],['Ziek gemeld','16u 30m'],['Verlof','0u 0m']])
+ for(const [label,value] of [['Gewerkt','9u 0m'],['Ziek gemeld','16u 30m'],['Verlof','0u 0m']])
   assert.match(summary,new RegExp(label+'</span><b>'+value+'</b>'),label);
  assert.match(summary,/9u 0m wacht op beoordeling · telt mee zodra het is goedgekeurd/);
  assert.match(summary,/name="month"/,'de maandkeuze staat in de kop van het overzicht');

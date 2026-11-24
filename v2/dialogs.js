@@ -190,7 +190,7 @@ function decision(db,actor,id){
   +' heeft er nog '+left+'.</p>';
  const info='<p><b>'+h(name(db,r.user))+'</b><br>'+h(what)+'</p>'+(r.reason?'<p>Reden: '+h(r.reason)+'</p>':'')+zero
   +cost+plus;
- const type=leave?leaveTypeField(db,r.user,r.type,r.special,true):'';
+ const type=leave?leaveTypeField(db,r.user,r.type,r.special,true,r.specialReason):'';
  const choices='<div class="decide">'+form('accept',type+effects,'Aanvraag goedkeuren',id)
   +button('Aanvraag afwijzen','askReject',id)+'</div>';
  const no='<div id="askReject" hidden>'+form('reject',reason(true),'Afwijzen versturen',id)+'</div>';
@@ -241,7 +241,7 @@ function person(db,actor,id){
  const p=db.people.find(x=>x.id===id)||{name:'',role:'employee',contract:'vast',contractHours:'',phone:''};
  const body=field('Naam','name','text',p.name,'required')
   +select('Rol','role',Object.entries(roleNames),p.role)
-  +select('Contract','contract',[['vast','Vast (met maandnorm)'],['uren','Uren (betaald per gewerkt uur)']],p.contract)
+  +select('Contract','contract',[['vast','Vast (met maandnorm)'],['uren','Oproep (betaald per gewerkt uur)']],p.contract)
   +select('Uren bijhouden','tracksHours',[['yes','Ja'],['no','Nee (niet per uur betaald)']],
    p.tracksHours===false?'no':'yes')
   +'<p class="hint">Bij nee: wel in het rooster en alle rechten van de rol, maar geen uren en niet in het'

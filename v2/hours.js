@@ -1,6 +1,6 @@
 import {mayRemind,minutes,today,warnings,toReview,teamMissing,badges,busy,ended,asPlanned,monthSummary,leaveItems,
  absentMinutes,tracksHours,maySick,monthOver,mayEnter,saldo,vacationLeft,
- normSoFar} from './model.js';
+ normSoFar,closed} from './model.js';
 import {button,card,line,link,clock,name,dateLabel,field,sortDate,approvalText,chip,subtabs,sickButton,
  duration,h,sickStatus} from './view.js';
 // "di 17 nov", "di 17 nov en wo 18 nov", "ma 16 nov, di 17 nov en wo 18 nov".
@@ -66,11 +66,14 @@ function ownHoursRow(db,actor,s){
 // Verlofdag: telt altijd 8 uur (SPEC 9g).
 const leaveRow=d=>'<div class="compact">'+line(dateLabel(d.date),'Verlofdag · telt '+duration(d.minutes),'',
  chip('leave'))+'</div>';
+// Wachtdagen bij ziekte: hoeveel diensten en uren niet meetellen.
+const waitDays=r=>(r.waitShifts===1?'1 wachtdag telt':r.waitShifts+' wachtdagen tellen')
+ +' niet mee ('+duration(r.sickUnpaid)+')';
 // Mijn uren: het totaal dat vastligt (goedgekeurd, ziek, verlof) met een balk; wat nog wacht staat eronder apart.
 // De getallen komen uit monthSummary, dezelfde als in het maandoverzicht van de bedrijfsleider.
 function summaryCard(db,actor,month){
  const r=monthSummary(db,month).find(x=>x.user===actor.id)||{approved:0,sick:0,leave:0,pending:0,open:[]};
- const parts=[['ok','Goedgekeurd',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave+(r.special||0)]];
+ const parts=[['ok','Gewerkt',r.approved],['sick','Ziek gemeld',r.sick],['leave','Verlof',r.leave+(r.special||0)]];
  const total=r.approved+r.sick+r.leave+(r.special||0);
  const monthName=new Intl.DateTimeFormat('nl-NL',{month:'long'}).format(new Date(month+'-15T12:00Z'));
  const bar=total?'<div class="hourbar" aria-hidden="true">'+parts.filter(p=>p[2])
@@ -91,23 +94,26 @@ function summaryCard(db,actor,month){
   +' wacht op beoordeling · telt mee zodra het is goedgekeurd</p>':'')
   +(r.sickWaiting?'<p class="hourwait">'+duration(r.sickWaiting)
   +' ziek wacht op besluit van de bedrijfsleider</p>':'');
- // Vast contract (SPEC 9f): norm en verschil van de maand, en het saldo van de afgesloten maanden.
- const plus=m=>(m>0?'+':'')+duration(m),own=saldo(db,actor.id);
- const free=vacationLeft(db,actor.id),days=free===null?[]:[['Vakantiedagen over',String(free)]];
- // Lopende maand: norm en verschil tot en met vandaag, met de hele maandnorm eronder.
- const over=monthOver(month+'-01'),norm=over?r.norm:normSoFar(db,actor.id,month);
- const diff=over?r.diff:r.diff+r.norm-norm,soFar=over?'':' tot nu toe';
- const notes=[!over&&'Norm hele maand: '+duration(r.norm),r.sickUnpaid&&'Waarvan wachtdagen: −'+duration(r.sickUnpaid),
-  'Het saldo telt de afgesloten maanden.'].filter(Boolean).map(x=>'<p class="hourwait">'+x+'</p>').join('');
- const balance=r.diff===null||r.diff===undefined||own===null?'':'<div class="hourparts hourbalance">'
-  +[...days,['Norm'+soFar,duration(norm)],['Verschil'+soFar,plus(diff)],['Saldo plus- en minuren',plus(own)]]
-  .map(([label,v])=>'<div><span>'+label+'</span><b>'+v+'</b></div>').join('')+'</div>'+notes;
+ // Vast contract (SPEC 9f): saldo aan het begin, totaal van de maand, in het klein de norm en hoe je er tot nu toe
+ // voor staat, en na de maand het nieuwe saldo.
+ const plus=m=>(m>0?'+':m<0?'−':'')+duration(Math.abs(m)),begin=saldo(db,actor.id,month);
+ const vast=begin!==null&&r.diff!==null&&r.diff!==undefined,over=monthOver(month+'-01');
+ const stat=(label,v,cls='')=>'<div class="hourstat '+cls+'"><span>'+label+'</span><b>'+v+'</b></div>';
+ const start=vast?stat('Saldo begin '+monthName,plus(begin)):'';
+ const soFar=normSoFar(db,actor.id,month),ahead=total-soFar;
+ const small=vast?[['Norm '+monthName+': '+duration(r.norm)],
+  [!over&&soFar>0&&'Tot nu toe: '+duration(total)+' van '+duration(soFar)+' ('+plus(ahead)+')'],
+  [r.sickUnpaid&&waitDays(r)]].map(([x])=>x).filter(Boolean).map(x=>'<p class="hournote">'+h(x)+'</p>').join(''):'';
+ const closedNow=closed(db,month+'-01');
+ const end=vast&&over?stat('Saldo einde '+monthName,plus(begin+r.diff),'hourend')
+  +(closedNow?'':'<p class="hournote">Nog niet afgesloten: dit kan nog veranderen.</p>'):'';
+ const free=vacationLeft(db,actor.id),vacation=free===null?'':stat('Vakantiedagen over',String(free));
  const head='<div class="cardhead hourshead"><h2>Mijn uren</h2>'
   +field('Maand','month','month',month,'data-view="month"')+'</div>';
- return '<section class="card">'+head+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'
+ return '<section class="card">'+head+start+'<div class="hoursummary"><div><small>Totaal '+h(monthName)+'</small>'
   +'<b class="hourtotal">'+duration(total)+'</b></div>'+bar
   +'<div class="hourparts">'+parts.map(part).join('')+'</div></div>'
-  +open+wait+balance+'</section>';
+  +small+open+wait+end+vacation+'</section>';
 }
 // Diensten van de maand: gewerkt tot vandaag, en ook ziek gemelde diensten en verlofdagen. Nieuwste bovenaan.
 function shiftsCard(db,actor,month){

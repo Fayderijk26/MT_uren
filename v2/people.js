@@ -7,7 +7,7 @@ export const rosterTabs=(actor,page)=>actor.role==='admin'
 
 // Eén regel per persoon: rol, contracturen en telefoonnummer, met de knop Wijzigen.
 const personRow=db=>p=>'<div class="compact">'+line(displayName(db,p.id),
- roleNames[p.role]+' · '+(p.contract==='uren'?'Uren':'Vast')+' · '+p.contractHours+' uur per week · '
+ roleNames[p.role]+' · '+(p.contract==='uren'?'Oproep':'Vast')+' · '+p.contractHours+' uur per week · '
   +areaNames(p.areas)
   +(p.tracksHours===false?' · Geen uren':'')+(p.phone?' · '+p.phone:''),button('Wijzigen','person',p.id))+'</div>';
 

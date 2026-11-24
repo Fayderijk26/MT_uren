@@ -234,8 +234,15 @@ document.addEventListener('change',e=>{
 // Extra beschikbaarheid: de tijden alleen tonen bij Andere tijden.
 document.addEventListener('change',e=>{
  if(e.target.name==='whole')modal.querySelector('#extratimes').hidden=e.target.value==='whole';
- if(e.target.name==='type'&&modal.querySelector('#special'))
-  modal.querySelector('#special').hidden=e.target.value!=='bijzonder';
+ if(e.target.name==='special'&&modal.querySelector('#specialother')){
+  const other=e.target.value==='anders',box=modal.querySelector('#specialother');
+  box.hidden=!other;box.querySelector('input').required=other;
+ }
+ if(e.target.name==='type'&&modal.querySelector('#special')){
+  const box=modal.querySelector('#special'),why=box.querySelector('[name=specialReason]');
+  box.hidden=e.target.value!=='bijzonder';
+  why.required=!box.hidden&&box.querySelector('[name=special]').value==='anders';
+ }
 });
 document.addEventListener('input',e=>{
  if(e.target.name!=='pauseOther')return;

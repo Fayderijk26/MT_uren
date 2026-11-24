@@ -9,6 +9,7 @@ const {apply,monthSummary,saldo}=await import('../v2/model.js');
 const {hoursPage}=await import('../v2/hours.js');
 const {monthPage}=await import('../v2/month.js');
 const {dialogs}=await import('../v2/dialogs.js');
+const {peoplePage}=await import('../v2/people.js');
 
 const at=(t,iso)=>t.mock.timers.enable({apis:['Date'],now:new Date(iso)});
 const person=(db,id)=>db.people.find(p=>p.id===id);
@@ -48,20 +49,24 @@ test('Het saldo telt de afgesloten maanden: na afsluiten gaat het verschil van n
  assert.equal(saldo(db,'elise'),diff);
 });
 
-test('Elise ziet bij Mijn uren de norm, het verschil van de maand en haar saldo',t=>{
+test('Elise ziet bij Mijn uren het saldo aan het begin, de norm in het klein en het nieuwe saldo aan het eind',t=>{
  let db=november(t);
  const diff=row(db,'elise').diff;
  db=close(t,db);
  const html=hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'});
- assert.match(html,/Norm<\/span><b>104u 0m<\/b>/);
- assert.match(html,new RegExp('Verschil<\\/span><b>−'+Math.floor(-diff/60)+'u '+(-diff%60)+'m<\\/b>'));
- assert.match(html,/Saldo plus- en minuren<\/span><b>−/);
+ assert.match(html,/Saldo begin november<\/span><b>0u 0m<\/b>/);
+ assert.match(html,/Norm november: 104u 0m/);
+ assert.match(html,new RegExp('Saldo einde november<\\/span><b>−'+Math.floor(-diff/60)+'u '+(-diff%60)+'m<\\/b>'));
+ assert.doesNotMatch(html,/nog niet afgesloten/);
+ t.mock.timers.setTime(Date.parse('2026-12-02T12:00:00+01:00'));
+ assert.match(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-12'}),
+  new RegExp('Saldo begin december<\\/span><b>−'+Math.floor(-diff/60)+'u'),'het saldo gaat mee naar december');
  assert.doesNotMatch(hoursPage(db,person(db,'isis'),{page:'hours',month:'2026-11'}),/Saldo/,'contract Uren');
 });
 
-test('Zolang de maand loopt, staat er Verschil tot nu toe',t=>{
+test('Zolang de maand loopt, staat er nog geen saldo einde maand',t=>{
  const db=november(t);
- assert.match(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'}),/Verschil tot nu toe<\/span>/);
+ assert.doesNotMatch(hoursPage(db,person(db,'elise'),{page:'hours',month:'2026-11'}),/Saldo einde/);
 });
 
 test('Eva zet het saldo van Elise op 0 met een reden; dat wordt vastgelegd',t=>{
@@ -84,4 +89,24 @@ test('Maandoverzicht: kolom Saldo; Eva opent het saldo en ziet Saldo op 0 zetten
  const d=dialogs.saldo(db,eva,'elise');
  assert.match(d.title,/Saldo Elise B/);
  assert.match(d.body,/data-op="saldoReset"/);
+});
+
+test('Een oproepkracht (contract Uren) heeft geen norm: niet in het maandoverzicht en niet aan te passen',t=>{
+ const db=november(t);
+ assert.equal(row(db,'isis').norm,null);
+ const html=monthPage(db,person(db,'eva'),{month:'2026-11'});
+ const isis=html.split('<tr class="person">').find(r=>r.includes('Isis N'));
+ assert.doesNotMatch(isis,/data-act="norm"/);
+ assert.match(isis,/<td>Isis N<\/td><td>0u<\/td><td>–<\/td><td>–<\/td><td>–<\/td>/);
+ assert.throws(()=>apply(db,'eva','setNorm',{user:'isis',month:'2026-11',minutes:600,reason:'x'}),
+  /Een oproepkracht heeft geen norm\./);
+});
+
+test('Er zijn twee soorten contract: Vast en Oproep (geen contract Uren meer in de teksten)',t=>{
+ const db=november(t),eva=person(db,'eva');
+ const form=dialogs.person(db,eva,'isis').body;
+ assert.match(form,/<option value="vast">Vast \(met maandnorm\)<\/option><option value="uren" selected>Oproep \(betaald per gewerkt uur\)<\/option>/);
+ assert.match(peoplePage(db,eva),/Medewerker · Oproep · 8 uur per week/);
+ assert.throws(()=>apply(db,'eva','setNorm',{user:'isis',month:'2026-11',minutes:600,reason:'x'}),
+  /Een oproepkracht heeft geen norm\./);
 });

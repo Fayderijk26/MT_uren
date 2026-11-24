@@ -41,3 +41,16 @@ test('Niet betaald bijzonder verlof telt 0 uur: het gaat van het saldo plus- en 
  assert.equal(elise(db).diff,-elise(db).norm);
  assert.match(requestName(db.requests.at(-1)),/Bijzonder verlof \(rouwverlof\) · niet betaald/);
 });
+
+test('Bijzonder verlof Anders: een verplicht tekstvak met de reden, en pas dan de zin over medische informatie',t=>{
+ t.mock.timers.enable({apis:['Date'],now:new Date('2026-11-23T12:00:00+01:00')});
+ const db=pilotRoster(),body=dialogs.leave(db,person(db,'elise'),'2026-12-10').body;
+ assert.match(body,/<div id="specialother" hidden><label class="field"><span>Reden bijzonder verlof<\/span><input name="specialReason"/);
+ assert.match(body.split('<div id="specialother"')[1],/Vermeld geen medische informatie\./);
+ assert.doesNotMatch(body.split('<div id="specialother"')[0],/medische/,'niet als Anders niet is gekozen');
+ const p={date:'2026-12-10',type:'bijzonder',special:'anders'};
+ assert.throws(()=>apply(db,'elise','leave',p),/Geef een reden voor het bijzonder verlof\./);
+ const next=apply(db,'elise','leave',{...p,specialReason:' Verhuizing '});
+ assert.equal(next.requests.at(-1).specialReason,'Verhuizing');
+ assert.match(requestName(next.requests.at(-1)),/Bijzonder verlof \(anders: Verhuizing\)/);
+});
