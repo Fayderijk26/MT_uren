@@ -13,7 +13,10 @@ export function dayContent(db,user,date){
  // Dicht (ronde 12): bovenaan, voor iedereen.
  if(closedDay(db,date))items.unshift({text:'Dicht',kind:'closed'});
  const std=dayTimes(date),wholeDay=rule&&rule.start<=std.start&&rule.end>=std.end;
- if(rule)items.push({text:rule.off?'Vrij':wholeDay?'Hele dag beschikbaar':'Beschikbaar '+clock(rule),kind:'available'});
+ // Niet beschikbaar voor één dag, en aangegeven beschikbaarheid bij een vrij-aanvraag van een oproepkracht (ronde 13).
+ const free=rule?.off&&(rule.weekday?'Vrij':'Niet beschikbaar');
+ const told=rule?.request&&'Aangegeven beschikbaarheid '+clock(rule);
+ if(rule)items.push({text:free||told||(wholeDay?'Hele dag beschikbaar':'Beschikbaar '+clock(rule)),kind:'available'});
  const what=r=>r.kind==='weekly'?'Vaste beschikbaarheid: '+(r.off?'niet beschikbaar':clock(r))
   :leaveShort(r)+(r.start?' '+clock(r):'');
  for(const r of requests)items.push({text:what(r)+' · '+requestStatus(r)+(r.response?' · '+r.response:''),

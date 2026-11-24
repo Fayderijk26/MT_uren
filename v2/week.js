@@ -7,7 +7,8 @@ export function availability(db,user,date){
  if(leave)return leaveShort(leave)+(leave.status==='pending'?' gevraagd':'')+(leave.start?' '+clock(leave):'');
  const rule=ruleFor(db,{user,date});
  if(!rule)return 'Onbekend';
- if(rule.off)return 'Vrij';
+ // Niet beschikbaar voor één dag (ronde 13) heeft geen weekdag; vaste vrije dag wel.
+ if(rule.off)return rule.weekday?'Vrij':'Niet beschikbaar';
  // Hele dag: van het begin tot minstens het einde van de standaard werkdag van die dag.
  const std=dayTimes(date),from=rule.start<=std.start,until=rule.end>=std.end;
  if(from)return until?'Hele dag beschikbaar':'Beschikbaar tot '+rule.end;

@@ -99,7 +99,7 @@ test('Bijzonder verlof: kies een soort, bij Anders een reden; het gaat niet van 
  assert.equal(last(db).special,'rouwverlof');
  db=apply(db,'eva','decide',{id:last(db).id,accept:true,choices:{},paid:'ja'});
  assert.equal(vacationLeft(db,'elise'),16);
- assert.ok(apply(pilotRoster(),'isis','leave',{...week,type:'bijzonder',special:'kort verzuim'}),'ook bij contract Uren');
+ assert.ok(apply(pilotRoster(),'isis','leave',{...week,type:'bijzonder',special:'kort verzuim',instead:'nee'}),'ook bij contract Uren');
 });
 
 test('Vrij vragen toont de keuzelijst bijzonder verlof met: vermeld geen medische informatie',t=>{

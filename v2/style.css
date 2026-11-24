@@ -75,3 +75,7 @@ a.secondary{text-decoration:none}
 .weekgrid th.closed,.weekgrid td.closed,.dayrow.closed,.calendar-day.closed{background:#fdeeec}
 .cal-closed{color:#8f2a1f;font-weight:700}
 .dayhead{display:flex;align-items:center;flex-wrap:wrap;gap:8px}.dayhead .daytitle{margin-right:auto}
+
+/* Ronde 13: vaste werkdagen in het medewerkerformulier; andere dagen in de vrij-vraag van een oproepkracht. */
+.fixedday{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:6px;align-items:end;margin-top:6px}
+.fixedday .field{margin:0}.insteadrow{grid-template-columns:1fr 1fr}.insteadrow>.field:first-child{grid-column:1/-1}

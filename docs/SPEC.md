@@ -55,12 +55,10 @@ Bij elke rol kan straks **Uren bijhouden: nee** (ronde 10). Bijvoorbeeld de eige
 ## 5. Nog niet besloten (vraag het de eigenaar, bouw niet op een gok)
 Het gesprek met het bedrijf was op 24 november. De uitkomst staat in ronde 9 ("Uitkomst gesprek 24 november") en in de rondes 12 t/m 14. Wat nog open is:
 
-- **Later beginnen op een vaste dag** (bijv. 11:30 in plaats van 08:30): de medewerker past de beschikbaarheid eenmalig aan en de gemiste uren worden minuren. Hoe dat precies gaat, moet nog bedacht worden. *Open punt.*
-- **Bijzonder verlof:** welke soorten in de keuzelijst (genoemd: zwangerschapsverlof en Anders met reden) en wat de bedrijfsleider per soort kan kiezen. *Navragen.*
 - **Feestdagen:** de keuze bij een dichte dag is besloten (ronde 12). Open: moet de app feestdagen zelf voorstellen, of zet de bedrijfsleider ze steeds zelf dicht?
 - **Export:** wat het percentage bij een vast contract betekent (85% is waarschijnlijk 32 uur; hoeveel uur is dan 100%?). Of de export automatisch naar de loonadministratie gaat: voorlopig niet, alleen naar de bedrijfsleiders. *Navragen.*
 - **Herinnering extra beschikbaarheid** (eens per maand, voor medewerkers zonder vast contract): wel of niet? *Navragen.*
-- **Ziek bij oproepkrachten:** de bedrijfsleider heeft dezelfde keuze als bij vaste medewerkers ("denk ik"). *Bevestigen.*
+- **Ziek bij oproepkrachten** (besloten 24 november): de bedrijfsleider kiest Doorbetalen of Wachtdag, net als bij vast. Gaat iemand ziek naar huis, dan vult die de gewerkte uren in (van … tot …) en wordt niet geregistreerd dat die ziek was.
 - **Niet besproken, blijft zoals het nu is:** cao, toeslagen, vinkje jonger dan 18, privacygegevens en bewaartermijn, welke meldingen, accounts (wordt besproken bij ronde 8), loonpercentage bij ziekte (beslist de loonadministratie).
 
 ## 6. Nog te bouwen, in rondes
@@ -309,7 +307,8 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - **Mails** (besluit 8): dagoverzicht aan wie dienst had en de herinnering de volgende dag om 09:00, via de maildienst uit ronde 8.
 - *Te vragen aan het bedrijf:* welke meldingen wel en niet; hoe vaak de maandherinnering terugkomt; tot welke dag de maand afgerond moet zijn (hangt samen met de loonperiode).
 - **Uit het gesprek van 24 november:**
-  - Herinnering uren invullen op de dag van de dienst: om **17:30** doordeweeks en om **18:00** in het weekend. Hoe dit zich verhoudt tot besluit 8 (mail en 09:00 de volgende dag): bij het plan bevestigen.
+  - Herinnering uren invullen na het einde van de dienst (om **17:30** doordeweeks en **18:00** in het weekend), **in plaats van** de mail om 09:00 de volgende dag (besluit eigenaar 24 november; vervangt dat deel van besluit 8).
+  - Maandelijks een mail aan de bedrijfsleider. Misschien een weekoverzicht aan leidinggevenden: nog niet besloten.
   - **Twee dagen voor het einde van de maand** aan wie nog uren open heeft: "Let op: over 2 dagen kun je je uren niet meer aanpassen. Vul je uren nog in!"
   - De maand moet op de laatste dag af zijn (zie 9e). De herinnering "maand afronden" past zich daaraan aan.
   - Na afsluiten worden beide exports gemaild naar alle bedrijfsleiders (9h).
@@ -325,7 +324,10 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
 - Medewerkers zien de dichte dag ook in Mijn rooster; bij Mijn uren staat "1 dag dicht, doorbetaald (8u 0m)".
 - Nieuw: een lijst met dagen met aangepaste tijden of dicht.
 
-**Ronde 13: vaste werkdagen en vrij vragen** (nog niet gebouwd)
+**Ronde 13: vaste werkdagen en vrij vragen** (gebouwd 24 november; `setFixedDays`, `needsInstead` in `model.js`)
+- Besluiten eigenaar 24 november: vaste werkdagen zijn hetzelfde als de vaste beschikbaarheid. Niet beschikbaar zonder goedkeuring mag op elke dag die geen vaste werkdag is, en staat in het eigen rooster, het teamrooster van bedrijfsleider en leidinggevenden; geen melding en niet bij roosterwijzigingen. In de pop-up voor oproepkrachten: meerdere dagen, met tijden, elke datum (niet alleen dezelfde week).
+- Gebouwd: Eva vinkt bij Medewerker de vaste werkdagen aan met tijden (een gewijzigde dag geldt vanaf vandaag). Niet beschikbaar is een keuze bij Extra beschikbaar (één dag). Bij vrij vragen op een vaste dag vraagt de app een oproepkracht bij versturen naar andere dagen (tot drie); die worden aangegeven beschikbaarheid, gekoppeld aan de aanvraag (veld `request` bij extra beschikbaarheid, `instead` bij de aanvraag).
+- Gekozen bij het bouwen (te bevestigen): Niet beschikbaar kan vanaf vandaag, zonder minimale termijn.
 - *Waarom:* het bedrijf wil niet dat medewerkers te makkelijk vrij vragen.
 - Bij het aanmaken van een medewerker vult de bedrijfsleider de **vaste werkdagen** in (de vaste beschikbaarheid wordt echt vast). De medewerker kan een wijziging vragen; de bedrijfsleider beslist (zoals nu).
 - **Vast contract:** vrij vragen kan alleen voor een vaste werkdag; die dag gaat van het verlofsaldo af (9g). Op andere dagen geeft de medewerker **Niet beschikbaar** of **Extra beschikbaar** op. Niet beschikbaar staat alleen in het rooster van de bedrijfsleider; geen melding en geen goedkeuring.
@@ -337,7 +339,7 @@ Hieronder per deelronde wat er gebouwd wordt, in deze volgorde. Elke deelronde i
   - De extra beschikbaarheid staat gewoon in het rooster van de bedrijfsleider (zoals extra beschikbaarheid nu).
   - Bij de oproepkracht staat die dag als **"Aangegeven beschikbaarheid"** met de opgegeven tijden. Pas na inplannen en publiceren staat hij definitief in het rooster.
 - **Beschikbaarheid is een wens, geen garantie.** Bij het opgeven staat: "Let op: je wordt niet standaard van 08:30 tot 18:00 ingepland. Dit is alleen je beschikbaarheid." Past iemand de tijden aan: "Let op: je wordt niet meteen op deze tijd ingepland. We proberen rekening te houden met je wensen."
-- Later beginnen op een vaste dag (eenmalig de beschikbaarheid aanpassen, minuren bij vast contract): open punt (hoofdstuk 5).
+- **Later beginnen op een vaste dag** (besluit eigenaar 24 november): geen verlof. De medewerker geeft voor die dag "Beschikbaar vanaf 10:00" op (Extra beschikbaar, één dag). Gewerkte uren tellen gewoon; minder werken op de ene dag en meer op een andere compenseert elkaar via het saldo. Pas een hele dag vrij is een verlofdag.
 
 **Ronde 14: Weekly bij publiceren** (nog niet gebouwd)
 - Bij het publiceren van een week schrijft de bedrijfsleider een **Weekly**: punten die die week aandacht nodig hebben.

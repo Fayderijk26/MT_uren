@@ -439,6 +439,21 @@ function reopenHours({db,actor,p,s}){
  Object.assign(db.hours[s.id],{status:'returned',reason:p.reason.trim(),reopenedBy:actor.id});
 }
 
+// Oproepkracht vraagt vrij op een vaste dag (ronde 13): eerst de vraag of een andere dag wel kan.
+export const needsInstead=(db,user,date,through=date)=>db.people.find(x=>x.id===user)?.contract==='uren'
+ &&leaveDays(db,{user,date,through})>0;
+const INSTEAD='Kan je een andere dag toevallig wel werken? Kies ja met de dag(en) of nee.';
+function insteadDays(db,user,p,through){
+ if(p.instead==='nee')return [];
+ check(Array.isArray(p.instead)&&p.instead.length,INSTEAD);
+ return p.instead.map(x=>{
+  check(x.date>=today()&&/^\d{4}-\d{2}-\d{2}$/.test(x.date),'Kies vandaag of later voor de andere dag.');
+  check(x.date<p.date||x.date>through,'Kies een andere dag dan de dag die je vrij vraagt.');
+  interval(x);
+  check(!db.shifts.some(s=>s.user===user&&s.date===x.date),'Op '+x.date+' ben je al ingepland.');
+  return {date:x.date,start:x.start,end:x.end};
+ });
+}
 function recordAvailability({db,actor,op,p}){
  check(p.date>=today(),'Kies vandaag of later.');
   const start=p.start||'',end=p.end||'';
@@ -447,9 +462,12 @@ function recordAvailability({db,actor,op,p}){
   if(op==='weekly')check(Number.isInteger(+p.weekday)&&+p.weekday>=1&&+p.weekday<=7,'Kies een weekdag.');
   if(op==='extra'){
    check(!db.shifts.some(s=>s.user===actor.id&&s.date===p.date),'Je bent op deze dag al ingepland.');
+   // Niet beschikbaar (ronde 13): alleen op een dag die geen vaste werkdag is; geen goedkeuring, geen melding.
+   check(!p.off||!ruleDay(db,actor.id,p.date),'Dit is een vaste werkdag. Vraag vrij aan.');
    db.extra=db.extra.filter(x=>x.user!==actor.id||x.date!==p.date);
    const std=dayTimes(p.date);
-   db.extra.push({user:actor.id,date:p.date,start:start||std.start,end:end||std.end});
+   db.extra.push(p.off?{user:actor.id,date:p.date,off:true}
+    :{user:actor.id,date:p.date,start:start||std.start,end:end||std.end});
   }else{
    const through=p.through||p.date;
    check(through>=p.date&&(!start||through===p.date||op==='weekly'),'Controleer de periode.');
@@ -460,6 +478,9 @@ function recordAvailability({db,actor,op,p}){
     check(type!=='overuren'||mayPaidLeave(db,actor.id),VAST_ONLY);
     check(type!=='verlof'||!start,WHOLE);
     if(type==='bijzonder')checkSpecial(p);
+    // Vast contract (ronde 13): vrij vragen alleen voor een vaste werkdag; andere dagen: Niet beschikbaar.
+    check(!mayPaidLeave(db,actor.id)||leaveDays(db,{user:actor.id,date:p.date,through})>0,
+     'Op deze dag werk je niet vast. Geef Niet beschikbaar op; daar is geen goedkeuring voor nodig.');
     const left=type==='verlof'?vacationLeft(db,actor.id,['approved','pending']):null;
     const want=leaveDays(db,{user:actor.id,date:p.date,through});
     check(left===null||want<=left,'Je hebt nog '+dayWord(left)+' over (na je open aanvragen). Je vraagt er '+want
@@ -471,6 +492,15 @@ function recordAvailability({db,actor,op,p}){
    db.requests.push({id:crypto.randomUUID(),kind:op,user:actor.id,date:p.date,through,start,end,
     weekday:Number(p.weekday),off:p.off===true,reason:p.reason||'',status:'pending',created:today()});
    if(type)db.requests.at(-1).type=type;
+   // Oproepkracht op een vaste dag: de andere dag(en) worden aangegeven beschikbaarheid, gekoppeld aan de aanvraag.
+   if(op==='leave'&&needsInstead(db,actor.id,p.date,through)){
+    const r=db.requests.at(-1);
+    r.instead=insteadDays(db,actor.id,p,through);
+    for(const x of r.instead){
+     db.extra=db.extra.filter(e=>e.user!==actor.id||e.date!==x.date);
+     db.extra.push({user:actor.id,...x,request:r.id});
+    }
+   }
    if(type==='bijzonder')Object.assign(db.requests.at(-1),{special:p.special,specialReason:specialReason(p)});
   };
 }
@@ -662,6 +692,7 @@ function publishDrafts({db,actor,admin,p:input}){
 export function extraState(db,e){
  if(db.shifts.some(s=>s.user===e.user&&s.date===e.date&&!s.deadline&&intersects(s,e)))return 'planned';
  if(e.declined)return 'declined';
+ if(e.off)return '';
  return e.date>=today()&&published(db,e.date)?'waiting':'';
 }
 export const extraToDecide=db=>db.extra.filter(e=>extraState(db,e)==='waiting');
@@ -729,6 +760,21 @@ function savePerson({db,admin,p}){
  const fields={name,role:p.role,contract:p.contract,contractHours:hours,phone,areas,tracksHours:p.tracksHours!==false,
   ...pay,...vacation};
  if(old)Object.assign(old,fields);else db.people.push({id:crypto.randomUUID(),...fields,active:true});
+ if(p.fixed!==undefined)setFixedDays(db,old?.id||db.people.at(-1).id,p);
+}
+// Vaste werkdagen (ronde 13) = de vaste beschikbaarheid, vanaf vandaag. Alleen een weekdag die verandert krijgt een
+// nieuwe regel; een dag die geen vaste dag meer is wordt Niet beschikbaar.
+function setFixedDays(db,user,p){
+ const days=[].concat(p.fixed).map(Number);
+ for(let n=1;n<=7;n++){
+  const date=add(today(),(n-weekday(today())+7)%7),now=ruleFor({...db,extra:[]},{user,date});
+  const on=days.includes(n),start=p['start'+n]||weekTimes(n).start,end=p['end'+n]||weekTimes(n).end;
+  if(on)interval({start,end});
+  const same=on?now&&!now.off&&now.start===start&&now.end===end&&!now.fortnightly:!now||now.off;
+  if(same)continue;
+  db.rules=db.rules.filter(r=>!(r.user===user&&r.weekday===n&&r.date===today()));
+  db.rules.push(on?{user,weekday:n,date:today(),start,end}:{user,weekday:n,date:today(),off:true});
+ }
 }
 
 // Ziek melden per dienst (SPEC 9a en 9d): alleen de dagleiding van die dag en de bedrijfsleider, ook achteraf.
